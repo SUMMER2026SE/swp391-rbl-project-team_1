@@ -1,0 +1,34 @@
+import { Role } from "@prisma/client";
+
+/**
+ * Safe User DTO — omits password field.
+ * Used in all API responses to prevent password leakage.
+ */
+export interface UserSafeDto {
+    id: string;
+    phone: string;
+    role: Role;
+    doctorId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+/**
+ * Minimal User info for embedding in other responses (e.g. Appointment).
+ */
+export interface UserEmbedDto {
+    id: string;
+    phone: string;
+    role: Role;
+}
+
+/**
+ * Admin user list item.
+ */
+export interface AdminUserDto {
+    id: string;
+    phone: string;
+    role: Role;
+    doctorId: string | null;
+    createdAt: Date;
+}

@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  DOCTOR
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  phone        String        @unique
+  password     String
+  role         Role          @default(USER)
+  doctorId     String?       @unique  // Link to Doctor record when role = DOCTOR
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  appointments Appointment[]
+  doctor       Doctor?       @relation(fields: [doctorId], references: [id])
+}
+
+model Doctor {
+  id              String           @id @default(uuid())
+  name            String
+  specialty       String
+  experience      Int
+  hospital        String
+  avatar          String
+  createdAt       DateTime         @default(now())
+  appointments    Appointment[]
+  doctorSchedules DoctorSchedule[]
+  userAccount     User?            // Reverse relation: the User account linked to this Doctor
+}
+
+model DoctorSchedule {
+  id          String   @id @default(uuid())
+  doctor      Doctor   @relation(fields: [doctorId], references: [id])
+  doctorId    String
+  dayOfWeek   Int      // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+  startTime   String   // format HH:MM (24h)
+  endTime     String   // format HH:MM (24h)
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  user            User              @relation(fields: [userId], references: [id])
+  userId          String
+  doctor          Doctor            @relation(fields: [doctorId], references: [id])
+  doctorId        String
+  appointmentDate DateTime
+  status          AppointmentStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime          @default(now())
+}
