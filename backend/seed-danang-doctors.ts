@@ -563,27 +563,30 @@ async function seedDaNangDoctors() {
     try {
         console.log("🏥 Starting to seed Da Nang Hospital doctors...");
 
+        console.log("🗑️ Clearing existing doctor-related data...");
+        await prisma.appointment.deleteMany({});
+        await prisma.doctorSchedule.deleteMany({});
+        await prisma.user.updateMany({
+            data: { doctorId: null }
+        });
+        await prisma.user.deleteMany({
+            where: { role: "DOCTOR" }
+        });
+        await prisma.doctor.deleteMany({});
+        console.log("✅ Cleared existing doctor records.");
+
+        console.log("🌱 Seeding Da Nang doctors...");
         for (const doctor of DANANG_DOCTORS) {
-            const existingDoctor = await prisma.doctor.findFirst({
-                where: {
+            await prisma.doctor.create({
+                data: {
                     name: doctor.name,
+                    specialty: doctor.specialty,
+                    experience: doctor.experience,
+                    hospital: doctor.hospital,
+                    avatar: `/DoctorAvatar/${doctor.avatar}`,
                 },
             });
-
-            if (!existingDoctor) {
-                await prisma.doctor.create({
-                    data: {
-                        name: doctor.name,
-                        specialty: doctor.specialty,
-                        experience: doctor.experience,
-                        hospital: doctor.hospital,
-                        avatar: doctor.avatar,
-                    },
-                });
-                console.log(`✅ Added: ${doctor.name}`);
-            } else {
-                console.log(`⏭️  Skipped (already exists): ${doctor.name}`);
-            }
+            console.log(`✅ Added: ${doctor.name}`);
         }
 
         const totalDoctors = await prisma.doctor.count();

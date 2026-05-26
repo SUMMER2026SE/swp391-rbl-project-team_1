@@ -69,7 +69,7 @@ export default function Navbar() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-slate-700 text-sm">
                   <UserIcon className="h-4 w-4 text-teal-600" />
-                  <span className="font-medium max-w-[120px] truncate">{user.phone}</span>
+                  <span className="font-medium max-w-[120px] truncate">{user.email}</span>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-teal-100 text-teal-800">
                     {user.role}
                   </span>
@@ -133,7 +133,7 @@ export default function Navbar() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 text-slate-700">
                   <UserIcon className="h-5 w-5 text-teal-600" />
-                  <span className="font-medium text-sm">{user.phone}</span>
+                  <span className="font-medium text-sm">{user.email}</span>
                   <span className="ml-auto text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-teal-100 text-teal-800">
                     {user.role}
                   </span>

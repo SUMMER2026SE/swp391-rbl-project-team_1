@@ -17,7 +17,7 @@ async function getAllUsers() {
     return client_1.default.user.findMany({
         select: {
             id: true,
-            phone: true,
+            email: true,
             role: true,
             doctorId: true,
             createdAt: true,
@@ -34,7 +34,7 @@ async function getAllAppointments() {
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },

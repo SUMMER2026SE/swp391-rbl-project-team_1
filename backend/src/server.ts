@@ -19,7 +19,7 @@ const app = express();
 
 // Production CORS Configuration
 const corsOrigin = process.env.CORS_ORIGIN;
-const allowedOrigins = corsOrigin && corsOrigin !== "*" ? corsOrigin.split(",") : "*";
+const allowedOrigins = corsOrigin && corsOrigin !== "*" ? corsOrigin.split(",") : ["http://localhost:3000"];
 
 app.use(
   cors({
@@ -33,7 +33,7 @@ app.use(express.json());
 app.use("/public", express.static(path.join(__dirname, "../public")));
 
 app.use("/api/users", userRoutes);
-app.use("/api", authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api", doctorRoutes);
 app.use("/api", appointmentRoutes);
 app.use("/api", adminRoutes);

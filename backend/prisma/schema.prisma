@@ -22,7 +22,7 @@ enum AppointmentStatus {
 
 model User {
   id           String        @id @default(uuid())
-  phone        String        @unique
+  email        String        @unique
   password     String
   role         Role          @default(USER)
   doctorId     String?       @unique  // Link to Doctor record when role = DOCTOR
@@ -30,6 +30,15 @@ model User {
   updatedAt    DateTime      @updatedAt
   appointments Appointment[]
   doctor       Doctor?       @relation(fields: [doctorId], references: [id])
+}
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  email     String
+  code      String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Doctor {

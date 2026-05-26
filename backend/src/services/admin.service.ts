@@ -13,7 +13,7 @@ export interface AppointmentWithRelations {
     createdAt: Date;
     user: {
         id: string;
-        phone: string;
+        email: string;
         role: Role;
     };
     doctor: {
@@ -30,7 +30,7 @@ export async function getAllUsers(): Promise<AdminUserDto[]> {
     return prisma.user.findMany({
         select: {
             id: true,
-            phone: true,
+            email: true,
             role: true,
             doctorId: true,
             createdAt: true,
@@ -48,7 +48,7 @@ export async function getAllAppointments(): Promise<AppointmentWithRelations[]> 
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },
@@ -61,7 +61,7 @@ export async function getAllAppointments(): Promise<AppointmentWithRelations[]> 
             },
         },
         orderBy: { appointmentDate: "desc" },
-    }) as Promise<AppointmentWithRelations[]>;
+    }) as unknown as Promise<AppointmentWithRelations[]>;
 }
 
 /**

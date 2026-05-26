@@ -3,6 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.sendOtpToEmail = sendOtpToEmail;
+exports.verifyOtp = verifyOtp;
 exports.registerUser = registerUser;
 exports.authenticateUser = authenticateUser;
 exports.findUserById = findUserById;
@@ -11,41 +13,124 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const client_1 = require("@prisma/client");
 const client_2 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
+const emailService_1 = require("../utils/emailService");
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     throw new Error("JWT_SECRET environment variable is required");
 }
-async function registerUser(phone, password) {
+/**
+ * Step 1: Send OTP to email
+ */
+async function sendOtpToEmail(email) {
+    const normalizedEmail = email.toLowerCase();
+    // Check if email already registered in User table
     const existingUser = await client_2.default.user.findUnique({
-        where: { phone },
+        where: { email: normalizedEmail },
     });
     if (existingUser) {
-        throw new apiError_1.ApiError("Phone already registered", 409);
+        throw new apiError_1.ApiError("Email already registered", 409);
     }
+    // Generate OTP (6 digits)
+    const otp = (0, emailService_1.generateOtp)();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    // Clear old OTPs for this email to avoid clutter
+    await client_2.default.oTP.deleteMany({
+        where: { email: normalizedEmail },
+    });
+    // Save OTP to database
+    await client_2.default.oTP.create({
+        data: {
+            email: normalizedEmail,
+            code: otp,
+            expiresAt: otpExpiresAt,
+            verified: false,
+        },
+    });
+    // Send OTP via email
+    await (0, emailService_1.sendOtpEmail)(normalizedEmail, otp);
+}
+/**
+ * Step 2: Verify OTP
+ */
+async function verifyOtp(email, otp) {
+    const normalizedEmail = email.toLowerCase();
+    const otpRecord = await client_2.default.oTP.findFirst({
+        where: { email: normalizedEmail },
+        orderBy: { createdAt: "desc" },
+    });
+    if (!otpRecord) {
+        throw new apiError_1.ApiError("No OTP requested for this email", 400);
+    }
+    if (otpRecord.code !== otp) {
+        throw new apiError_1.ApiError("Invalid OTP code", 400);
+    }
+    if (new Date() > otpRecord.expiresAt) {
+        throw new apiError_1.ApiError("OTP has expired", 400);
+    }
+    // Set OTP to verified
+    await client_2.default.oTP.update({
+        where: { id: otpRecord.id },
+        data: { verified: true },
+    });
+    return { isValid: true };
+}
+/**
+ * Step 3: Complete registration with password (save user to database)
+ */
+async function registerUser(email, password, otp) {
+    const normalizedEmail = email.toLowerCase();
+    // 1. Verify email is not registered
+    const existingUser = await client_2.default.user.findUnique({
+        where: { email: normalizedEmail },
+    });
+    if (existingUser) {
+        throw new apiError_1.ApiError("Email already registered", 409);
+    }
+    // 2. Verify there is a verified OTP for this email
+    const verifiedOtp = await client_2.default.oTP.findFirst({
+        where: {
+            email: normalizedEmail,
+            verified: true,
+            expiresAt: { gt: new Date() }, // OTP must not be expired
+        },
+        orderBy: { createdAt: "desc" },
+    });
+    if (!verifiedOtp || verifiedOtp.code !== otp) {
+        throw new apiError_1.ApiError("OTP not verified or verification has expired. Please verify OTP first.", 400);
+    }
+    // 3. Hash password
     const hashedPassword = await bcrypt_1.default.hash(password, 12);
+    // 4. Create real User record
     const user = await client_2.default.user.create({
         data: {
-            phone,
+            email: normalizedEmail,
             password: hashedPassword,
             role: client_1.Role.USER,
         },
         select: {
             id: true,
-            phone: true,
+            email: true,
             role: true,
             doctorId: true,
             createdAt: true,
             updatedAt: true,
         },
     });
+    // 5. Delete OTP records for this email after registration is complete
+    await client_2.default.oTP.deleteMany({
+        where: { email: normalizedEmail },
+    });
     return user;
 }
-async function authenticateUser(phone, password) {
+/**
+ * Login with email
+ */
+async function authenticateUser(email, password) {
+    const normalizedEmail = email.toLowerCase();
     const user = await client_2.default.user.findUnique({
-        where: { phone },
+        where: { email: normalizedEmail },
     });
     if (!user) {
-        // Avoid user enumeration — same error for "not found" and "wrong password"
         throw new apiError_1.ApiError("Invalid credentials", 401);
     }
     const passwordMatches = await bcrypt_1.default.compare(password, user.password);
@@ -63,15 +148,16 @@ async function authenticateUser(phone, password) {
     return { token, user: safeUser };
 }
 async function findUserById(id) {
-    return client_2.default.user.findUnique({
+    const user = await client_2.default.user.findUnique({
         where: { id },
         select: {
             id: true,
-            phone: true,
+            email: true,
             role: true,
             doctorId: true,
             createdAt: true,
             updatedAt: true,
         },
     });
+    return user;
 }

@@ -6,7 +6,7 @@ import { Role } from "@prisma/client";
  */
 export interface UserSafeDto {
     id: string;
-    phone: string;
+    email: string;
     role: Role;
     doctorId: string | null;
     createdAt: Date;
@@ -18,7 +18,7 @@ export interface UserSafeDto {
  */
 export interface UserEmbedDto {
     id: string;
-    phone: string;
+    email: string;
     role: Role;
 }
 
@@ -27,7 +27,7 @@ export interface UserEmbedDto {
  */
 export interface AdminUserDto {
     id: string;
-    phone: string;
+    email: string;
     role: Role;
     doctorId: string | null;
     createdAt: Date;

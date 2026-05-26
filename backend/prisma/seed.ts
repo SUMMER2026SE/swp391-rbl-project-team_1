@@ -4,7 +4,7 @@ import { PrismaClient, Role, AppointmentStatus } from "@prisma/client";
 const prisma = new PrismaClient();
 
 interface SeedConfig {
-    adminPhone: string;
+    adminEmail: string;
     adminPassword: string;
     doctorCount: number;
     patientCount: number;
@@ -12,7 +12,7 @@ interface SeedConfig {
 }
 
 const SEED_CONFIG: SeedConfig = {
-    adminPhone: "0900000000",
+    adminEmail: "admin@medbooking.com",
     adminPassword: "admin@123",
     doctorCount: 5,
     patientCount: 10,
@@ -65,19 +65,6 @@ const DOCTOR_DATA: DoctorData[] = [
     },
 ];
 
-const PATIENT_PHONE_PREFIXES = [
-    "0901",
-    "0902",
-    "0903",
-    "0904",
-    "0905",
-    "0906",
-    "0907",
-    "0908",
-    "0909",
-    "0910",
-];
-
 const DEFAULT_PASSWORD = "user@123";
 const BCRYPT_ROUNDS = 12;
 
@@ -85,8 +72,19 @@ async function hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-async function generateUniquePhone(prefix: string, index: number): Promise<string> {
-    return `${prefix}${String(index + 1).padStart(6, "0")}`;
+function removeDiacritics(str: string): string {
+    return str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "d")
+        .toLowerCase();
+}
+
+function generateDoctorEmail(name: string): string {
+    const cleanName = removeDiacritics(name)
+        .replace("dr. ", "")
+        .replace(/\s+/g, ".");
+    return `${cleanName}@medbooking.com`;
 }
 
 async function seedAdminUser(): Promise<string> {
@@ -95,16 +93,16 @@ async function seedAdminUser(): Promise<string> {
     const hashedPassword = await hashPassword(SEED_CONFIG.adminPassword);
 
     const admin = await prisma.user.upsert({
-        where: { phone: SEED_CONFIG.adminPhone },
+        where: { email: SEED_CONFIG.adminEmail },
         update: {},
         create: {
-            phone: SEED_CONFIG.adminPhone,
+            email: SEED_CONFIG.adminEmail,
             password: hashedPassword,
             role: Role.ADMIN,
         },
     });
 
-    console.log(`✅ Admin user created: ${SEED_CONFIG.adminPhone}`);
+    console.log(`✅ Admin user created: ${SEED_CONFIG.adminEmail}`);
     return admin.id;
 }
 
@@ -115,7 +113,7 @@ async function seedDoctors(): Promise<string[]> {
 
     for (let i = 0; i < SEED_CONFIG.doctorCount; i++) {
         const doctorData = DOCTOR_DATA[i];
-        const phone = await generateUniquePhone("0901", i);
+        const email = generateDoctorEmail(doctorData.name);
         const hashedPassword = await hashPassword(SEED_CONFIG.adminPassword);
 
         // Create Doctor record
@@ -129,14 +127,14 @@ async function seedDoctors(): Promise<string[]> {
         });
 
         // Create User account for doctor and link it
-        const user = await prisma.user.upsert({
-            where: { phone },
+        await prisma.user.upsert({
+            where: { email },
             update: {
                 role: Role.DOCTOR,
                 doctorId: doctor.id,
             },
             create: {
-                phone,
+                email,
                 password: hashedPassword,
                 role: Role.DOCTOR,
                 doctorId: doctor.id,
@@ -144,7 +142,7 @@ async function seedDoctors(): Promise<string[]> {
         });
 
         doctorIds.push(doctor.id);
-        console.log(`  ✅ Doctor created: ${doctorData.name} (${phone})`);
+        console.log(`  ✅ Doctor created: ${doctorData.name} (${email})`);
     }
 
     return doctorIds;
@@ -190,22 +188,21 @@ async function seedPatients(): Promise<string[]> {
     const patientIds: string[] = [];
     const hashedPassword = await hashPassword(DEFAULT_PASSWORD);
 
-    for (let i = 0; i < SEED_CONFIG.patientCount; i++) {
-        const prefix = PATIENT_PHONE_PREFIXES[i % PATIENT_PHONE_PREFIXES.length];
-        const phone = await generateUniquePhone(prefix, i);
+    for (let i = 1; i <= SEED_CONFIG.patientCount; i++) {
+        const email = `patient.${i}@medbooking.com`;
 
         const user = await prisma.user.upsert({
-            where: { phone },
+            where: { email },
             update: {},
             create: {
-                phone,
+                email,
                 password: hashedPassword,
                 role: Role.USER,
             },
         });
 
         patientIds.push(user.id);
-        console.log(`  ✅ Patient created: ${phone}`);
+        console.log(`  ✅ Patient created: ${email}`);
     }
 
     return patientIds;
@@ -236,7 +233,7 @@ async function seedAppointments(
             appointmentDate.setDate(appointmentDate.getDate() + i + 1);
             appointmentDate.setHours(10 + i, 0, 0, 0);
 
-            const appointment = await prisma.appointment.create({
+            await prisma.appointment.create({
                 data: {
                     userId: patientId,
                     doctorId,
@@ -264,6 +261,7 @@ async function main(): Promise<void> {
         await prisma.doctorSchedule.deleteMany({});
         await prisma.doctor.deleteMany({});
         await prisma.user.deleteMany({});
+        await prisma.oTP.deleteMany({});
         console.log("✅ Data cleared\n");
 
         // Seed users and data
@@ -284,7 +282,7 @@ async function main(): Promise<void> {
 
         console.log("✨ Database seed completed successfully!\n");
         console.log("📊 Summary:");
-        console.log(`  - 1 Admin user (${SEED_CONFIG.adminPhone})`);
+        console.log(`  - 1 Admin user (${SEED_CONFIG.adminEmail})`);
         console.log(
             `  - ${SEED_CONFIG.doctorCount} Doctor accounts with profiles`
         );
@@ -296,9 +294,9 @@ async function main(): Promise<void> {
             `  - ${SEED_CONFIG.doctorCount * SEED_CONFIG.appointmentsPerDoctor} Appointments`
         );
         console.log("\n🔐 Default credentials:");
-        console.log(`  Admin: ${SEED_CONFIG.adminPhone} / ${SEED_CONFIG.adminPassword}`);
-        console.log(`  Doctors: 0901XXXXXX / ${SEED_CONFIG.adminPassword}`);
-        console.log(`  Patients: 0902-0910XXXXXX / ${DEFAULT_PASSWORD}`);
+        console.log(`  Admin: ${SEED_CONFIG.adminEmail} / ${SEED_CONFIG.adminPassword}`);
+        console.log(`  Doctors: doctor.<name>@medbooking.com / ${SEED_CONFIG.adminPassword}`);
+        console.log(`  Patients: patient.X@medbooking.com / ${DEFAULT_PASSWORD}`);
         console.log("\n");
     } catch (error) {
         console.error("❌ Error during seed:", error);

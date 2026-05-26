@@ -56,7 +56,7 @@ export default function AdminAppointmentsPage() {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (app) =>
-          (app.user?.phone && app.user.phone.toLowerCase().includes(q)) ||
+          (app.user?.email && app.user.email.toLowerCase().includes(q)) ||
           (app.doctor?.name && app.doctor.name.toLowerCase().includes(q)) ||
           (app.doctor?.specialty && app.doctor.specialty.toLowerCase().includes(q))
       );
@@ -135,7 +135,7 @@ export default function AdminAppointmentsPage() {
             <Search className="absolute left-3.5 top-3.5 h-4.5 w-4.5 text-slate-500" />
             <input
               type="text"
-              placeholder="Tìm theo số điện thoại người bệnh, tên bác sĩ hoặc chuyên khoa..."
+              placeholder="Tìm theo email người bệnh, tên bác sĩ hoặc chuyên khoa..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm animate-fade-in"
@@ -167,7 +167,7 @@ export default function AdminAppointmentsPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950 text-[10px] text-slate-500 uppercase tracking-wider font-bold">
-                  <th className="p-5 font-semibold">Người bệnh</th>
+                  <th className="p-5 font-semibold">Người bệnh (SĐT/Email)</th>
                   <th className="p-5 font-semibold">Bác sĩ & Chuyên khoa</th>
                   <th className="p-5 font-semibold">Thời gian khám</th>
                   <th className="p-5 font-semibold">Triệu chứng / Ghi chú</th>
@@ -195,7 +195,7 @@ export default function AdminAppointmentsPage() {
                     <tr key={app.id} className="hover:bg-slate-900/40 transition-colors">
                       {/* Patient */}
                       <td className="p-5 font-bold text-slate-200">
-                        {app.user?.phone || "Khách vãng lai"}
+                        {app.user?.email || "Khách vãng lai"}
                       </td>
 
                       {/* Doctor */}

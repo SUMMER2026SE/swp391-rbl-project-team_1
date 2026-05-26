@@ -3,7 +3,7 @@ import { AppointmentStatus } from "./appointment";
 
 export interface AdminUser {
   id: string;
-  phone: string;
+  email: string;
   role: UserRole;
   doctorId: string | null;
   createdAt: string;
@@ -19,7 +19,7 @@ export interface AdminAppointment {
   createdAt: string;
   user: {
     id: string;
-    phone: string;
+    email: string;
     role: UserRole;
   };
   doctor: {

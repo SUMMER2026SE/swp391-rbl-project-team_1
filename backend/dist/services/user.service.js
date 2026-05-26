@@ -17,7 +17,7 @@ async function getAllUsers() {
     return client_2.default.user.findMany({
         select: {
             id: true,
-            phone: true,
+            email: true,
             role: true,
             doctorId: true,
             createdAt: true,
@@ -33,7 +33,7 @@ async function getUserById(id) {
         where: { id },
         select: {
             id: true,
-            phone: true,
+            email: true,
             role: true,
             doctorId: true,
             createdAt: true,
@@ -61,7 +61,7 @@ async function updateUserRole(id, role) {
         data: { role },
         select: {
             id: true,
-            phone: true,
+            email: true,
             role: true,
             doctorId: true,
             createdAt: true,

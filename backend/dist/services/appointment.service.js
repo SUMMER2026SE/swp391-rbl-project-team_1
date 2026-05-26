@@ -52,7 +52,7 @@ async function getAllAppointments() {
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },
@@ -70,7 +70,7 @@ async function getAppointmentById(id) {
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },
@@ -85,7 +85,7 @@ async function getDoctorAppointments(doctorId) {
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },

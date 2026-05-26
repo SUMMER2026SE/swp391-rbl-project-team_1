@@ -2,7 +2,7 @@ export type UserRole = "USER" | "DOCTOR" | "ADMIN";
 
 export interface User {
   id: string;
-  phone: string;
+  email: string;
   role: UserRole;
   doctorId: string | null;
   createdAt: string;

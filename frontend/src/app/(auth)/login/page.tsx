@@ -7,13 +7,13 @@ import { useAuth } from "@/hooks/useAuth";
 import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
 import Alert from "@/components/common/Alert";
-import { KeyRound, Phone, Activity } from "lucide-react";
+import { KeyRound, User, Activity } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
 
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -25,8 +25,13 @@ export default function LoginPage() {
     setSuccess(null);
 
     // Simple validation
-    if (!phone) {
-      setError("Số điện thoại là bắt buộc");
+    if (!email) {
+      setError("Email là bắt buộc");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Email không đúng định dạng");
       return;
     }
     if (!password) {
@@ -36,14 +41,14 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login(phone, password);
+      await login(email, password);
       setSuccess("Đăng nhập thành công! Đang chuyển hướng...");
       setTimeout(() => {
         router.push("/");
         router.refresh();
       }, 1000);
     } catch (err: any) {
-      setError(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại số điện thoại/mật khẩu.");
+      setError(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại email hoặc mật khẩu.");
     } finally {
       setLoading(false);
     }
@@ -71,14 +76,14 @@ export default function LoginPage() {
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           <div className="relative">
-            <Phone className="absolute left-3.5 top-9.5 h-4 w-4 text-slate-400 z-10" />
+            <User className="absolute left-3.5 top-9.5 h-4 w-4 text-slate-400 z-10" />
             <Input
-              id="phone"
-              type="text"
-              label="Số điện thoại"
-              placeholder="Nhập số điện thoại"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              id="email"
+              type="email"
+              label="Email"
+              placeholder="Nhập email của bạn"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="pl-10"
               required
             />

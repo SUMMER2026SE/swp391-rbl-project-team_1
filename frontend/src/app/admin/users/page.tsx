@@ -63,7 +63,9 @@ export default function AdminUsersPage() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      result = result.filter((u) => u.phone.toLowerCase().includes(q));
+      result = result.filter((u) => 
+        (u.email && u.email.toLowerCase().includes(q))
+      );
     }
 
     if (selectedRole !== "ALL") {
@@ -188,7 +190,7 @@ export default function AdminUsersPage() {
             <Search className="absolute left-3.5 top-3.5 h-4.5 w-4.5 text-slate-500" />
             <input
               type="text"
-              placeholder="Tìm theo số điện thoại tài khoản..."
+              placeholder="Tìm theo email tài khoản..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm animate-fade-in"
@@ -219,7 +221,7 @@ export default function AdminUsersPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950 text-[10px] text-slate-500 uppercase tracking-wider font-bold">
-                  <th className="p-5 font-semibold">Số điện thoại</th>
+                  <th className="p-5 font-semibold">Tài khoản (Email)</th>
                   <th className="p-5 font-semibold">Vai trò (Role)</th>
                   <th className="p-5 font-semibold">Liên kết bác sĩ</th>
                   <th className="p-5 font-semibold">Ngày tạo tài khoản</th>
@@ -240,7 +242,7 @@ export default function AdminUsersPage() {
                     <tr key={u.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="p-5 font-bold text-slate-200">
                         <span className="flex items-center gap-1.5">
-                          {u.phone}
+                          {u.email}
                           {isMe && (
                             <span className="text-[9px] uppercase tracking-wide font-black px-1.5 py-0.5 rounded bg-teal-500 text-slate-950">
                               BẠN

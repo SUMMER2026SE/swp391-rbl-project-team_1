@@ -9,8 +9,10 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
-  register: (phone: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, otp: string, password: string) => Promise<void>;
+  sendOtp: (email: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -57,10 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadStoredAuth();
   }, []);
 
-  const login = async (phone: string, password: string) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(phone, password);
+      const response = await authService.login(email, password);
       localStorage.setItem("token", response.token);
       localStorage.setItem("user", JSON.stringify(response.user));
       setToken(response.token);
@@ -72,15 +74,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (phone: string, password: string) => {
+  const register = async (email: string, otp: string, password: string) => {
     setIsLoading(true);
     try {
-      await authService.register(phone, password);
+      await authService.register(email, otp, password);
       // Automatically log in after registration
-      await login(phone, password);
+      await login(email, password);
     } catch (error) {
       setIsLoading(false);
       throw error;
+    }
+  };
+
+  const sendOtp = async (email: string) => {
+    setIsLoading(true);
+    try {
+      await authService.sendOtp(email);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyOtp = async (email: string, otp: string) => {
+    setIsLoading(true);
+    try {
+      await authService.verifyOtp(email, otp);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -102,6 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         register,
+        sendOtp,
+        verifyOtp,
         logout,
       }}
     >

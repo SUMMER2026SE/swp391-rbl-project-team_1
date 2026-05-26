@@ -60,7 +60,7 @@ export async function getAllAppointments(): Promise<Appointment[]> {
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },
@@ -79,7 +79,7 @@ export async function getAppointmentById(id: string): Promise<Appointment | null
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },
@@ -95,7 +95,7 @@ export async function getDoctorAppointments(doctorId: string): Promise<Appointme
             user: {
                 select: {
                     id: true,
-                    phone: true,
+                    email: true,
                     role: true,
                 },
             },

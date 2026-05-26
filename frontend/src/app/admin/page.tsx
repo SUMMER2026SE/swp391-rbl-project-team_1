@@ -239,7 +239,7 @@ export default function AdminDashboardPage() {
 
                     return (
                       <tr key={app.id} className="hover:bg-slate-900/50 transition-colors">
-                        <td className="py-3.5 pr-2 font-medium text-slate-200">{app.user?.phone || "Khách"}</td>
+                        <td className="py-3.5 pr-2 font-medium text-slate-200">{app.user?.email || "Khách"}</td>
                         <td className="py-3.5 pr-2 text-slate-400">{app.doctor?.name || "Bác sĩ"}</td>
                         <td className="py-3.5 pr-2 text-slate-500">
                           {appDate.toLocaleDateString("vi-VN")}
