@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { Role } from "@prisma/client";
+import { Role, AppointmentStatus } from "@prisma/client";
 
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import {
@@ -7,6 +7,7 @@ import {
     getAllAppointments,
     deleteUser,
     linkDoctorToUser as linkDoctorToUserService,
+    updateAppointmentStatus,
 } from "../services/admin.service";
 import { updateUserRole } from "../services/user.service";
 import { ApiError } from "../utils/apiError";
@@ -141,6 +142,41 @@ export async function linkDoctorToUser(
         res.json({
             message: result.message,
             data: { userId: result.userId, doctorId: result.doctorId },
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * PUT /api/admin/appointments/:id/status
+ * Updates an appointment's status.
+ */
+export async function updateAppointmentStatusHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const id = req.params.id as string;
+
+        if (!id) {
+            throw new ApiError("Appointment ID is required", 400);
+        }
+
+        const { status } = req.body as { status?: string };
+
+        if (!status || !Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
+            throw new ApiError(
+                `Invalid status. Must be one of: ${Object.values(AppointmentStatus).join(", ")}`,
+                400
+            );
+        }
+
+        const appointment = await updateAppointmentStatus(id, status as AppointmentStatus);
+        res.json({
+            message: "Appointment status updated successfully",
+            data: appointment,
         });
     } catch (error) {
         next(error);

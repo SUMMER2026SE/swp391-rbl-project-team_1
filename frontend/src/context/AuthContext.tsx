@@ -9,11 +9,13 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (email: string, otp: string, password: string) => Promise<void>;
   sendOtp: (email: string) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => void;
+  updateUser: (updatedUser: User) => void;
+  googleLogin: (idToken: string) => Promise<User>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user", JSON.stringify(response.user));
       setToken(response.token);
       setUser(response.user);
+      return response.user;
     } catch (error) {
       throw error;
     } finally {
@@ -117,6 +120,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
+  const googleLogin = async (idToken: string) => {
+    setIsLoading(true);
+    try {
+      const response = await authService.googleLogin(idToken);
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+      setToken(response.token);
+      setUser(response.user);
+      return response.user;
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isAuthenticated = !!token && !!user;
 
   return (
@@ -131,6 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sendOtp,
         verifyOtp,
         logout,
+        updateUser,
+        googleLogin,
       }}
     >
       {children}

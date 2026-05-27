@@ -9,6 +9,7 @@ import doctorRoutes from "./routes/doctor.routes";
 import appointmentRoutes from "./routes/appointment.routes";
 import adminRoutes from "./routes/admin.routes";
 import chatRoutes from "./routes/chat.routes";
+import doctorDashboardRoutes from "./routes/doctor-dashboard.routes";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { getProfile } from "./controllers/auth.controller";
@@ -38,6 +39,7 @@ app.use("/api", doctorRoutes);
 app.use("/api", appointmentRoutes);
 app.use("/api", adminRoutes);
 app.use("/api", chatRoutes);
+app.use("/api/doctor", doctorDashboardRoutes);
 app.get("/api/profile", verifyToken, getProfile);
 
 app.get("/", (req, res) => {

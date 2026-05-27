@@ -9,6 +9,7 @@ import Alert from "@/components/common/Alert";
 import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import Button from "@/components/common/Button";
+import BookingProgress from "@/components/ui/BookingProgress";
 
 function MyAppointmentsContent() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -31,8 +32,12 @@ function MyAppointmentsContent() {
           (a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()
         );
         setAppointments(sorted);
-      } catch (err: any) {
-        setError(err.message || "Không thể tải danh sách cuộc hẹn của bạn.");
+      } catch (err: unknown) {
+        const errorMsg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Không thể tải danh sách cuộc hẹn của bạn.";
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -154,7 +159,7 @@ function MyAppointmentsContent() {
                     <div className="space-y-1">
                       <h3 className="font-bold text-slate-900 text-base">{app.doctor?.name || "Bác sĩ Chuyên gia"}</h3>
                       <div className="flex items-center gap-1.5 text-xs text-teal-700 bg-teal-50 rounded-lg px-2 py-0.5 w-max font-semibold">
-                        <span>{app.doctor?.specialty || "Đang cập nhật"}</span>
+                        <span>{app.doctor?.specialty?.name || "Đang cập nhật"}</span>
                       </div>
                     </div>
                   </div>
@@ -234,6 +239,8 @@ export default function MyAppointmentsPage() {
             Xem và quản lý tất cả các cuộc hẹn đặt khám sức khỏe của bạn trên hệ thống MedBooking.
           </p>
         </div>
+
+        <BookingProgress />
 
         <MyAppointmentsContent />
       </div>

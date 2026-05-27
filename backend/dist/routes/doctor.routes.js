@@ -8,6 +8,7 @@ const auth_middleware_1 = require("../middleware/auth.middleware");
 const authorization_middleware_1 = require("../middleware/authorization.middleware");
 const router = (0, express_1.Router)();
 router.get("/doctors", doctor_controller_1.listDoctors);
+router.get("/specialties", doctor_controller_1.listSpecialties);
 router.get("/doctors/:id", doctor_controller_1.getDoctor);
 router.post("/doctors/:id/schedules", auth_middleware_1.verifyToken, schedule_controller_1.createSchedule);
 router.get("/doctors/:id/schedules", schedule_controller_1.listSchedules);

@@ -7,6 +7,7 @@ exports.getAllUsers = getAllUsers;
 exports.getAllAppointments = getAllAppointments;
 exports.deleteUser = deleteUser;
 exports.linkDoctorToUser = linkDoctorToUser;
+exports.updateAppointmentStatus = updateAppointmentStatus;
 const client_1 = __importDefault(require("../prisma/client"));
 const client_2 = require("@prisma/client");
 const apiError_1 = require("../utils/apiError");
@@ -97,4 +98,35 @@ async function linkDoctorToUser(userId, doctorId) {
         doctorId,
         message: `User account successfully linked to Doctor "${doctor.name}"`,
     };
+}
+/**
+ * Updates an appointment's status.
+ */
+async function updateAppointmentStatus(appointmentId, status) {
+    const appointment = await client_1.default.appointment.findUnique({
+        where: { id: appointmentId },
+    });
+    if (!appointment) {
+        throw new apiError_1.ApiError("Appointment not found", 404);
+    }
+    return client_1.default.appointment.update({
+        where: { id: appointmentId },
+        data: { status },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    role: true,
+                },
+            },
+            doctor: {
+                select: {
+                    id: true,
+                    name: true,
+                    specialty: true,
+                },
+            },
+        },
+    });
 }

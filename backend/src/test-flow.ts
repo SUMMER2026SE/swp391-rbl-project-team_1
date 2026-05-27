@@ -79,7 +79,7 @@ async function runTest() {
         console.log(`   - ID: ${dbUser.id}`);
         console.log(`   - Email: ${dbUser.email}`);
         console.log(`   - Role: ${dbUser.role}`);
-        console.log(`   - Password Hashed: ${dbUser.password.startsWith("$2b$") ? "YES (bcryptjs)" : "NO"}`);
+        console.log(`   - Password Hashed: ${dbUser.password && dbUser.password.startsWith("$2b$") ? "YES (bcryptjs)" : "NO"}`);
         console.log(`   - Created At: ${dbUser.createdAt}`);
 
         // Clean up test data after successful verification
@@ -88,8 +88,9 @@ async function runTest() {
         console.log("\n🧹 Cleaned up test data after successful test.");
 
         console.log("\n✨ ALL TESTS COMPLETED SUCCESSFULLY! FLOW IS FULLY OPERATIONAL. ✨\n");
-    } catch (error: any) {
-        console.error("\n❌ TEST FAILED:", error.response?.data || error.message);
+    } catch (error: unknown) {
+        const errMessage = error instanceof Error ? error.message : String(error);
+        console.error("\n❌ TEST FAILED:", errMessage);
         throw error;
     } finally {
         await prisma.$disconnect();

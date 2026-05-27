@@ -4,12 +4,30 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAllDoctors = getAllDoctors;
+exports.getAllSpecialties = getAllSpecialties;
 exports.getDoctorById = getDoctorById;
 exports.getDoctorByUserId = getDoctorByUserId;
 const client_1 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
-async function getAllDoctors() {
+async function getAllDoctors(specialtySlug) {
+    const whereClause = specialtySlug
+        ? { specialty: { slug: specialtySlug } }
+        : {};
     return client_1.default.doctor.findMany({
+        where: whereClause,
+        include: {
+            specialty: true,
+        },
+        orderBy: { name: "asc" },
+    });
+}
+async function getAllSpecialties() {
+    return client_1.default.specialty.findMany({
+        include: {
+            _count: {
+                select: { doctors: true },
+            },
+        },
         orderBy: { name: "asc" },
     });
 }
@@ -43,6 +61,7 @@ async function getDoctorByUserId(userId) {
     }
     const doctor = await client_1.default.doctor.findUnique({
         where: { id: user.doctorId },
+        include: { specialty: true },
     });
     if (!doctor) {
         throw new apiError_1.ApiError("Doctor profile not found", 404);

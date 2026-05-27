@@ -20,7 +20,7 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Production CORS Configuration
 const corsOrigin = process.env.CORS_ORIGIN;
-const allowedOrigins = corsOrigin && corsOrigin !== "*" ? corsOrigin.split(",") : "*";
+const allowedOrigins = corsOrigin && corsOrigin !== "*" ? corsOrigin.split(",") : ["http://localhost:3000"];
 app.use((0, cors_1.default)({
     origin: allowedOrigins,
     credentials: true,

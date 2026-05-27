@@ -1,4 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+import { PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -559,6 +560,42 @@ const DANANG_DOCTORS: DoctorData[] = [
     },
 ];
 
+const DEFAULT_PASSWORD = "123456";
+const BCRYPT_ROUNDS = 10;
+
+async function hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, BCRYPT_ROUNDS);
+}
+
+function removeDiacritics(str: string): string {
+    return str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "d")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+}
+
+function generateDoctorEmail(name: string): string {
+    const cleanName = removeDiacritics(name)
+        .replace("ts-bs-", "")
+        .replace("ths-bs-", "")
+        .replace("bs-ck2-", "")
+        .replace("bac-si-ck2-", "")
+        .replace("bs-ck1-", "")
+        .replace("bac-sy-ths-ckii-", "")
+        .replace("bac-sy-", "")
+        .replace("bac-si-", "")
+        .replace("ts-", "")
+        .replace("ths-", "")
+        .replace("bs-", "")
+        .replace(/\s+/g, ".");
+    return `${cleanName}@medbooking.com`;
+}
+
 async function seedDaNangDoctors() {
     try {
         console.log("🏥 Starting to seed Da Nang Hospital doctors...");
@@ -570,27 +607,133 @@ async function seedDaNangDoctors() {
             data: { doctorId: null }
         });
         await prisma.user.deleteMany({
-            where: { role: "DOCTOR" }
+            where: { role: Role.DOCTOR }
         });
         await prisma.doctor.deleteMany({});
-        console.log("✅ Cleared existing doctor records.");
+        await prisma.specialty.deleteMany({});
+        console.log("✅ Cleared existing doctor records and specialties.");
 
-        console.log("🌱 Seeding Da Nang doctors...");
+        console.log("🌱 Seeding Da Nang specialties and doctors...");
+        const specialtyMap = new Map<string, string>(); // name -> id
+        const hashedPassword = await hashPassword(DEFAULT_PASSWORD);
+
+        // Schedule configurations
+        const scheduleConfig = [
+            { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" }, // Monday
+            { dayOfWeek: 2, startTime: "08:00", endTime: "17:00" }, // Tuesday
+            { dayOfWeek: 3, startTime: "08:00", endTime: "17:00" }, // Wednesday
+            { dayOfWeek: 4, startTime: "08:00", endTime: "17:00" }, // Thursday
+            { dayOfWeek: 5, startTime: "08:00", endTime: "17:00" }, // Friday
+        ];
+
+        // Emojis for specialties
+        const specialtyEmojis: Record<string, string> = {
+            "quan-ly-y-te": "🏢",
+            "gay-me-hoi-suc": "😴",
+            "noi-khoa": "🩺",
+            "ngoai-khoa": "🔪",
+            "ngoai-than-kinh": "🧠",
+            "chinh-hinh-chan-thuong": "🦴",
+            "chinh-hinh-co-xuong-khop": "🦵",
+            "chinh-hinh": "🦴",
+            "ngoai-long-nguc": "🫁",
+            "tim-mach-can-thiep": "❤️",
+            "ngoai-tieu-hoa": "🥗",
+            "tiet-nieu": "💧",
+            "tim-mach": "❤️",
+            "tieu-hoa-gan-mat": "🍏",
+            "ho-hap": "🫁",
+            "than-noi-tiet": "🧪",
+            "than-kinh": "🧠",
+            "hoi-suc-tich-cuc": "🚨",
+            "ung-buou": "🎗️",
+            "tai-mui-hong": "👂",
+            "rang-ham-mat": "🦷",
+            "bong-tao-hinh": "🩹",
+            "ngoai-tong-hop": "⚕️",
+            "noi-tong-hop": "🩺",
+            "y-hoc-nhiet-doi": "🌡️",
+            "y-hoc-hat-nhan": "☢️",
+            "phuc-hoi-chuc-nang": "🏃",
+            "y-hoc-co-truyen": "🌿",
+            "phu-san": "🤰",
+            "than-nhan-tao": "🔬",
+            "kham-benh-tong-quat": "📋",
+            "lao-khoa": "🧓"
+        };
+
+        let doctorIndex = 1;
         for (const doctor of DANANG_DOCTORS) {
-            await prisma.doctor.create({
+            const specName = doctor.specialty.trim();
+            let specialtyId = specialtyMap.get(specName);
+
+            if (!specialtyId) {
+                const slug = removeDiacritics(specName);
+                const emoji = specialtyEmojis[slug] || "🩺";
+                
+                // Create or find specialty
+                const specialty = await prisma.specialty.upsert({
+                    where: { slug },
+                    update: { name: specName, icon: emoji },
+                    create: {
+                        name: specName,
+                        slug,
+                        icon: emoji,
+                    },
+                });
+                
+                specialtyId = specialty.id;
+                specialtyMap.set(specName, specialtyId);
+                console.log(`   🩺 Specialty created: ${specName} (${slug})`);
+            }
+
+            const doctorId = `doctor_${doctorIndex}`;
+            // Create Doctor record
+            const createdDoctor = await prisma.doctor.create({
                 data: {
+                    id: doctorId,
                     name: doctor.name,
-                    specialty: doctor.specialty,
                     experience: doctor.experience,
                     hospital: doctor.hospital,
                     avatar: `/DoctorAvatar/${doctor.avatar}`,
+                    specialtyId: specialtyId,
                 },
             });
-            console.log(`✅ Added: ${doctor.name}`);
+            doctorIndex++;
+
+            // Create User account for doctor
+            const email = generateDoctorEmail(doctor.name);
+            await prisma.user.create({
+                data: {
+                    email,
+                    password: hashedPassword,
+                    role: Role.DOCTOR,
+                    doctorId: createdDoctor.id,
+                },
+            });
+
+            // Seed schedules for doctor
+            for (const config of scheduleConfig) {
+                await prisma.doctorSchedule.create({
+                    data: {
+                        doctorId: createdDoctor.id,
+                        dayOfWeek: config.dayOfWeek,
+                        startTime: config.startTime,
+                        endTime: config.endTime,
+                        isAvailable: true,
+                    },
+                });
+            }
+
+            console.log(`✅ Added Doctor: ${doctor.name} (${specName})`);
         }
 
         const totalDoctors = await prisma.doctor.count();
-        console.log(`\n✨ Seeding completed! Total doctors in database: ${totalDoctors}`);
+        const totalSpecs = await prisma.specialty.count();
+        console.log(`\n✨ Seeding completed!`);
+        console.log(`📊 Summary:`);
+        console.log(`  - Total specialties: ${totalSpecs}`);
+        console.log(`  - Total doctors added: ${totalDoctors}`);
     } catch (error) {
         console.error("❌ Error seeding doctors:", error);
         throw error;

@@ -9,6 +9,11 @@ export interface UserSafeDto {
     email: string;
     role: Role;
     doctorId: string | null;
+    fullName: string | null;
+    avatar: string | null;
+    gender: string | null;
+    address: string | null;
+    dateOfBirth: Date | null;
     createdAt: Date;
     updatedAt: Date;
 }

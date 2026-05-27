@@ -60,15 +60,15 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2.5">
                 <Phone className="h-4 w-4 text-teal-500 shrink-0" />
-                <span>1900 6000 (Tư vấn 24/7)</span>
+                <span>0368604762 (Tư vấn 24/7)</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="h-4 w-4 text-teal-500 shrink-0" />
-                <span>support@medbooking.vn</span>
+                <span>Bondz1607@gmail.com</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <MapPin className="h-4 w-4 text-teal-500 shrink-0 mt-0.5" />
-                <span>Khu Công nghệ cao H hòa lạc, Thạch Thất, Hà Nội</span>
+                <span>Trường Đại Học FPT Đà Nẵng</span>
               </li>
             </ul>
           </div>
@@ -77,7 +77,7 @@ export default function Footer() {
         <div className="border-t border-slate-800 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <p>© {currentYear} MedBooking. Bảo lưu mọi quyền.</p>
           <p className="flex items-center gap-1">
-            Được phát triển với <Heart className="h-3 w-3 text-red-500 fill-red-500" /> bởi đội ngũ MedBooking.
+            Được phát triển với <Heart className="h-3 w-3 text-red-500 fill-red-500" /> bởi đội ngũ Nhóm 1 Class SE20A07.
           </p>
         </div>
       </div>

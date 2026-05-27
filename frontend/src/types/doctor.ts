@@ -8,10 +8,29 @@ export interface DoctorSchedule {
   createdAt: string;
 }
 
+export interface TimeSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface Specialty {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    doctors: number;
+  };
+}
+
 export interface Doctor {
   id: string;
   name: string;
-  specialty: string;
+  specialtyId: string;
+  specialty: Specialty;
   experience: number;
   hospital: string;
   avatar: string;

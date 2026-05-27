@@ -1,18 +1,22 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { doctorService } from "@/services/doctor.service";
-import { Doctor } from "@/types/doctor";
+import { specialtyService } from "@/services/specialty.service";
+import { Doctor, Specialty } from "@/types/doctor";
 import DoctorCard from "@/components/ui/DoctorCard";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import { Search, Filter, Stethoscope, RefreshCcw } from "lucide-react";
 import Button from "@/components/common/Button";
+import BookingProgress from "@/components/ui/BookingProgress";
 
 function DoctorsListContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
+  const urlSpecialty = searchParams.get("specialty") || "";
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
@@ -21,31 +25,42 @@ function DoctorsListContent() {
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [selectedSpecialty, setSelectedSpecialty] = useState("ALL");
-  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
 
-  // Fetch doctors on mount
+  // Fetch specialties on mount
+  useEffect(() => {
+    async function fetchSpecialties() {
+      try {
+        const data = await specialtyService.listSpecialties();
+        setSpecialties(data.specialties);
+      } catch (err) {
+        console.error("Failed to load specialties", err);
+      }
+    }
+    fetchSpecialties();
+  }, []);
+
+  // Fetch doctors whenever urlSpecialty changes (relation-based backend filtering)
   useEffect(() => {
     async function fetchDoctors() {
       try {
         setLoading(true);
         setError(null);
-        const data = await doctorService.listDoctors();
+        const data = await doctorService.listDoctors(urlSpecialty || undefined);
         setDoctors(data.doctors);
-
-        // Extract unique specialties from API response
-        const specs = data.doctors.map((doc) => doc.specialty);
-        const uniqueSpecs = Array.from(new Set(specs));
-        setSpecialties(uniqueSpecs);
-      } catch (err: any) {
-        setError(err.message || "Không thể tải danh sách bác sĩ. Vui lòng kiểm tra kết nối với Backend.");
+      } catch (err: unknown) {
+        const errorMsg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Không thể tải danh sách bác sĩ. Vui lòng kiểm tra kết nối với Backend.";
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
     }
 
     fetchDoctors();
-  }, []);
+  }, [urlSpecialty]);
 
   // Sync initialSearch query from URL if it changes
   useEffect(() => {
@@ -54,36 +69,82 @@ function DoctorsListContent() {
     }
   }, [initialSearch]);
 
-  // Apply filters on search query or specialty change
+  // Apply search query filter on client side over the backend-filtered specialty doctors
   useEffect(() => {
     let result = [...doctors];
 
-    // Search query filter (name or hospital)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (doc) =>
           doc.name.toLowerCase().includes(q) ||
-          doc.hospital.toLowerCase().includes(q) ||
-          doc.specialty.toLowerCase().includes(q)
+          doc.hospital.toLowerCase().includes(q)
       );
     }
 
-    // Specialty filter
-    if (selectedSpecialty !== "ALL") {
-      result = result.filter((doc) => doc.specialty === selectedSpecialty);
-    }
-
     setFilteredDoctors(result);
-  }, [searchQuery, selectedSpecialty, doctors]);
+  }, [searchQuery, doctors]);
+
+  const handleSpecialtyChange = (slug: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (slug && slug !== "ALL") {
+      params.set("specialty", slug);
+    } else {
+      params.delete("specialty");
+    }
+    router.push(`/doctors?${params.toString()}`);
+  };
 
   const handleResetFilters = () => {
     setSearchQuery("");
-    setSelectedSpecialty("ALL");
+    router.push("/doctors");
+  };
+
+  const getActiveSpecialtyName = () => {
+    if (!urlSpecialty) return "";
+    const found = specialties.find(s => s.slug === urlSpecialty);
+    return found ? found.name : "";
   };
 
   return (
     <div className="space-y-8">
+      {/* Specialty Scrollable Tabs */}
+      <div className="border-b border-slate-100 pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <button
+            onClick={() => handleSpecialtyChange("ALL")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+              !urlSpecialty
+                ? "bg-teal-600 border-teal-600 text-white shadow-md shadow-teal-600/10 animate-fade-in"
+                : "bg-white border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600"
+            }`}
+          >
+            Tất cả chuyên khoa
+          </button>
+          {specialties.map((spec) => (
+            <button
+              key={spec.id}
+              onClick={() => handleSpecialtyChange(spec.slug)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${
+                urlSpecialty === spec.slug
+                  ? "bg-teal-600 border-teal-600 text-white shadow-md shadow-teal-600/10"
+                  : "bg-white border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600"
+              }`}
+            >
+              <span>{spec.icon || "🩺"}</span>
+              <span>{spec.name}</span>
+              {spec._count && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  urlSpecialty === spec.slug ? "bg-teal-700 text-teal-100" : "bg-slate-100 text-slate-500"
+                }`}>
+                  {spec._count.doctors}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Search and Filters panel */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
@@ -103,14 +164,14 @@ function DoctorsListContent() {
           <div className="md:col-span-4 relative">
             <Filter className="absolute left-3.5 top-3.5 h-4.5 w-4.5 text-slate-400 z-10" />
             <select
-              value={selectedSpecialty}
-              onChange={(e) => setSelectedSpecialty(e.target.value)}
+              value={urlSpecialty || "ALL"}
+              onChange={(e) => handleSpecialtyChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm appearance-none cursor-pointer"
             >
               <option value="ALL">Tất cả chuyên khoa</option>
               {specialties.map((spec) => (
-                <option key={spec} value={spec}>
-                  {spec}
+                <option key={spec.id} value={spec.slug}>
+                  {spec.icon ? `${spec.icon} ` : ""}{spec.name}
                 </option>
               ))}
             </select>
@@ -124,7 +185,7 @@ function DoctorsListContent() {
               className="w-full py-2.5 flex items-center justify-center gap-1.5 rounded-xl text-slate-700 hover:text-slate-900"
             >
               <RefreshCcw className="h-4 w-4" />
-              Đặt lại
+              Xóa bộ lọc
             </Button>
           </div>
         </div>
@@ -142,9 +203,13 @@ function DoctorsListContent() {
         <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
           <Stethoscope className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <p className="text-base font-bold text-slate-800">Không tìm thấy bác sĩ nào</p>
-          <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-            Không tìm thấy bác sĩ phù hợp với từ khóa &ldquo;{searchQuery}&rdquo; hoặc chuyên khoa được chọn. Thử thay đổi bộ lọc tìm kiếm.
-          </p>
+          <div className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+            {urlSpecialty ? (
+              <p>Không tìm thấy bác sĩ nào thuộc chuyên khoa <strong>{getActiveSpecialtyName() || urlSpecialty}</strong>{searchQuery ? ` phù hợp với từ khóa "${searchQuery}"` : ""}.</p>
+            ) : (
+              <p>Không tìm thấy bác sĩ phù hợp với từ khóa &ldquo;{searchQuery}&rdquo;. Thử thay đổi bộ lọc tìm kiếm.</p>
+            )}
+          </div>
           <Button variant="teal" onClick={handleResetFilters} className="mt-5 rounded-xl text-xs font-semibold">
             Xem toàn bộ bác sĩ
           </Button>
@@ -153,7 +218,8 @@ function DoctorsListContent() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-semibold text-slate-600">
-              Tìm thấy <span className="text-teal-600 font-bold">{filteredDoctors.length}</span> bác sĩ phù hợp
+              Tìm thấy <span className="text-teal-600 font-bold">{filteredDoctors.length}</span> bác sĩ
+              {urlSpecialty && <> thuộc chuyên khoa <span className="text-teal-600 font-bold">{getActiveSpecialtyName()}</span></>}
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -170,6 +236,7 @@ function DoctorsListContent() {
 export default function DoctorsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-grow flex flex-col">
+      <BookingProgress />
       {/* Header Info */}
       <div className="space-y-2.5 mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Đội Ngũ Bác Sĩ Chuyên Khoa</h1>

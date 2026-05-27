@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.listDoctors = listDoctors;
+exports.listSpecialties = listSpecialties;
 exports.getDoctor = getDoctor;
 exports.getDoctorAppointmentsController = getDoctorAppointmentsController;
 exports.updateDoctorAvatar = updateDoctorAvatar;
@@ -20,13 +21,31 @@ const DOCTORS_DIR = path_1.default.join(process.cwd(), "public", "doctors");
  * GET /api/doctors
  * Public: List all doctors.
  */
-async function listDoctors(_req, res, next) {
+async function listDoctors(req, res, next) {
     try {
-        const doctors = await (0, doctor_service_1.getAllDoctors)();
+        const { specialty } = req.query;
+        const doctors = await (0, doctor_service_1.getAllDoctors)(specialty);
         res.json({
             message: "Doctors fetched successfully",
             count: doctors.length,
             doctors,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/specialties
+ * Public: List all specialties.
+ */
+async function listSpecialties(req, res, next) {
+    try {
+        const specialties = await (0, doctor_service_1.getAllSpecialties)();
+        res.json({
+            message: "Specialties fetched successfully",
+            count: specialties.length,
+            specialties,
         });
     }
     catch (error) {
@@ -69,7 +88,7 @@ async function getDoctorAppointmentsController(req, res, next) {
             doctor: {
                 id: doctor.id,
                 name: doctor.name,
-                specialty: doctor.specialty,
+                specialty: doctor.specialty?.name || "",
             },
             count: appointments.length,
             data: appointments,

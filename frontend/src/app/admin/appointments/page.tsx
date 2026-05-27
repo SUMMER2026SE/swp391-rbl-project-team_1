@@ -58,7 +58,7 @@ export default function AdminAppointmentsPage() {
         (app) =>
           (app.user?.email && app.user.email.toLowerCase().includes(q)) ||
           (app.doctor?.name && app.doctor.name.toLowerCase().includes(q)) ||
-          (app.doctor?.specialty && app.doctor.specialty.toLowerCase().includes(q))
+          (app.doctor?.specialty?.name && app.doctor.specialty.name.toLowerCase().includes(q))
       );
     }
 
@@ -203,7 +203,7 @@ export default function AdminAppointmentsPage() {
                         <div>
                           <p className="font-bold text-slate-200">{app.doctor?.name || "Bác sĩ Chuyên khoa"}</p>
                           <p className="text-[10px] text-teal-400 font-semibold mt-0.5">
-                            {app.doctor?.specialty || "Đang cập nhật"}
+                            {app.doctor?.specialty?.name || "Đang cập nhật"}
                           </p>
                         </div>
                       </td>

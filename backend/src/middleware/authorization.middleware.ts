@@ -37,3 +37,57 @@ export function authorizeRoles(...allowedRoles: Role[]) {
         next();
     };
 }
+
+/**
+ * Middleware: Enforces that the authenticated user is an ADMIN.
+ * Must be used AFTER verifyToken middleware.
+ */
+export function verifyAdmin(
+    req: AuthenticatedRequest,
+    _res: Response,
+    next: NextFunction
+): void {
+    if (!req.user) {
+        next(new ApiError("User not authenticated", 401));
+        return;
+    }
+
+    if (req.user.role !== Role.ADMIN) {
+        next(
+            new ApiError(
+                `Access denied. Required role: ADMIN. Your role: ${req.user.role}`,
+                403
+            )
+        );
+        return;
+    }
+
+    next();
+}
+
+/**
+ * Middleware: Enforces that the authenticated user is a DOCTOR.
+ * Must be used AFTER verifyToken middleware.
+ */
+export function verifyDoctor(
+    req: AuthenticatedRequest,
+    _res: Response,
+    next: NextFunction
+): void {
+    if (!req.user) {
+        next(new ApiError("User not authenticated", 401));
+        return;
+    }
+
+    if (req.user.role !== Role.DOCTOR) {
+        next(
+            new ApiError(
+                `Access denied. Required role: DOCTOR. Your role: ${req.user.role}`,
+                403
+            )
+        );
+        return;
+    }
+
+    next();
+}

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authorizeRoles = authorizeRoles;
+exports.verifyAdmin = verifyAdmin;
+const client_1 = require("@prisma/client");
 const apiError_1 = require("../utils/apiError");
 /**
  * Middleware: Authorizes request based on user role.
@@ -26,4 +28,19 @@ function authorizeRoles(...allowedRoles) {
         }
         next();
     };
+}
+/**
+ * Middleware: Enforces that the authenticated user is an ADMIN.
+ * Must be used AFTER verifyToken middleware.
+ */
+function verifyAdmin(req, _res, next) {
+    if (!req.user) {
+        next(new apiError_1.ApiError("User not authenticated", 401));
+        return;
+    }
+    if (req.user.role !== client_1.Role.ADMIN) {
+        next(new apiError_1.ApiError(`Access denied. Required role: ADMIN. Your role: ${req.user.role}`, 403));
+        return;
+    }
+    next();
 }

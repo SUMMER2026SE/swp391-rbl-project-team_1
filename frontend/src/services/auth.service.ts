@@ -34,5 +34,33 @@ export const authService = {
     const response = await api.get<ProfileResponse>("/profile");
     return response.data;
   },
+
+  // Reset password flow
+  async forgotPassword(email: string): Promise<{ message: string; email: string }> {
+    const response = await api.post<{ message: string; email: string }>("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  async verifyResetOtp(email: string, otp: string): Promise<{ message: string; verified: boolean }> {
+    const response = await api.post<{ message: string; verified: boolean }>("/auth/verify-reset-otp", {
+      email,
+      otp,
+    });
+    return response.data;
+  },
+
+  async resetPassword(email: string, otp: string, password: string): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>("/auth/reset-password", {
+      email,
+      otp,
+      password,
+    });
+    return response.data;
+  },
+
+  async googleLogin(idToken: string): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>("/auth/google-login", { idToken });
+    return response.data;
+  },
 };
 export default authService;

@@ -5,6 +5,7 @@ exports.getAppointments = getAppointments;
 exports.updateUser = updateUser;
 exports.removeUser = removeUser;
 exports.linkDoctorToUser = linkDoctorToUser;
+exports.updateAppointmentStatusHandler = updateAppointmentStatusHandler;
 const client_1 = require("@prisma/client");
 const admin_service_1 = require("../services/admin.service");
 const user_service_1 = require("../services/user.service");
@@ -106,6 +107,30 @@ async function linkDoctorToUser(req, res, next) {
         res.json({
             message: result.message,
             data: { userId: result.userId, doctorId: result.doctorId },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * PUT /api/admin/appointments/:id/status
+ * Updates an appointment's status.
+ */
+async function updateAppointmentStatusHandler(req, res, next) {
+    try {
+        const id = req.params.id;
+        if (!id) {
+            throw new apiError_1.ApiError("Appointment ID is required", 400);
+        }
+        const { status } = req.body;
+        if (!status || !Object.values(client_1.AppointmentStatus).includes(status)) {
+            throw new apiError_1.ApiError(`Invalid status. Must be one of: ${Object.values(client_1.AppointmentStatus).join(", ")}`, 400);
+        }
+        const appointment = await (0, admin_service_1.updateAppointmentStatus)(id, status);
+        res.json({
+            message: "Appointment status updated successfully",
+            data: appointment,
         });
     }
     catch (error) {

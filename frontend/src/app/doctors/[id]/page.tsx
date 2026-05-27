@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { doctorService } from "@/services/doctor.service";
 import { appointmentService } from "@/services/appointment.service";
-import { Doctor, DoctorSchedule } from "@/types/doctor";
+import { Doctor, DoctorSchedule, TimeSlot } from "@/types/doctor";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import { Award, Building2, Stethoscope, Clock, CalendarDays, ClipboardCheck, ArrowLeft, CalendarRange, User } from "lucide-react";
 import Link from "next/link";
+import BookingProgress from "@/components/ui/BookingProgress";
+import { useBooking } from "@/hooks/useBooking";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -21,6 +23,12 @@ export default function DoctorDetailPage({ params }: PageProps) {
   const router = useRouter();
   const { id } = use(params);
   const { isAuthenticated, user } = useAuth();
+  const { 
+    setSelectedDoctor: setGlobalDoctor, 
+    setSelectedDate: setGlobalDate, 
+    setSelectedSlot: setGlobalSlot, 
+    resetBooking 
+  } = useBooking();
 
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
@@ -29,8 +37,8 @@ export default function DoctorDetailPage({ params }: PageProps) {
 
   // Booking Flow States
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [availableSlots, setAvailableSlots] = useState<DoctorSchedule[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<DoctorSchedule | null>(null);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [notes, setNotes] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingMessage, setBookingMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -45,12 +53,17 @@ export default function DoctorDetailPage({ params }: PageProps) {
         // Fetch doctor info
         const detailRes = await doctorService.getDoctor(id);
         setDoctor(detailRes.doctor);
+        setGlobalDoctor(detailRes.doctor);
 
         // Fetch schedules
         const scheduleRes = await doctorService.listSchedules(id);
         setSchedules(scheduleRes.schedules);
-      } catch (err: any) {
-        setError(err.message || "Không thể tải chi tiết bác sĩ. Bác sĩ này có thể không tồn tại.");
+      } catch (err: unknown) {
+        const errorMsg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Không thể tải chi tiết bác sĩ. Bác sĩ này có thể không tồn tại.";
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -85,17 +98,54 @@ export default function DoctorDetailPage({ params }: PageProps) {
 
   const next7Days = getNext7Days();
 
+  // Helper to generate 1-hour slots from a schedule (e.g. 08:00 - 17:00 -> 08:00-09:00, 09:00-10:00, etc.)
+  const generateHourlySlots = (schedulesList: DoctorSchedule[]): TimeSlot[] => {
+    const hourlySlots: TimeSlot[] = [];
+    schedulesList.forEach((sch) => {
+      const [startHour, startMin] = sch.startTime.split(":").map(Number);
+      const [endHour, endMin] = sch.endTime.split(":").map(Number);
+
+      let currentHour = startHour;
+      let currentMin = startMin;
+
+      while (currentHour < endHour) {
+        let nextHour = currentHour + 1;
+        let nextMin = currentMin;
+
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const slotStart = `${pad(currentHour)}:${pad(currentMin)}`;
+        const slotEnd = `${pad(nextHour)}:${pad(nextMin)}`;
+
+        hourlySlots.push({
+          id: `${sch.id}-${slotStart}`,
+          startTime: slotStart,
+          endTime: slotEnd,
+        });
+
+        currentHour = nextHour;
+      }
+    });
+    return hourlySlots;
+  };
+
   // Find available schedules for selected date
   const handleDateChange = (dateString: string, dayOfWeek: number) => {
     setSelectedDate(dateString);
     setSelectedSlot(null);
     setBookingMessage(null);
 
+    // Save to global context
+    setGlobalDate(dateString);
+    setGlobalSlot(null);
+
     // Filter doctor schedules that match the day of week and are available
     const slotsForDay = schedules.filter(
       (sch) => sch.dayOfWeek === dayOfWeek && sch.isAvailable
     );
-    setAvailableSlots(slotsForDay);
+    
+    // Generate 1-hour slots
+    const hourlySlots = generateHourlySlots(slotsForDay);
+    setAvailableTimeSlots(hourlySlots);
   };
 
   // Format Day of Week from 0-6
@@ -150,15 +200,20 @@ export default function DoctorDetailPage({ params }: PageProps) {
       setSelectedSlot(null);
       setSelectedDate("");
       setNotes("");
+      resetBooking();
 
       setTimeout(() => {
         router.push("/my-appointments");
         router.refresh();
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "Không thể đặt lịch. Khung giờ này có thể đã bị trùng hoặc bác sĩ không rảnh.";
       setBookingMessage({
         type: "error",
-        text: err.message || "Không thể đặt lịch. Khung giờ này có thể đã bị trùng hoặc bác sĩ không rảnh.",
+        text: errorMsg,
       });
     } finally {
       setBookingLoading(false);
@@ -196,6 +251,8 @@ export default function DoctorDetailPage({ params }: PageProps) {
         <ArrowLeft className="h-4 w-4" /> Quay lại danh sách bác sĩ
       </Link>
 
+      <BookingProgress />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Doctor Profile Card */}
         <div className="lg:col-span-5 space-y-6">
@@ -215,7 +272,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
                 <h1 className="text-xl sm:text-2xl font-black text-slate-950">{doctor.name}</h1>
                 <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-100/50 rounded-lg px-2.5 py-1 mt-2.5">
                   <Stethoscope className="h-3.5 w-3.5" />
-                  <span>{doctor.specialty}</span>
+                  <span>{doctor.specialty?.name}</span>
                 </div>
               </div>
             </div>
@@ -311,18 +368,19 @@ export default function DoctorDetailPage({ params }: PageProps) {
                   <label className="block text-sm font-medium text-slate-800">
                     Bước 2: Chọn khung giờ khám rảnh
                   </label>
-                  {availableSlots.length === 0 ? (
+                  {availableTimeSlots.length === 0 ? (
                     <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-800">
                       Bác sĩ không có lịch làm việc cố định vào ngày này. Vui lòng chọn ngày khác!
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {availableSlots.map((slot) => (
+                      {availableTimeSlots.map((slot) => (
                         <button
                           key={slot.id}
                           type="button"
                           onClick={() => {
                             setSelectedSlot(slot);
+                            setGlobalSlot(slot);
                             setBookingMessage(null);
                           }}
                           className={`flex items-center justify-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all ${

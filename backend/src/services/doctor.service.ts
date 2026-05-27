@@ -3,8 +3,27 @@ import { Doctor } from "@prisma/client";
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
 
-export async function getAllDoctors(): Promise<Doctor[]> {
+export async function getAllDoctors(specialtySlug?: string) {
+    const whereClause = specialtySlug
+        ? { specialty: { slug: specialtySlug } }
+        : {};
+
     return prisma.doctor.findMany({
+        where: whereClause,
+        include: {
+            specialty: true,
+        },
+        orderBy: { name: "asc" },
+    });
+}
+
+export async function getAllSpecialties() {
+    return prisma.specialty.findMany({
+        include: {
+            _count: {
+                select: { doctors: true },
+            },
+        },
         orderBy: { name: "asc" },
     });
 }
@@ -28,7 +47,7 @@ export async function getDoctorById(id: string): Promise<Doctor> {
  * @param userId - The User.id from the JWT token
  * @returns Doctor record or throws 404/403
  */
-export async function getDoctorByUserId(userId: string): Promise<Doctor> {
+export async function getDoctorByUserId(userId: string) {
     // User.doctorId links the User account to the Doctor record
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -48,6 +67,7 @@ export async function getDoctorByUserId(userId: string): Promise<Doctor> {
 
     const doctor = await prisma.doctor.findUnique({
         where: { id: user.doctorId },
+        include: { specialty: true },
     });
 
     if (!doctor) {

@@ -1,14 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Calendar, ShieldCheck, Users, MapPin, ArrowRight, HeartPulse } from "lucide-react";
 import Button from "@/components/common/Button";
+import { specialtyService } from "@/services/specialty.service";
+import { Specialty } from "@/types/doctor";
+import BookingSteps from "@/components/ui/BookingSteps";
 
 export default function HomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSpecialties() {
+      try {
+        const data = await specialtyService.listSpecialties();
+        setSpecialties(data.specialties);
+      } catch (error) {
+        console.error("Failed to load specialties:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSpecialties();
+  }, []);
+
+  const getSpecialtyDescription = (slug: string) => {
+    const descriptions: Record<string, string> = {
+      "tim-mach": "Chẩn đoán và điều trị các bệnh lý tim mạch, huyết áp",
+      "da-lieu": "Khám & điều trị các bệnh về da, tóc, móng và thẩm mỹ da",
+      "nhi-khoa": "Chăm sóc sức khỏe toàn diện cho trẻ sơ sinh và trẻ nhỏ",
+      "noi-tong-quat": "Khám lâm sàng, phát hiện và tư vấn bệnh lý nội khoa",
+      "than-kinh": "Chẩn đoán và điều trị bệnh lý hệ thần kinh và não bộ",
+      "chinh-hinh": "Khám và điều trị chấn thương xương khớp, chỉnh hình cơ thể",
+    };
+    return descriptions[slug] || "Dịch vụ khám và điều trị kỹ thuật cao, chăm sóc sức khỏe toàn diện.";
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,30 +50,7 @@ export default function HomePage() {
     }
   };
 
-  const specialties = [
-    { name: "Nhi Khoa", description: "Chăm sóc sức khỏe toàn diện cho trẻ sơ sinh và trẻ nhỏ", count: "12 bác sĩ", icon: "🧸" },
-    { name: "Tim Mạch", description: "Chẩn đoán và điều trị các bệnh lý tim mạch, huyết áp", count: "8 bác sĩ", icon: "❤️" },
-    { name: "Da Liễu", description: "Khám & điều trị các bệnh về da, tóc, móng và thẩm mỹ da", count: "15 bác sĩ", icon: "✨" },
-    { name: "Nội Tổng Quát", description: "Khám lâm sàng, phát hiện và tư vấn bệnh lý nội khoa", count: "20 bác sĩ", icon: "🩺" },
-  ];
 
-  const steps = [
-    {
-      step: "01",
-      title: "Tìm Kiếm Bác Sĩ",
-      description: "Dễ dàng tìm kiếm bác sĩ theo tên chuyên môn hoặc bệnh viện phù hợp.",
-    },
-    {
-      step: "02",
-      title: "Chọn Khung Giờ",
-      description: "Xem lịch làm việc chi tiết và chọn giờ hẹn trống trực tiếp trên hệ thống.",
-    },
-    {
-      step: "03",
-      title: "Xác Nhận & Đặt Lịch",
-      description: "Nhập thông tin triệu chứng và hoàn thành lịch đặt chỉ trong vài giây.",
-    },
-  ];
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -157,18 +165,39 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {specialties.map((spec) => (
-              <div
-                key={spec.name}
-                className="group relative bg-slate-50 hover:bg-teal-50/30 border border-slate-100 hover:border-teal-100 rounded-2xl p-6 transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
-              >
-                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-200 inline-block">{spec.icon}</div>
-                <h3 className="text-lg font-bold text-slate-900 mb-1.5">{spec.name}</h3>
-                <p className="text-xs text-slate-500 mb-4">{spec.count}</p>
-                <p className="text-xs text-slate-600 leading-relaxed mb-2">{spec.description}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-slate-50 border border-slate-100 rounded-2xl p-6 space-y-4 animate-pulse">
+                  <div className="h-10 w-10 bg-slate-200 rounded-xl" />
+                  <div className="h-5 bg-slate-200 rounded w-1/2" />
+                  <div className="h-3 bg-slate-200 rounded w-1/4" />
+                  <div className="space-y-2">
+                    <div className="h-3 bg-slate-200 rounded" />
+                    <div className="h-3 bg-slate-200 rounded w-5/6" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              specialties.map((spec) => (
+                <div
+                  key={spec.id}
+                  onClick={() => router.push(`/doctors?specialty=${spec.slug}`)}
+                  className="group relative bg-slate-50 hover:bg-teal-50/30 border border-slate-100 hover:border-teal-100 rounded-2xl p-6 transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
+                >
+                  <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-200 inline-block">
+                    {spec.icon || "🩺"}
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1.5">{spec.name}</h3>
+                  <p className="text-xs text-teal-600 font-semibold mb-4">
+                    {spec._count?.doctors || 0} bác sĩ
+                  </p>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-2">
+                    {getSpecialtyDescription(spec.slug)}
+                  </p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -182,19 +211,7 @@ export default function HomePage() {
             <p className="text-slate-500 text-sm">Quy trình đặt lịch được thiết kế tối giản giúp tiết kiệm tối đa thời gian của người bệnh.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {steps.map((st) => (
-              <div key={st.step} className="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm relative overflow-hidden group">
-                <span className="absolute top-4 right-6 text-6xl font-black text-slate-50 group-hover:text-teal-50/50 transition-colors duration-300 pointer-events-none select-none z-0">
-                  {st.step}
-                </span>
-                <div className="relative z-10 space-y-3">
-                  <h3 className="text-lg font-bold text-slate-900">{st.title}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{st.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <BookingSteps />
         </div>
       </section>
 

@@ -1,5 +1,5 @@
 import prisma from "../prisma/client";
-import { Role } from "@prisma/client";
+import { Role, AppointmentStatus } from "@prisma/client";
 import { ApiError } from "../utils/apiError";
 import { AdminUserDto } from "../types/user.types";
 
@@ -19,7 +19,12 @@ export interface AppointmentWithRelations {
     doctor: {
         id: string;
         name: string;
-        specialty: string;
+        specialty: {
+            id: string;
+            name: string;
+            slug: string;
+            icon: string | null;
+        };
     };
 }
 
@@ -134,4 +139,41 @@ export async function linkDoctorToUser(
         doctorId,
         message: `User account successfully linked to Doctor "${doctor.name}"`,
     };
+}
+
+/**
+ * Updates an appointment's status.
+ */
+export async function updateAppointmentStatus(
+    appointmentId: string,
+    status: AppointmentStatus
+): Promise<AppointmentWithRelations> {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+    });
+
+    if (!appointment) {
+        throw new ApiError("Appointment not found", 404);
+    }
+
+    return prisma.appointment.update({
+        where: { id: appointmentId },
+        data: { status },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    role: true,
+                },
+            },
+            doctor: {
+                select: {
+                    id: true,
+                    name: true,
+                    specialty: true,
+                },
+            },
+        },
+    }) as unknown as Promise<AppointmentWithRelations>;
 }

@@ -20,16 +20,34 @@ enum AppointmentStatus {
   CANCELLED
 }
 
+enum DoctorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ComplaintStatus {
+  PENDING
+  RESOLVED
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
-  password     String
+  password     String?
+  fullName     String?
+  avatar       String?
+  gender       String?
+  address      String?
+  dateOfBirth  DateTime?
   role         Role          @default(USER)
   doctorId     String?       @unique  // Link to Doctor record when role = DOCTOR
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   appointments Appointment[]
   doctor       Doctor?       @relation(fields: [doctorId], references: [id])
+  complaints   Complaint[]
+  medicalRecords MedicalRecord[]
 }
 
 model OTP {
@@ -41,10 +59,20 @@ model OTP {
   createdAt DateTime @default(now())
 }
 
+model Specialty {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?
+  doctors     Doctor[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Doctor {
   id              String           @id @default(uuid())
   name            String
-  specialty       String
   experience      Int
   hospital        String
   avatar          String
@@ -52,6 +80,51 @@ model Doctor {
   appointments    Appointment[]
   doctorSchedules DoctorSchedule[]
   userAccount     User?            // Reverse relation: the User account linked to this Doctor
+  specialtyId     String
+  specialty       Specialty        @relation(fields: [specialtyId], references: [id])
+  
+  // Moderation & Control
+  status          DoctorStatus     @default(PENDING)
+  isLocked        Boolean          @default(false)
+  rejectedReason  String?
+  
+  // Clinic Relation
+  clinicId        String?
+  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
+  // Extra info
+  price           Int?
+  phone           String?
+  description     String?
+  medicalRecords  MedicalRecord[]
+}
+
+model Clinic {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  image       String?
+  doctors     Doctor[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  thumbnail   String?
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Complaint {
+  id        String          @id @default(cuid())
+  message   String
+  status    ComplaintStatus @default(PENDING)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  createdAt DateTime        @default(now())
 }
 
 model DoctorSchedule {
@@ -75,4 +148,31 @@ model Appointment {
   status          AppointmentStatus @default(PENDING)
   notes           String?
   createdAt       DateTime          @default(now())
+  medicalRecord   MedicalRecord?
+}
+
+model MedicalRecord {
+  id            String         @id @default(uuid())
+  appointmentId String         @unique
+  appointment   Appointment    @relation(fields: [appointmentId], references: [id])
+  doctorId      String
+  doctor        Doctor         @relation(fields: [doctorId], references: [id])
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  diagnosis     String
+  notes         String?
+  prescriptions Prescription[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Prescription {
+  id              String        @id @default(uuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  medicationName  String
+  dosage          String
+  frequency       String
+  duration        String
+  createdAt       DateTime      @default(now())
 }

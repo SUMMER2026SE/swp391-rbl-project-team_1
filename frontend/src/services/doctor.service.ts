@@ -2,8 +2,9 @@ import api from "./api";
 import { ListDoctorsResponse, DoctorDetailsResponse, SchedulesResponse } from "../types/doctor";
 
 export const doctorService = {
-  async listDoctors(): Promise<ListDoctorsResponse> {
-    const response = await api.get<ListDoctorsResponse>("/doctors");
+  async listDoctors(specialty?: string): Promise<ListDoctorsResponse> {
+    const url = specialty ? `/doctors?specialty=${encodeURIComponent(specialty)}` : "/doctors";
+    const response = await api.get<ListDoctorsResponse>(url);
     return response.data;
   },
 

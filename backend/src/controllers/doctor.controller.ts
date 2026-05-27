@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 
-import { getAllDoctors, getDoctorById, getDoctorByUserId } from "../services/doctor.service";
+import { getAllDoctors, getDoctorById, getDoctorByUserId, getAllSpecialties } from "../services/doctor.service";
 import { getDoctorAppointments } from "../services/appointment.service";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import { ApiError } from "../utils/apiError";
@@ -16,16 +16,38 @@ const DOCTORS_DIR = path.join(process.cwd(), "public", "doctors");
  * Public: List all doctors.
  */
 export async function listDoctors(
-    _req: Request,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> {
     try {
-        const doctors = await getAllDoctors();
+        const { specialty } = req.query as { specialty?: string };
+        const doctors = await getAllDoctors(specialty);
         res.json({
             message: "Doctors fetched successfully",
             count: doctors.length,
             doctors,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/specialties
+ * Public: List all specialties.
+ */
+export async function listSpecialties(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const specialties = await getAllSpecialties();
+        res.json({
+            message: "Specialties fetched successfully",
+            count: specialties.length,
+            specialties,
         });
     } catch (error) {
         next(error);
@@ -81,7 +103,7 @@ export async function getDoctorAppointmentsController(
             doctor: {
                 id: doctor.id,
                 name: doctor.name,
-                specialty: doctor.specialty,
+                specialty: doctor.specialty?.name || "",
             },
             count: appointments.length,
             data: appointments,

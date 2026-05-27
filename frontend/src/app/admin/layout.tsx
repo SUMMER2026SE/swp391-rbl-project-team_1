@@ -4,7 +4,20 @@ import React, { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AdminRoute from "@/components/common/AdminRoute";
-import { LayoutDashboard, Users, CalendarRange, ArrowLeft, Activity, ShieldCheck } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  CalendarRange,
+  ArrowLeft,
+  Activity,
+  ShieldCheck,
+  Stethoscope,
+  BookOpen,
+  Building2,
+  FileText,
+  MessageSquare,
+  BarChart3,
+} from "lucide-react";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -29,6 +42,36 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: "/admin/appointments",
       icon: <CalendarRange className="h-5 w-5" />,
     },
+    {
+      name: "Kiểm duyệt Bác sĩ",
+      href: "/admin/doctors",
+      icon: <Stethoscope className="h-5 w-5" />,
+    },
+    {
+      name: "Quản lý Chuyên khoa",
+      href: "/admin/specialties",
+      icon: <BookOpen className="h-5 w-5" />,
+    },
+    {
+      name: "Quản lý Phòng khám",
+      href: "/admin/clinics",
+      icon: <Building2 className="h-5 w-5" />,
+    },
+    {
+      name: "Quản lý Bài viết",
+      href: "/admin/articles",
+      icon: <FileText className="h-5 w-5" />,
+    },
+    {
+      name: "Phản hồi & Khiếu nại",
+      href: "/admin/complaints",
+      icon: <MessageSquare className="h-5 w-5" />,
+    },
+    {
+      name: "Thống kê & Báo cáo",
+      href: "/admin/statistics",
+      icon: <BarChart3 className="h-5 w-5" />,
+    },
   ];
 
   const isActive = (href: string) => {
@@ -48,7 +91,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-grow p-4 space-y-1.5 pt-6">
+          <nav className="flex-grow p-4 space-y-1.5 pt-6 overflow-y-auto">
             {menuItems.map((item) => (
               <Link
                 key={item.href}
@@ -89,7 +132,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             
             {/* Mobile Header Nav Trigger */}
-            <div className="md:hidden flex gap-4">
+            <div className="md:hidden flex gap-4 overflow-x-auto">
               <Link href="/admin" className="text-slate-400 hover:text-teal-400">
                 <LayoutDashboard className="h-5 w-5" />
               </Link>
@@ -98,6 +141,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </Link>
               <Link href="/admin/appointments" className="text-slate-400 hover:text-teal-400">
                 <CalendarRange className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/doctors" className="text-slate-400 hover:text-teal-400">
+                <Stethoscope className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/specialties" className="text-slate-400 hover:text-teal-400">
+                <BookOpen className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/clinics" className="text-slate-400 hover:text-teal-400">
+                <Building2 className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/articles" className="text-slate-400 hover:text-teal-400">
+                <FileText className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/complaints" className="text-slate-400 hover:text-teal-400">
+                <MessageSquare className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/statistics" className="text-slate-400 hover:text-teal-400">
+                <BarChart3 className="h-5 w-5" />
               </Link>
               <Link href="/" className="text-slate-400 hover:text-teal-400">
                 <ArrowLeft className="h-5 w-5" />

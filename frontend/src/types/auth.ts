@@ -5,6 +5,11 @@ export interface User {
   email: string;
   role: UserRole;
   doctorId: string | null;
+  fullName: string | null;
+  avatar: string | null;
+  gender: string | null;
+  address: string | null;
+  dateOfBirth: string | null;
   createdAt: string;
   updatedAt: string;
 }

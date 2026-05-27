@@ -39,7 +39,7 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
           </h3>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-100/50 rounded-lg px-2 py-0.5 w-max">
             <Stethoscope className="h-3 w-3" />
-            <span>{doctor.specialty}</span>
+            <span>{doctor.specialty?.name}</span>
           </div>
         </div>
       </div>
