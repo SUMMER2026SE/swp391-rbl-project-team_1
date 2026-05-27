@@ -33,11 +33,17 @@ export default function RootLayout({
       lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
+      <body className="min-h-full flex flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50 via-slate-50 to-white text-slate-900 selection:bg-teal-200">
         <AuthProvider>
           <BookingProvider>
             <Navbar />
-            <main className="flex-grow flex flex-col">{children}</main>
+            <main className="flex-grow flex flex-col relative">
+              {/* Optional ambient background blobs for extra aesthetics */}
+              <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-teal-200/20 rounded-full blur-3xl pointer-events-none -z-10" />
+              <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-200/10 rounded-full blur-3xl pointer-events-none -z-10" />
+              
+              {children}
+            </main>
             <Footer />
             <AIChatbot />
             <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />

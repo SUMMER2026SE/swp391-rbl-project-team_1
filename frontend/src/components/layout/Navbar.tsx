@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, X, Calendar, LogOut, User as UserIcon, ShieldAlert } from "lucide-react";
+import { Menu, X, Calendar, LogOut, User as UserIcon, ShieldAlert, LayoutDashboard } from "lucide-react";
 import Button from "../common/Button";
 
 export default function Navbar() {
@@ -115,6 +115,26 @@ export default function Navbar() {
                           <span>Lịch hẹn của tôi</span>
                         </Link>
                       )}
+                      {user.role === "DOCTOR" && (
+                        <Link
+                          href="/doctor/dashboard"
+                          onClick={() => setShowDropdown(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <LayoutDashboard className="h-4 w-4 text-teal-600" />
+                          <span>Bảng điều khiển</span>
+                        </Link>
+                      )}
+                      {user.role === "ADMIN" && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setShowDropdown(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <LayoutDashboard className="h-4 w-4 text-teal-600" />
+                          <span>Bảng điều khiển</span>
+                        </Link>
+                      )}
                       <hr className="my-1 border-slate-100" />
                       <button
                         onClick={() => {
@@ -198,6 +218,26 @@ export default function Navbar() {
                     {user.role}
                   </span>
                 </Link>
+                {user.role === "DOCTOR" && (
+                  <Link
+                    href="/doctor/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <LayoutDashboard className="h-5 w-5 text-teal-600" />
+                    <span>Bảng điều khiển Bác sĩ</span>
+                  </Link>
+                )}
+                {user.role === "ADMIN" && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <LayoutDashboard className="h-5 w-5 text-teal-600" />
+                    <span>Bảng điều khiển Quản trị</span>
+                  </Link>
+                )}
                 <Button
                   variant="danger"
                   onClick={() => {

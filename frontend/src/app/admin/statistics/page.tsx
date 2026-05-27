@@ -92,7 +92,8 @@ export default function AdminStatisticsPage() {
   const handleExportAppointments = () => {
     if (!statistics) return;
     const headers = ["Trạng thái", "Số lượng"];
-    const rows = statistics.appointmentsByStatus.map((s) => [
+    const statusData = Array.isArray(statistics.appointmentsByStatus) ? statistics.appointmentsByStatus : [];
+    const rows = statusData.map((s) => [
       STATUS_LABELS[s.status] || s.status,
       String(s.count),
     ]);
@@ -102,14 +103,16 @@ export default function AdminStatisticsPage() {
   const handleExportBySpecialty = () => {
     if (!statistics) return;
     const headers = ["Chuyên khoa", "Số lịch hẹn"];
-    const rows = statistics.appointmentsBySpecialty.map((s) => [s.specialty, String(s.count)]);
+    const specialtyData = Array.isArray(statistics.appointmentsBySpecialty) ? statistics.appointmentsBySpecialty : [];
+    const rows = specialtyData.map((s) => [s.specialty, String(s.count)]);
     downloadCSV("appointments_by_specialty.csv", headers, rows);
   };
 
   const handleExportByMonth = () => {
     if (!statistics) return;
     const headers = ["Tháng", "Số lịch hẹn"];
-    const rows = statistics.appointmentsByMonth.map((m) => [m.month, String(m.count)]);
+    const monthData = Array.isArray(statistics.appointmentsByMonth) ? statistics.appointmentsByMonth : [];
+    const rows = monthData.map((m) => [m.month, String(m.count)]);
     downloadCSV("appointments_by_month.csv", headers, rows);
   };
 
@@ -137,19 +140,23 @@ export default function AdminStatisticsPage() {
 
   if (!statistics) return null;
 
-  const pieData = statistics.appointmentsByStatus.map((s: AppointmentsByStatus) => ({
+  const safeAppointmentsByStatus = Array.isArray(statistics.appointmentsByStatus) ? statistics.appointmentsByStatus : [];
+  const safeAppointmentsBySpecialty = Array.isArray(statistics.appointmentsBySpecialty) ? statistics.appointmentsBySpecialty : [];
+  const safeAppointmentsByMonth = Array.isArray(statistics.appointmentsByMonth) ? statistics.appointmentsByMonth : [];
+
+  const pieData = safeAppointmentsByStatus.map((s: AppointmentsByStatus) => ({
     name: STATUS_LABELS[s.status] || s.status,
     value: s.count,
     color: STATUS_COLORS[s.status] || "#64748b",
   }));
 
-  const barData = statistics.appointmentsBySpecialty.map((s: AppointmentsBySpecialty) => ({
+  const barData = safeAppointmentsBySpecialty.map((s: AppointmentsBySpecialty) => ({
     name: s.specialty.length > 12 ? `${s.specialty.substring(0, 12)}...` : s.specialty,
     fullName: s.specialty,
     count: s.count,
   }));
 
-  const lineData = statistics.appointmentsByMonth.map((m: AppointmentsByMonth) => ({
+  const lineData = safeAppointmentsByMonth.map((m: AppointmentsByMonth) => ({
     name: m.month,
     count: m.count,
   }));
@@ -157,19 +164,19 @@ export default function AdminStatisticsPage() {
   const summaryCards = [
     {
       title: "Tổng Thành viên",
-      value: statistics.totalUsers,
+      value: statistics.totalUsers || 0,
       icon: <Users className="h-6 w-6 text-teal-400" />,
       color: "border-teal-500/20 bg-teal-500/5",
     },
     {
       title: "Tổng Bác sĩ",
-      value: statistics.totalDoctors,
+      value: statistics.totalDoctors || 0,
       icon: <Stethoscope className="h-6 w-6 text-indigo-400" />,
       color: "border-indigo-500/20 bg-indigo-500/5",
     },
     {
       title: "Tổng Lịch hẹn",
-      value: statistics.totalAppointments,
+      value: statistics.totalAppointments || 0,
       icon: <CalendarRange className="h-6 w-6 text-blue-400" />,
       color: "border-blue-500/20 bg-blue-500/5",
     },

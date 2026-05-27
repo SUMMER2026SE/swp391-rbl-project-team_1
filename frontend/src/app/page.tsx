@@ -8,12 +8,15 @@ import Button from "@/components/common/Button";
 import { specialtyService } from "@/services/specialty.service";
 import { Specialty } from "@/types/doctor";
 import BookingSteps from "@/components/ui/BookingSteps";
+import Pagination from "@/components/common/Pagination";
 
 export default function HomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentSpecialtyPage, setCurrentSpecialtyPage] = useState(1);
+  const SPECIALTIES_PER_PAGE = 8;
 
   useEffect(() => {
     async function loadSpecialties() {
@@ -49,6 +52,12 @@ export default function HomePage() {
       router.push("/doctors");
     }
   };
+
+  const totalSpecialtyPages = Math.ceil(specialties.length / SPECIALTIES_PER_PAGE);
+  const currentSpecialties = specialties.slice(
+    (currentSpecialtyPage - 1) * SPECIALTIES_PER_PAGE,
+    currentSpecialtyPage * SPECIALTIES_PER_PAGE
+  );
 
 
 
@@ -155,7 +164,7 @@ export default function HomePage() {
       </section>
 
       {/* Specialty Section */}
-      <section className="py-20 bg-white">
+      <section id="specialties-section" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
             <h2 className="text-xs uppercase font-extrabold tracking-widest text-teal-600">Danh Mục Chuyên Khoa</h2>
@@ -179,7 +188,7 @@ export default function HomePage() {
                 </div>
               ))
             ) : (
-              specialties.map((spec) => (
+              currentSpecialties.map((spec) => (
                 <div
                   key={spec.id}
                   onClick={() => router.push(`/doctors?specialty=${spec.slug}`)}
@@ -199,6 +208,15 @@ export default function HomePage() {
               ))
             )}
           </div>
+
+          {!loading && totalSpecialtyPages > 1 && (
+            <Pagination
+              currentPage={currentSpecialtyPage}
+              totalPages={totalSpecialtyPages}
+              onPageChange={setCurrentSpecialtyPage}
+              scrollTargetId="specialties-section"
+            />
+          )}
         </div>
       </section>
 

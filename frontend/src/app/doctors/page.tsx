@@ -11,6 +11,7 @@ import Alert from "@/components/common/Alert";
 import { Search, Filter, Stethoscope, RefreshCcw } from "lucide-react";
 import Button from "@/components/common/Button";
 import BookingProgress from "@/components/ui/BookingProgress";
+import Pagination from "@/components/common/Pagination";
 
 function DoctorsListContent() {
   const router = useRouter();
@@ -26,6 +27,10 @@ function DoctorsListContent() {
   // Filter States
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const DOCTORS_PER_PAGE = 9;
 
   // Fetch specialties on mount
   useEffect(() => {
@@ -83,7 +88,14 @@ function DoctorsListContent() {
     }
 
     setFilteredDoctors(result);
+    setCurrentPage(1);
   }, [searchQuery, doctors]);
+
+  const totalPages = Math.ceil(filteredDoctors.length / DOCTORS_PER_PAGE);
+  const currentDoctors = filteredDoctors.slice(
+    (currentPage - 1) * DOCTORS_PER_PAGE,
+    currentPage * DOCTORS_PER_PAGE
+  );
 
   const handleSpecialtyChange = (slug: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -192,8 +204,9 @@ function DoctorsListContent() {
       </div>
 
       {/* Main Results Display */}
-      {loading ? (
-        <div className="flex flex-col py-24 items-center justify-center">
+      <div id="doctors-list-section">
+        {loading ? (
+          <div className="flex flex-col py-24 items-center justify-center">
           <LoadingSpinner className="h-10 w-10 text-teal-600" />
           <p className="mt-4 text-sm text-slate-500 font-medium">Đang tải danh sách bác sĩ chuyên gia...</p>
         </div>
@@ -223,12 +236,22 @@ function DoctorsListContent() {
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDoctors.map((doc) => (
+            {currentDoctors.map((doc) => (
               <DoctorCard key={doc.id} doctor={doc} />
             ))}
           </div>
+
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              scrollTargetId="doctors-list-section"
+            />
+          )}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -239,8 +262,8 @@ export default function DoctorsPage() {
       <BookingProgress />
       {/* Header Info */}
       <div className="space-y-2.5 mb-8">
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Đội Ngũ Bác Sĩ Chuyên Khoa</h1>
-        <p className="text-sm sm:text-base text-slate-500 max-w-3xl">
+        <h1 className="text-3xl font-extrabold text-teal-800 tracking-tight">Đội Ngũ Bác Sĩ Chuyên Khoa</h1>
+        <p className="text-sm sm:text-base text-slate-600 max-w-3xl font-medium">
           Đội ngũ y bác sĩ hàng đầu tại Việt Nam có đầy đủ chứng chỉ chuyên môn và kinh nghiệm công tác dày dặn tại các bệnh viện trung ương lớn.
         </p>
       </div>
