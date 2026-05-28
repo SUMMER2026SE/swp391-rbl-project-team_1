@@ -7,6 +7,7 @@ import { AppointmentStatus } from "@/types/appointment";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import { Search, CalendarDays, Clock, FileText, Activity, BadgeAlert, CheckSquare } from "lucide-react";
+import { removeVietnameseTones } from "@/utils/stringUtils";
 
 export default function AdminAppointmentsPage() {
   const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
@@ -53,12 +54,12 @@ export default function AdminAppointmentsPage() {
     let result = [...appointments];
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+      const q = removeVietnameseTones(searchQuery.trim());
       result = result.filter(
         (app) =>
-          (app.user?.email && app.user.email.toLowerCase().includes(q)) ||
-          (app.doctor?.name && app.doctor.name.toLowerCase().includes(q)) ||
-          (app.doctor?.specialty?.name && app.doctor.specialty.name.toLowerCase().includes(q))
+          (app.user?.email && removeVietnameseTones(app.user.email).includes(q)) ||
+          (app.doctor?.name && removeVietnameseTones(app.doctor.name).includes(q)) ||
+          (app.doctor?.specialty?.name && removeVietnameseTones(app.doctor.specialty.name).includes(q))
       );
     }
 
@@ -225,14 +226,22 @@ export default function AdminAppointmentsPage() {
                       {/* Symptoms Note */}
                       <td className="p-5 text-slate-400 max-w-[200px]">
                         {app.notes ? (
-                          <div className="flex gap-1 items-start bg-slate-900/40 p-2 rounded-lg border border-slate-800/40">
+                          <div className="flex gap-1 items-start bg-slate-900/40 p-2 rounded-lg border border-slate-800/40 mb-2">
                             <FileText className="h-3.5 w-3.5 text-slate-500 shrink-0 mt-0.5" />
                             <p className="italic leading-relaxed truncate hover:text-clip hover:whitespace-normal" title={app.notes}>
                               {app.notes}
                             </p>
                           </div>
                         ) : (
-                          <span className="text-slate-600 italic">Không có ghi chú</span>
+                          <span className="text-slate-600 italic block mb-2">Không có ghi chú</span>
+                        )}
+                        {app.cancellationReason && app.status === "CANCELLED" && (
+                          <div className="flex gap-1 items-start bg-red-950/40 p-2 rounded-lg border border-red-900/40 text-red-400">
+                            <BadgeAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            <p className="italic leading-relaxed truncate hover:text-clip hover:whitespace-normal" title={app.cancellationReason}>
+                              Huỷ: {app.cancellationReason}
+                            </p>
+                          </div>
                         )}
                       </td>
 

@@ -164,7 +164,7 @@ export async function updateAppointmentStatusHandler(
             throw new ApiError("Appointment ID is required", 400);
         }
 
-        const { status } = req.body as { status?: string };
+        const { status, cancellationReason } = req.body as { status?: string; cancellationReason?: string };
 
         if (!status || !Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
             throw new ApiError(
@@ -173,7 +173,7 @@ export async function updateAppointmentStatusHandler(
             );
         }
 
-        const appointment = await updateAppointmentStatus(id, status as AppointmentStatus);
+        const appointment = await updateAppointmentStatus(id, status as AppointmentStatus, cancellationReason);
         res.json({
             message: "Appointment status updated successfully",
             data: appointment,

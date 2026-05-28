@@ -146,7 +146,8 @@ export async function linkDoctorToUser(
  */
 export async function updateAppointmentStatus(
     appointmentId: string,
-    status: AppointmentStatus
+    status: AppointmentStatus,
+    cancellationReason?: string
 ): Promise<AppointmentWithRelations> {
     const appointment = await prisma.appointment.findUnique({
         where: { id: appointmentId },
@@ -158,7 +159,7 @@ export async function updateAppointmentStatus(
 
     return prisma.appointment.update({
         where: { id: appointmentId },
-        data: { status },
+        data: { status, cancellationReason },
         include: {
             user: {
                 select: {

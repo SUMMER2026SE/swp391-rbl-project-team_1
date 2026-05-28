@@ -147,6 +147,7 @@ model Appointment {
   appointmentDate DateTime
   status          AppointmentStatus @default(PENDING)
   notes           String?
+  cancellationReason String?
   createdAt       DateTime          @default(now())
   medicalRecord   MedicalRecord?
 }

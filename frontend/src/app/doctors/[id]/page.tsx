@@ -128,6 +128,41 @@ export default function DoctorDetailPage({ params }: PageProps) {
     return hourlySlots;
   };
 
+  // Helper to generate dynamic mock achievements based on doctor data
+  const generateDoctorAchievements = (doc: Doctor) => {
+    const achievements = [];
+    achievements.push("Bằng Bác sĩ Đa khoa - Đại học Y Dược TP.HCM");
+    
+    if (doc.specialty) {
+      if (doc.experience >= 15) {
+        achievements.push(`Chứng chỉ Bác sĩ Chuyên khoa II (CKII) - Chuyên khoa ${doc.specialty.name}`);
+      } else {
+        achievements.push(`Chứng chỉ Bác sĩ Chuyên khoa I (CKI) - Chuyên khoa ${doc.specialty.name}`);
+      }
+    }
+
+    if (doc.experience >= 10) {
+      achievements.push(`Nhiều năm kinh nghiệm công tác tại ${doc.hospital}`);
+    }
+
+    // Deterministic random achievements based on ID
+    const hash = doc.id.charCodeAt(0) + doc.id.charCodeAt(doc.id.length - 1);
+    if (hash % 2 === 0) {
+      achievements.push("Chứng nhận tu nghiệp Y khoa tại Pháp (F.F.I)");
+    } else {
+      achievements.push("Chứng nhận đào tạo Y khoa liên tục (CME) Quốc tế");
+    }
+
+    if (hash % 3 === 0) {
+      achievements.push("Thành viên Hội đồng Y khoa Việt Nam");
+    } else if (hash % 3 === 1) {
+      achievements.push("Giấy khen hoàn thành xuất sắc nhiệm vụ Y tế");
+    }
+
+    achievements.push("Chứng chỉ hành nghề khám bệnh, chữa bệnh do Bộ Y tế cấp");
+    return achievements;
+  };
+
   // Find available schedules for selected date
   const handleDateChange = (dateString: string, dayOfWeek: number) => {
     setSelectedDate(dateString);
@@ -296,26 +331,20 @@ export default function DoctorDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Doctor Schedule calendar visualization */}
+          {/* Doctor Achievements */}
           <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
             <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-teal-700">
-              <CalendarRange className="h-4.5 w-4.5" />
-              Khung Lịch Làm Việc Tuần
+              <Award className="h-4.5 w-4.5" />
+              Thành tựu & Chứng chỉ y khoa
             </h3>
-            {schedules.length === 0 ? (
-              <p className="text-xs text-slate-500">Bác sĩ chưa cập nhật lịch làm việc cố định.</p>
-            ) : (
-              <div className="space-y-2">
-                {schedules.map((sch) => (
-                  <div key={sch.id} className="flex justify-between items-center text-xs py-2 px-3 bg-slate-50 border border-slate-100 rounded-xl">
-                    <span className="font-semibold text-slate-700">{getDayName(sch.dayOfWeek)}</span>
-                    <span className="font-medium text-slate-600 flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-teal-600" /> {sch.startTime} - {sch.endTime}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ul className="space-y-3 text-sm text-slate-600">
+              {generateDoctorAchievements(doctor).map((achievement, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-teal-500 mt-2 shrink-0"></span>
+                  <span>{achievement}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

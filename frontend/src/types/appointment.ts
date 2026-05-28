@@ -10,6 +10,7 @@ export interface Appointment {
   appointmentDate: string; // ISO String
   status: AppointmentStatus;
   notes: string | null;
+  cancellationReason?: string;
   createdAt: string;
   doctor?: Doctor;
   user?: User;

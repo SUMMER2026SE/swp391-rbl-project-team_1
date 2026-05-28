@@ -18,6 +18,7 @@ export interface AdminAppointment {
   appointmentDate: string; // ISO String
   status: AppointmentStatus;
   notes: string | null;
+  cancellationReason?: string;
   createdAt: string;
   user: {
     id: string;

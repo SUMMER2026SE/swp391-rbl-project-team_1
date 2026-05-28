@@ -205,11 +205,11 @@ export const updateAppointmentStatus = async (req: AuthenticatedRequest, res: Re
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
         const { id } = req.params;
-        const { status, notes } = req.body;
+        const { status, notes, cancellationReason } = req.body;
 
         const appointment = await prisma.appointment.update({
             where: { id, doctorId: doctor.id },
-            data: { status, notes }
+            data: { status, notes, cancellationReason }
         });
         res.json({ message: "Appointment status updated", appointment });
     } catch (error) {

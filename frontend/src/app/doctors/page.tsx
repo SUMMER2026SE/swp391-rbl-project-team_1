@@ -12,6 +12,7 @@ import { Search, Filter, Stethoscope, RefreshCcw } from "lucide-react";
 import Button from "@/components/common/Button";
 import BookingProgress from "@/components/ui/BookingProgress";
 import Pagination from "@/components/common/Pagination";
+import { removeVietnameseTones } from "@/utils/stringUtils";
 
 function DoctorsListContent() {
   const router = useRouter();
@@ -79,11 +80,11 @@ function DoctorsListContent() {
     let result = [...doctors];
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+      const q = removeVietnameseTones(searchQuery.trim());
       result = result.filter(
         (doc) =>
-          doc.name.toLowerCase().includes(q) ||
-          doc.hospital.toLowerCase().includes(q)
+          removeVietnameseTones(doc.name).includes(q) ||
+          removeVietnameseTones(doc.hospital).includes(q)
       );
     }
 

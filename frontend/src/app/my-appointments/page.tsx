@@ -194,6 +194,16 @@ function MyAppointmentsContent() {
                       </div>
                     </div>
                   )}
+                  {/* Cancellation Reason */}
+                  {app.status === "CANCELLED" && app.cancellationReason && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-3.5 text-xs text-red-600 flex items-start gap-2 mt-2">
+                      <ShieldAlert className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-red-700 mb-0.5">Lý do huỷ:</p>
+                        <p className="italic leading-relaxed">{app.cancellationReason}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right col: status badge & actions */}

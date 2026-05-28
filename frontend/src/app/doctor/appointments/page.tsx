@@ -7,6 +7,7 @@ import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
 import toast from "react-hot-toast";
 import { Search, Calendar, User, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { removeVietnameseTones } from "@/utils/stringUtils";
 
 interface UserInfo {
   id: string;
@@ -33,6 +34,12 @@ export default function DoctorAppointmentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Modal state
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelType, setCancelType] = useState<"REJECT" | "CANCEL_CONFIRMED">("REJECT");
 
   const fetchAppointments = async () => {
     try {
@@ -62,16 +69,32 @@ export default function DoctorAppointmentsPage() {
     }
   };
 
-  const handleReject = (id: string) => {
-    const reason = prompt("Nhập lý do từ chối lịch hẹn này:");
-    if (reason !== null) {
-      handleUpdateStatus(id, "CANCELLED", reason);
+  const openCancelModal = (id: string, type: "REJECT" | "CANCEL_CONFIRMED") => {
+    setCancelTargetId(id);
+    setCancelType(type);
+    setCancelReason("");
+    setIsCancelModalOpen(true);
+  };
+
+  const submitCancel = () => {
+    if (cancelTargetId && cancelReason.trim()) {
+      handleUpdateStatus(cancelTargetId, "CANCELLED", cancelReason.trim());
+      setIsCancelModalOpen(false);
+      setCancelTargetId(null);
+    } else {
+      toast.error("Vui lòng nhập lý do.");
     }
+  };
+
+  const handleReject = (id: string) => {
+    openCancelModal(id, "REJECT");
   };
 
   const filteredAppointments = appointments.filter(app => {
     const matchStatus = filterStatus === "ALL" || app.status === filterStatus;
-    const matchName = app.user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const normalizedName = removeVietnameseTones(app.user.fullName || "");
+    const normalizedSearch = removeVietnameseTones(searchTerm);
+    const matchName = normalizedName.includes(normalizedSearch);
     return matchStatus && matchName;
   });
 
@@ -194,13 +217,22 @@ export default function DoctorAppointmentsPage() {
                           </>
                         )}
                         {app.status === "CONFIRMED" && (
-                          <button
-                            onClick={() => handleUpdateStatus(app.id, "COMPLETED")}
-                            disabled={updatingId === app.id}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-green-200"
-                          >
-                            <CheckCircle2 className="w-4 h-4" /> Hoàn thành
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleUpdateStatus(app.id, "COMPLETED")}
+                              disabled={updatingId === app.id}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-green-200"
+                            >
+                              <CheckCircle2 className="w-4 h-4" /> Hoàn thành
+                            </button>
+                            <button
+                              onClick={() => openCancelModal(app.id, "CANCEL_CONFIRMED")}
+                              disabled={updatingId === app.id}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-red-200"
+                            >
+                              <XCircle className="w-4 h-4" /> Hủy lịch
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -211,6 +243,46 @@ export default function DoctorAppointmentsPage() {
           </table>
         </div>
       </div>
+
+      {/* Cancel/Reject Modal */}
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="p-6 border-b border-slate-100">
+              <h3 className="text-xl font-bold text-slate-800">
+                {cancelType === "REJECT" ? "Từ chối lịch hẹn" : "Hủy lịch hẹn đã xác nhận"}
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Vui lòng cung cấp lý do để thông báo cho bệnh nhân.
+              </p>
+            </div>
+            <div className="p-6">
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Nhập lý do chi tiết..."
+                className="w-full min-h-[100px] p-3 rounded-xl border border-slate-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none text-sm resize-none"
+                autoFocus
+              />
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => setIsCancelModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={submitCancel}
+                disabled={!cancelReason.trim()}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
