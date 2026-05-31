@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const article_controller_1 = require("../controllers/article.controller");
+const router = (0, express_1.Router)();
+router.get("/articles", article_controller_1.listPublishedArticles);
+router.get("/articles/personalized", auth_middleware_1.verifyToken, article_controller_1.getPersonalizedArticlesHandler);
+router.get("/articles/specialty/:specialtyId", article_controller_1.listArticlesBySpecialty);
+router.get("/articles/:id", article_controller_1.getArticleById);
+exports.default = router;

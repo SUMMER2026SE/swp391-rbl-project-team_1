@@ -1,11 +1,11 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import axios from "axios";
 import { User, Role } from "@prisma/client";
 
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
 import { generateOtp, sendOtpEmail, sendResetPasswordOtpEmail } from "../utils/emailService";
+import { verifyGoogleIdToken } from "../utils/googleAuth";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -219,11 +219,12 @@ export async function findUserById(id: string): Promise<Omit<User, "password"> |
             gender: true,
             address: true,
             dateOfBirth: true,
+            parentId: true,
             createdAt: true,
             updatedAt: true,
         },
     });
-    return user;
+    return user as Omit<User, "password"> | null;
 }
 
 /**
@@ -348,74 +349,48 @@ export async function resetPassword(
  * Verifies Google ID token and logs in the user (registers if first time)
  */
 export async function googleLogin(idToken: string): Promise<AuthResult> {
-    try {
-        // Verify token with Google API
-        const response = await axios.get<{
-            email?: string;
-            email_verified?: string | boolean;
-            name?: string;
-            picture?: string;
-            aud?: string;
-        }>(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+    const payload = await verifyGoogleIdToken(idToken);
+    const normalizedEmail = payload.email;
 
-        const payload = response.data;
+    let user = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+    });
 
-        if (!payload.email) {
-            throw new ApiError("Google login failed: Email not provided in token", 400);
-        }
-
-        const normalizedEmail = payload.email.toLowerCase();
-
-        // Find or create user
-        let user = await prisma.user.findUnique({
-            where: { email: normalizedEmail },
+    if (!user) {
+        user = await prisma.user.create({
+            data: {
+                email: normalizedEmail,
+                password: null,
+                fullName: payload.name || null,
+                avatar: payload.picture || null,
+                role: Role.USER,
+            },
         });
+    } else {
+        const dataToUpdate: { fullName?: string; avatar?: string } = {};
+        if (!user.fullName && payload.name) dataToUpdate.fullName = payload.name;
+        if (!user.avatar && payload.picture) dataToUpdate.avatar = payload.picture;
 
-        if (!user) {
-            // Register new user with Google details
-            user = await prisma.user.create({
-                data: {
-                    email: normalizedEmail,
-                    password: null, // Nullable password for Google login
-                    fullName: payload.name || null,
-                    avatar: payload.picture || null,
-                    role: Role.USER,
-                },
+        if (Object.keys(dataToUpdate).length > 0) {
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: dataToUpdate,
             });
-        } else {
-            // Update profile fields if they are missing
-            const dataToUpdate: { fullName?: string; avatar?: string } = {};
-            if (!user.fullName && payload.name) dataToUpdate.fullName = payload.name;
-            if (!user.avatar && payload.picture) dataToUpdate.avatar = payload.picture;
-
-            if (Object.keys(dataToUpdate).length > 0) {
-                user = await prisma.user.update({
-                    where: { id: user.id },
-                    data: dataToUpdate,
-                });
-            }
         }
-
-        // Generate JWT token
-        const tokenPayload: AuthTokenPayload = {
-            userId: user.id,
-            role: user.role,
-        };
-
-        const token = jwt.sign(tokenPayload, JWT_SECRET as string, {
-            expiresIn: "7d",
-        });
-
-        const { password: _password, ...safeUser } = user;
-
-        return { token, user: safeUser };
-    } catch (error) {
-        if (error instanceof ApiError) {
-            throw error;
-        }
-        console.error("Google authentication error:", error);
-        throw new ApiError("Invalid Google ID Token or network error", 401);
     }
+
+    const tokenPayload: AuthTokenPayload = {
+        userId: user.id,
+        role: user.role,
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET as string, {
+        expiresIn: "7d",
+    });
+
+    const { password: _password, ...safeUser } = user;
+
+    return { token, user: safeUser };
 }
 
 

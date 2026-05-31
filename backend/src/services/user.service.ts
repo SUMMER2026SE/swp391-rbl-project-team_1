@@ -202,5 +202,67 @@ export async function updateUserAvatar(id: string, avatarPath: string): Promise<
     });
 }
 
+/**
+ * Creates a family sub-profile linked to a parent user account.
+ */
+export async function addFamilyMember(
+    parentId: string,
+    data: {
+        fullName: string;
+        email?: string;
+        gender?: string;
+        address?: string;
+        dateOfBirth?: Date | null;
+    }
+) {
+    const parent = await prisma.user.findUnique({ where: { id: parentId } });
+    if (!parent) {
+        throw new ApiError("Parent user account not found", 404);
+    }
+
+    const finalEmail = data.email || `family_${Math.random().toString(36).substring(2, 11)}_${Date.now()}@family.local`;
+
+    return prisma.user.create({
+        data: {
+            email: finalEmail,
+            fullName: data.fullName,
+            gender: data.gender,
+            address: data.address,
+            dateOfBirth: data.dateOfBirth,
+            parentId: parentId,
+            role: "USER",
+        },
+        select: {
+            id: true,
+            email: true,
+            fullName: true,
+            gender: true,
+            address: true,
+            dateOfBirth: true,
+            parentId: true,
+        }
+    });
+}
+
+/**
+ * Fetches all family sub-profiles of the specified parent account.
+ */
+export async function getFamilyMembers(parentId: string) {
+    return prisma.user.findMany({
+        where: { parentId },
+        select: {
+            id: true,
+            email: true,
+            fullName: true,
+            gender: true,
+            address: true,
+            dateOfBirth: true,
+            parentId: true,
+            createdAt: true,
+        },
+        orderBy: { createdAt: "asc" }
+    });
+}
+
 
 

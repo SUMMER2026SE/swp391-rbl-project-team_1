@@ -29,11 +29,11 @@ async function getArticles(_req, res, next) {
  */
 async function createArticleHandler(req, res, next) {
     try {
-        const { title, content, thumbnail, published } = req.body;
+        const { title, content, thumbnail, published, specialtyId } = req.body;
         if (!title || !content) {
             throw new apiError_1.ApiError("Title and content are required", 400);
         }
-        const article = await (0, admin_articles_service_1.createArticle)({ title, content, thumbnail, published });
+        const article = await (0, admin_articles_service_1.createArticle)({ title, content, thumbnail, published, specialtyId });
         res.status(201).json({
             message: "Article created successfully",
             data: article,
@@ -53,8 +53,8 @@ async function updateArticleHandler(req, res, next) {
         if (!id) {
             throw new apiError_1.ApiError("Article ID is required", 400);
         }
-        const { title, content, thumbnail, published } = req.body;
-        const article = await (0, admin_articles_service_1.updateArticle)(id, { title, content, thumbnail, published });
+        const { title, content, thumbnail, published, specialtyId } = req.body;
+        const article = await (0, admin_articles_service_1.updateArticle)(id, { title, content, thumbnail, published, specialtyId });
         res.json({
             message: "Article updated successfully",
             data: article,

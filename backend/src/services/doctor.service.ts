@@ -1,12 +1,17 @@
-import { Doctor } from "@prisma/client";
+import { Doctor, DoctorStatus } from "@prisma/client";
 
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
 
+const publicDoctorFilter = {
+    status: DoctorStatus.APPROVED,
+    isLocked: false,
+};
+
 export async function getAllDoctors(specialtySlug?: string) {
     const whereClause = specialtySlug
-        ? { specialty: { slug: specialtySlug } }
-        : {};
+        ? { ...publicDoctorFilter, specialty: { slug: specialtySlug } }
+        : publicDoctorFilter;
 
     return prisma.doctor.findMany({
         where: whereClause,
@@ -21,7 +26,7 @@ export async function getAllSpecialties() {
     return prisma.specialty.findMany({
         include: {
             _count: {
-                select: { doctors: true },
+                select: { doctors: { where: publicDoctorFilter } },
             },
         },
         orderBy: { name: "asc" },
@@ -29,8 +34,8 @@ export async function getAllSpecialties() {
 }
 
 export async function getDoctorById(id: string): Promise<Doctor> {
-    const doctor = await prisma.doctor.findUnique({
-        where: { id },
+    const doctor = await prisma.doctor.findFirst({
+        where: { id, ...publicDoctorFilter },
     });
 
     if (!doctor) {

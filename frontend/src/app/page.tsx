@@ -64,41 +64,43 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white py-20 lg:py-32 overflow-hidden">
-        {/* Abstract vector blobs */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-teal-600/10 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative bg-gradient-to-br from-[#042f2c] via-[#021f1e] to-slate-950 text-white py-20 lg:py-32 overflow-hidden border-b border-teal-950/40">
+        {/* Neon glowing backdrops */}
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-teal-500/15 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Title / Description */}
-            <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 bg-teal-700/40 border border-teal-600/30 rounded-full px-3 py-1.5 text-teal-200 text-sm font-medium">
-                <HeartPulse className="h-4 w-4 animate-pulse" />
+            <div className="lg:col-span-7 space-y-8">
+              <div className="inline-flex items-center gap-2 bg-teal-500/10 border border-teal-500/20 rounded-full px-4 py-2 text-teal-300 text-xs font-bold tracking-wide uppercase animate-fade-in shadow-inner">
+                <HeartPulse className="h-4 w-4 text-emerald-400 animate-pulse" />
                 <span>Nền tảng Y Tế Số Hàng Đầu Việt Nam</span>
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
+              
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none text-slate-100">
                 Chăm Sóc Sức Khỏe <br />
-                <span className="text-teal-400">Trọn Vẹn Từ Tâm</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400 drop-shadow-md">Trọn Vẹn Từ Tâm</span>
               </h1>
-              <p className="text-lg text-teal-100/80 max-w-xl leading-relaxed">
+              
+              <p className="text-base sm:text-lg text-slate-300/90 max-w-xl leading-relaxed font-medium">
                 Hệ thống đặt lịch khám trực tuyến giúp bạn kết nối nhanh nhất tới các bác sĩ chuyên khoa giỏi tại các bệnh viện uy tín. Đặt lịch nhanh chóng, không lo chờ đợi.
               </p>
 
               {/* Search Bar Form */}
-              <form onSubmit={handleSearchSubmit} className="max-w-xl">
-                <div className="bg-white rounded-2xl p-2 shadow-2xl flex flex-col sm:flex-row gap-2 border border-white/10">
-                  <div className="flex items-center gap-2.5 px-3 py-2 flex-grow text-slate-800">
-                    <Search className="h-5 w-5 text-slate-400 shrink-0" />
+              <form onSubmit={handleSearchSubmit} className="max-w-xl animate-fade-in delay-200">
+                <div className="bg-slate-900/60 backdrop-blur-xl rounded-3xl p-2.5 shadow-2xl flex flex-col sm:flex-row gap-2 border border-slate-800 focus-within:border-teal-500/50 transition-luxury">
+                  <div className="flex items-center gap-3 px-3 py-2 flex-grow text-white">
+                    <Search className="h-5 w-5 text-teal-400 shrink-0" />
                     <input
                       type="text"
                       placeholder="Tìm tên bác sĩ, chuyên khoa hoặc bệnh viện..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-transparent border-none outline-none w-full text-slate-900 placeholder:text-slate-400 text-sm"
+                      className="bg-transparent border-none outline-none w-full text-white placeholder:text-slate-500 text-sm focus:ring-0"
                     />
                   </div>
-                  <Button type="submit" variant="teal" className="py-3 px-6 rounded-xl font-medium shrink-0">
+                  <Button type="submit" variant="teal" className="py-3.5 px-7 rounded-2xl font-bold shrink-0 bg-teal-500 hover:bg-teal-600 text-slate-950 shadow-lg shadow-teal-500/20">
                     Tìm Kiếm Bác Sĩ
                   </Button>
                 </div>
@@ -122,37 +124,37 @@ export default function HomePage() {
             </div>
 
             {/* Visual Box Graphic */}
-            <div className="lg:col-span-5 hidden lg:block">
+            <div className="lg:col-span-5 hidden lg:block mesh-float-slow">
               <div className="relative">
                 {/* Visual Card Backdrop effect */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-3xl blur opacity-30 animate-tilt" />
-                <div className="relative bg-slate-900 border border-teal-500/20 rounded-3xl p-8 shadow-2xl space-y-6">
-                  <div className="flex items-center justify-between pb-4 border-b border-teal-900/60">
+                <div className="absolute -inset-1.5 bg-gradient-to-r from-teal-500 to-emerald-400 rounded-[32px] blur-md opacity-35" />
+                <div className="relative glass-card-dark rounded-[32px] p-8 shadow-2xl space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-800/80">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-teal-500/10 text-teal-400 rounded-xl flex items-center justify-center">
-                        <ShieldCheck className="h-5 w-5" />
+                      <div className="h-11 w-11 bg-teal-500/10 text-teal-400 rounded-2xl flex items-center justify-center border border-teal-500/20">
+                        <ShieldCheck className="h-5.5 w-5.5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-white text-sm">Hệ Thống Đạt Chuẩn</p>
-                        <p className="text-xs text-teal-300/60">An toàn & Bảo mật tuyệt đối</p>
+                        <p className="font-bold text-white text-sm">Hệ Thống Đạt Chuẩn</p>
+                        <p className="text-xs text-slate-400 mt-0.5">An toàn & Bảo mật tuyệt đối</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="p-4 bg-teal-950/40 rounded-2xl border border-teal-800/30 flex items-start gap-3">
-                      <div className="p-2 bg-teal-500/20 text-teal-300 rounded-lg text-xs font-bold mt-0.5">BS</div>
+                    <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-start gap-3 hover:border-teal-500/30 transition-luxury">
+                      <div className="p-2 bg-teal-500/10 text-teal-400 rounded-xl text-xs font-bold mt-0.5 border border-teal-500/15">BS</div>
                       <div className="text-sm">
-                        <p className="font-medium text-teal-200">Đội ngũ bác sĩ chọn lọc</p>
-                        <p className="text-xs text-teal-100/60 mt-1">Tất cả các bác sĩ đều có trên 5 năm kinh nghiệm lâm sàng.</p>
+                        <p className="font-semibold text-teal-300">Đội ngũ bác sĩ chọn lọc</p>
+                        <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">Tất cả các bác sĩ đều có trên 5 năm kinh nghiệm lâm sàng.</p>
                       </div>
                     </div>
 
-                    <div className="p-4 bg-teal-950/40 rounded-2xl border border-teal-800/30 flex items-start gap-3">
-                      <div className="p-2 bg-teal-500/20 text-teal-300 rounded-lg text-xs font-bold mt-0.5">LT</div>
+                    <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-start gap-3 hover:border-teal-500/30 transition-luxury">
+                      <div className="p-2 bg-teal-500/10 text-teal-400 rounded-xl text-xs font-bold mt-0.5 border border-teal-500/15">LT</div>
                       <div className="text-sm">
-                        <p className="font-medium text-teal-200">Lịch trình minh bạch</p>
-                        <p className="text-xs text-teal-100/60 mt-1">Khung giờ hiển thị là thời gian thực tế bác sĩ sẵn sàng làm việc.</p>
+                        <p className="font-semibold text-teal-300">Lịch trình minh bạch</p>
+                        <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">Khung giờ hiển thị là thời gian thực tế bác sĩ sẵn sàng làm việc.</p>
                       </div>
                     </div>
                   </div>
@@ -192,16 +194,20 @@ export default function HomePage() {
                 <div
                   key={spec.id}
                   onClick={() => router.push(`/doctors?specialty=${spec.slug}`)}
-                  className="group relative bg-slate-50 hover:bg-teal-50/30 border border-slate-100 hover:border-teal-100 rounded-2xl p-6 transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
+                  className="group relative bg-white border border-slate-100/70 hover:border-teal-100/60 rounded-3xl p-6 transition-luxury hover-up cursor-pointer overflow-hidden shadow-xs"
                 >
-                  <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-200 inline-block">
+                  {/* Subtle color highlight in background */}
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full blur-xl group-hover:bg-teal-500/10 transition-luxury" />
+                  
+                  <div className="text-4xl mb-4 group-hover:scale-115 transition-transform duration-300 inline-block">
                     {spec.icon || "🩺"}
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-1.5">{spec.name}</h3>
-                  <p className="text-xs text-teal-600 font-semibold mb-4">
-                    {spec._count?.doctors || 0} bác sĩ
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">{spec.name}</h3>
+                  <p className="text-xs text-teal-600 font-bold mb-3 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                    {spec._count?.doctors || 0} Bác sĩ
                   </p>
-                  <p className="text-xs text-slate-600 leading-relaxed mb-2">
+                  <p className="text-xs text-slate-500 leading-relaxed">
                     {getSpecialtyDescription(spec.slug)}
                   </p>
                 </div>
@@ -235,16 +241,18 @@ export default function HomePage() {
 
       {/* Call to Action Section */}
       <section className="py-16 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center bg-gradient-to-r from-teal-50 to-emerald-50/50 border border-teal-100/40 rounded-3xl p-10 sm:p-16 shadow-inner relative overflow-hidden">
-          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-48 h-48 bg-teal-400/10 rounded-full blur-xl pointer-events-none" />
-          <div className="relative z-10 space-y-6 max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 tracking-tight">Sẵn sàng để hẹn lịch với bác sĩ chuyên gia?</h2>
-            <p className="text-sm sm:text-base text-slate-700 leading-relaxed">
-              Tránh thủ tục xếp hàng mệt mỏi tại bệnh viện. Chỉ với vài cú click chuột, lịch đặt khám của bạn sẽ được chuyển ngay đến bác sĩ chuyên khoa.
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center bg-gradient-to-br from-slate-900 via-teal-950 to-slate-950 border border-teal-500/10 rounded-3xl p-10 sm:p-16 relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-72 h-72 bg-teal-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 space-y-6 max-w-2xl mx-auto text-white">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Sẵn sàng hẹn lịch với Bác sĩ chuyên khoa?</h2>
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+              Tránh xa thủ tục đăng ký hay xếp hàng mệt mỏi tại bệnh viện. Chỉ với vài thao tác trực tuyến đơn giản, yêu cầu tư vấn của bạn sẽ được gửi trực tiếp tới bác sĩ chuyên gia.
             </p>
-            <div className="pt-2">
+            <div className="pt-3">
               <Link href="/doctors">
-                <Button variant="teal" className="py-3 px-8 text-base rounded-xl inline-flex items-center gap-2 group">
+                <Button variant="teal" className="py-3.5 px-8 text-base rounded-2xl inline-flex items-center gap-2 group shadow-lg shadow-teal-500/20 hover:scale-102 transition-luxury">
                   Xem Danh Sách Bác Sĩ <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>

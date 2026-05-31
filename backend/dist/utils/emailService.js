@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateOtp = generateOtp;
 exports.sendOtpEmail = sendOtpEmail;
 exports.sendResetPasswordOtpEmail = sendResetPasswordOtpEmail;
+exports.sendAppointmentReminderEmail = sendAppointmentReminderEmail;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 // Configure your email service here
 // For Gmail: you need to use App Password, not regular password
@@ -128,4 +129,42 @@ async function sendResetPasswordOtpEmail(email, otp, recipientName) {
         console.error("Failed to send Reset Password OTP email:", error);
         throw new Error("Failed to send Reset Password OTP email");
     }
+}
+/**
+ * Send appointment reminder email
+ */
+async function sendAppointmentReminderEmail(email, recipientName, doctorName, hospital, appointmentDateStr) {
+    if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) {
+        console.log(`[DEV] Appointment reminder for ${email}: BS. ${doctorName} @ ${hospital} on ${appointmentDateStr}`);
+        return;
+    }
+    const mailOptions = {
+        from: process.env.MAIL_USER,
+        to: email,
+        subject: "Nhắc lịch khám bệnh - MedBooking",
+        html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0;">MedBooking</h1>
+          </div>
+          <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+            <p style="color: #334155; font-size: 16px;">
+              ${recipientName ? `Xin chào ${recipientName},` : "Xin chào,"}
+            </p>
+            <p style="color: #334155; font-size: 14px;">
+              Đây là email nhắc lịch khám của bạn trong 24 giờ tới:
+            </p>
+            <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; margin: 20px 0; border-radius: 8px;">
+              <p style="margin: 0 0 8px;"><strong>Bác sĩ:</strong> ${doctorName}</p>
+              <p style="margin: 0 0 8px;"><strong>Bệnh viện/Phòng khám:</strong> ${hospital}</p>
+              <p style="margin: 0;"><strong>Thời gian:</strong> ${appointmentDateStr}</p>
+            </div>
+            <p style="color: #64748b; font-size: 12px;">
+              Vui lòng đến đúng giờ. Nếu cần hủy hoặc đổi lịch, hãy truy cập MedBooking.
+            </p>
+          </div>
+        </div>
+      `,
+    };
+    await transporter.sendMail(mailOptions);
 }

@@ -8,9 +8,10 @@ import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
 import Alert from "@/components/common/Alert";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
-import { User, Activity, MapPin, Calendar, Mail, Shield, UserSquare, KeyRound, Lock, Sparkles, Camera } from "lucide-react";
+import { User, Activity, MapPin, Calendar, Mail, Shield, UserSquare, KeyRound, Lock, Sparkles, Camera, Plus, Users, Heart } from "lucide-react";
+import api from "@/services/api";
 
-type ProfileTab = "info" | "password";
+type ProfileTab = "info" | "password" | "family";
 
 export default function ProfilePage() {
   return (
@@ -41,6 +42,64 @@ function ProfileContent() {
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Tab 3: Family Members State
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [famName, setFamName] = useState("");
+  const [famGender, setFamGender] = useState("Nam");
+  const [famAddress, setFamAddress] = useState("");
+  const [famDob, setFamDob] = useState("");
+  const [famEmail, setFamEmail] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  const fetchFamilyMembers = async () => {
+    try {
+      const response = await api.get("/users/family");
+      setFamilyMembers(response.data.data);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "family") {
+      fetchFamilyMembers();
+      setError(null);
+      setSuccess(null);
+    }
+  }, [activeTab]);
+
+  const handleAddFamilyMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    if (!famName.trim()) {
+      setError("Tên thành viên không được để trống");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post("/users/family", {
+        fullName: famName.trim(),
+        email: famEmail.trim() || undefined,
+        gender: famGender,
+        address: famAddress.trim() || undefined,
+        dateOfBirth: famDob ? new Date(famDob).toISOString() : null,
+      });
+      setSuccess("Thêm thành viên gia đình thành công!");
+      setFamName("");
+      setFamEmail("");
+      setFamAddress("");
+      setFamDob("");
+      setShowAddForm(false);
+      fetchFamilyMembers();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || "Lỗi khi thêm thành viên gia đình.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Initialize profile info when user loaded
   useEffect(() => {
@@ -321,6 +380,17 @@ function ProfileContent() {
                 <KeyRound className="h-5 w-5" />
                 Đổi mật khẩu
               </button>
+              <button
+                onClick={() => handleTabChange("family")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left cursor-pointer ${
+                  activeTab === "family"
+                    ? "bg-teal-50 text-teal-700"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Users className="h-5 w-5" />
+                Hồ sơ gia đình
+              </button>
             </div>
           </div>
 
@@ -418,7 +488,7 @@ function ProfileContent() {
                   </div>
                 </form>
               </div>
-            ) : (
+            ) : activeTab === "password" ? (
               // Tab 2: Change Password Form
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-6 pb-3 border-b border-slate-100 flex items-center gap-2">
@@ -490,6 +560,164 @@ function ProfileContent() {
                     </Button>
                   </div>
                 </form>
+              </div>
+            ) : (
+              // Tab 3: Family Profiles Portal
+              <div>
+                <div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Heart className="h-5 w-5 text-teal-600 animate-pulse" />
+                    Quản Lý Hồ Sơ Gia Đình
+                  </h3>
+                  {!showAddForm && (
+                    <Button
+                      onClick={() => {
+                        setShowAddForm(true);
+                        setError(null);
+                        setSuccess(null);
+                      }}
+                      variant="teal"
+                      className="py-1.5 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" /> Thêm thành viên
+                    </Button>
+                  )}
+                </div>
+
+                {error && <Alert type="error" message={error} className="mb-6" />}
+                {success && <Alert type="success" message={success} className="mb-6" />}
+
+                {showAddForm ? (
+                  <form onSubmit={handleAddFamilyMember} className="space-y-6 animate-fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                          Họ và Tên thành viên <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="Nhập tên con, vợ/chồng, bố/mẹ..."
+                          value={famName}
+                          onChange={(e) => setFamName(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                          Giới Tính
+                        </label>
+                        <select
+                          value={famGender}
+                          onChange={(e) => setFamGender(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm"
+                        >
+                          <option value="Nam">Nam</option>
+                          <option value="Nữ">Nữ</option>
+                          <option value="Khác">Khác</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                          Ngày Sinh
+                        </label>
+                        <Input
+                          type="date"
+                          value={famDob}
+                          onChange={(e) => setFamDob(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                          Email (Không bắt buộc)
+                        </label>
+                        <Input
+                          type="email"
+                          placeholder="Bỏ trống nếu không có riêng"
+                          value={famEmail}
+                          onChange={(e) => setFamEmail(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        Địa Chỉ Cư Trú
+                      </label>
+                      <textarea
+                        placeholder="Nhập địa chỉ cư trú của thành viên"
+                        value={famAddress}
+                        onChange={(e) => setFamAddress(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none"
+                      />
+                    </div>
+
+                    <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddForm(false);
+                          setError(null);
+                          setSuccess(null);
+                        }}
+                        className="py-2 px-4 rounded-xl text-xs font-bold"
+                      >
+                        Hủy bỏ
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="teal"
+                        className="py-2 px-5 rounded-xl text-xs font-bold"
+                        isLoading={loading}
+                      >
+                        Thêm hồ sơ
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="animate-fade-in">
+                    {familyMembers.length === 0 ? (
+                      <div className="text-center py-16 border-2 border-dashed border-slate-100 rounded-2xl">
+                        <Users className="w-10 h-10 text-slate-300 mx-auto mb-2.5 animate-bounce-slow" />
+                        <p className="text-sm font-bold text-slate-700">Chưa có thành viên gia đình nào</p>
+                        <p className="text-xs text-slate-400 mt-1">Hãy tạo thêm hồ sơ cho bố mẹ hoặc con cái để đặt khám nhanh hơn.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {familyMembers.map((member) => (
+                          <div key={member.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col justify-between hover:shadow-sm transition-all">
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-extrabold text-slate-800 text-sm truncate">{member.fullName}</span>
+                                <span className="text-[10px] bg-teal-50 text-teal-700 border border-teal-100 px-2 py-0.5 rounded-full font-bold">
+                                  {member.gender}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500 mt-2">
+                                📅 Ngày sinh: {member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString("vi-VN") : "Chưa cập nhật"}
+                              </p>
+                              {member.address && (
+                                <p className="text-xs text-slate-500 mt-1 truncate">
+                                  📍 Địa chỉ: {member.address}
+                                </p>
+                              )}
+                            </div>
+                            <div className="mt-4 pt-3 border-t border-slate-200/50 flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                              <span>ID: {member.id.substring(0, 8)}...</span>
+                              <span className="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-sans font-semibold uppercase scale-90">Hồ sơ phụ</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

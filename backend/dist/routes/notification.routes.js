@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const notification_controller_1 = require("../controllers/notification.controller");
+const router = (0, express_1.Router)();
+router.get("/notifications", auth_middleware_1.verifyToken, notification_controller_1.listMyNotifications);
+router.patch("/notifications/read-all", auth_middleware_1.verifyToken, notification_controller_1.markAllAsRead);
+router.patch("/notifications/:id/read", auth_middleware_1.verifyToken, notification_controller_1.markNotificationAsRead);
+router.post("/internal/appointment-reminders", notification_controller_1.runAppointmentReminders);
+exports.default = router;

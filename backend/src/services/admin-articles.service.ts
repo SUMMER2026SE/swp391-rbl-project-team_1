@@ -7,6 +7,7 @@ interface CreateArticleInput {
     content: string;
     thumbnail?: string;
     published?: boolean;
+    specialtyId?: string | null;
 }
 
 interface UpdateArticleInput {
@@ -14,13 +15,15 @@ interface UpdateArticleInput {
     content?: string;
     thumbnail?: string;
     published?: boolean;
+    specialtyId?: string | null;
 }
 
 /**
  * Returns all articles ordered by createdAt desc.
  */
-export async function getAllArticles(): Promise<Article[]> {
+export async function getAllArticles() {
     return prisma.article.findMany({
+        include: { specialty: { select: { id: true, name: true, slug: true } } },
         orderBy: { createdAt: "desc" },
     });
 }
@@ -29,12 +32,20 @@ export async function getAllArticles(): Promise<Article[]> {
  * Creates a new article.
  */
 export async function createArticle(input: CreateArticleInput): Promise<Article> {
+    if (input.specialtyId) {
+        const specialty = await prisma.specialty.findUnique({ where: { id: input.specialtyId } });
+        if (!specialty) {
+            throw new ApiError("Specialty not found", 404);
+        }
+    }
+
     return prisma.article.create({
         data: {
             title: input.title,
             content: input.content,
             thumbnail: input.thumbnail,
             published: input.published ?? false,
+            specialtyId: input.specialtyId ?? null,
         },
     });
 }
@@ -52,6 +63,13 @@ export async function updateArticle(
         throw new ApiError("Article not found", 404);
     }
 
+    if (input.specialtyId) {
+        const specialty = await prisma.specialty.findUnique({ where: { id: input.specialtyId } });
+        if (!specialty) {
+            throw new ApiError("Specialty not found", 404);
+        }
+    }
+
     return prisma.article.update({
         where: { id },
         data: {
@@ -59,6 +77,7 @@ export async function updateArticle(
             ...(input.content !== undefined && { content: input.content }),
             ...(input.thumbnail !== undefined && { thumbnail: input.thumbnail }),
             ...(input.published !== undefined && { published: input.published }),
+            ...(input.specialtyId !== undefined && { specialtyId: input.specialtyId }),
         },
     });
 }

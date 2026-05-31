@@ -75,7 +75,7 @@ export async function updateClinic(
 }
 
 /**
- * Deletes a clinic. Fails if doctors are linked.
+ * Deletes a clinic. Automatically unlinks all doctors from the clinic.
  */
 export async function deleteClinic(id: string): Promise<void> {
     const clinic = await prisma.clinic.findUnique({
@@ -87,12 +87,85 @@ export async function deleteClinic(id: string): Promise<void> {
         throw new ApiError("Clinic not found", 404);
     }
 
+    // Automatically unlink all doctors from the clinic
     if (clinic._count.doctors > 0) {
-        throw new ApiError(
-            `Cannot delete clinic: ${clinic._count.doctors} doctor(s) are still linked`,
-            400
-        );
+        await prisma.doctor.updateMany({
+            where: { clinicId: id },
+            data: { clinicId: null },
+        });
     }
 
     await prisma.clinic.delete({ where: { id } });
+}
+
+/**
+ * Returns all doctors belonging to a specific clinic.
+ */
+export async function getClinicDoctors(clinicId: string) {
+    return prisma.doctor.findMany({
+        where: { clinicId },
+        include: { specialty: true },
+        orderBy: { name: "asc" },
+    });
+}
+
+/**
+ * Returns all approved doctors who are currently not assigned to any clinic.
+ */
+export async function getUnassignedDoctors() {
+    return prisma.doctor.findMany({
+        where: {
+            status: "APPROVED",
+            clinicId: null,
+        },
+        include: { specialty: true },
+        orderBy: { name: "asc" },
+    });
+}
+
+/**
+ * Links a doctor to a clinic and synchronizes the legacy `hospital` text field.
+ */
+export async function addDoctorToClinic(clinicId: string, doctorId: string) {
+    const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } });
+    if (!clinic) {
+        throw new ApiError("Clinic not found", 404);
+    }
+
+    const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+    if (!doctor) {
+        throw new ApiError("Doctor not found", 404);
+    }
+
+    return prisma.doctor.update({
+        where: { id: doctorId },
+        data: {
+            clinicId,
+            hospital: clinic.name,
+        },
+        include: { specialty: true, clinic: true },
+    });
+}
+
+/**
+ * Unlinks a doctor from a clinic.
+ */
+export async function removeDoctorFromClinic(clinicId: string, doctorId: string) {
+    const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+    if (!doctor) {
+        throw new ApiError("Doctor not found", 404);
+    }
+
+    if (doctor.clinicId !== clinicId) {
+        throw new ApiError("Doctor is not associated with this clinic", 400);
+    }
+
+    return prisma.doctor.update({
+        where: { id: doctorId },
+        data: {
+            clinicId: null,
+            hospital: "Chưa liên kết",
+        },
+        include: { specialty: true },
+    });
 }

@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { adminService } from "@/services/admin.service";
-import { AdminClinic, CreateClinicPayload, UpdateClinicPayload } from "@/types/admin";
+import { AdminClinic, CreateClinicPayload, UpdateClinicPayload, AdminDoctor } from "@/types/admin";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { Search, Plus, Pencil, Trash2, Building2, X, MapPin } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Building2, X, MapPin, Stethoscope, Users } from "lucide-react";
 
 interface ClinicFormData {
   name: string;
@@ -30,6 +30,68 @@ export default function AdminClinicsPage() {
 
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<AdminClinic | null>(null);
+
+  // Manage Doctors Modal state
+  const [doctorsModalOpen, setDoctorsModalOpen] = useState(false);
+  const [selectedClinicForDoctors, setSelectedClinicForDoctors] = useState<AdminClinic | null>(null);
+  const [clinicDoctors, setClinicDoctors] = useState<AdminDoctor[]>([]);
+  const [unassignedDoctors, setUnassignedDoctors] = useState<AdminDoctor[]>([]);
+  const [selectedDoctorToAdd, setSelectedDoctorToAdd] = useState("");
+  const [doctorsLoading, setDoctorsLoading] = useState(false);
+
+  const loadClinicDoctorsData = async (clinicId: string) => {
+    try {
+      setDoctorsLoading(true);
+      const [clinicDocsRes, unassignedDocsRes] = await Promise.all([
+        adminService.getClinicDoctors(clinicId),
+        adminService.getUnassignedDoctors(),
+      ]);
+      setClinicDoctors(clinicDocsRes.data);
+      setUnassignedDoctors(unassignedDocsRes.data);
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setDoctorsLoading(false);
+    }
+  };
+
+  const openDoctorsModal = (clinic: AdminClinic) => {
+    setSelectedClinicForDoctors(clinic);
+    setSelectedDoctorToAdd("");
+    setDoctorsModalOpen(true);
+    loadClinicDoctorsData(clinic.id);
+  };
+
+  const handleAddDoctor = async () => {
+    if (!selectedClinicForDoctors || !selectedDoctorToAdd) return;
+    try {
+      setDoctorsLoading(true);
+      await adminService.addDoctorToClinic(selectedClinicForDoctors.id, selectedDoctorToAdd);
+      setSelectedDoctorToAdd("");
+      await loadClinicDoctorsData(selectedClinicForDoctors.id);
+      loadClinics();
+      setActionMessage({ type: "success", text: "Đã thêm bác sĩ vào phòng khám thành công!" });
+    } catch (err: any) {
+      setActionMessage({ type: "error", text: err.message || "Không thể thêm bác sĩ." });
+    } finally {
+      setDoctorsLoading(false);
+    }
+  };
+
+  const handleRemoveDoctor = async (doctorId: string) => {
+    if (!selectedClinicForDoctors) return;
+    try {
+      setDoctorsLoading(true);
+      await adminService.removeDoctorFromClinic(selectedClinicForDoctors.id, doctorId);
+      await loadClinicDoctorsData(selectedClinicForDoctors.id);
+      loadClinics();
+      setActionMessage({ type: "success", text: "Đã hủy liên kết bác sĩ khỏi phòng khám." });
+    } catch (err: any) {
+      setActionMessage({ type: "error", text: err.message || "Không thể hủy liên kết bác sĩ." });
+    } finally {
+      setDoctorsLoading(false);
+    }
+  };
 
   const loadClinics = useCallback(async () => {
     try {
@@ -212,6 +274,13 @@ export default function AdminClinicsPage() {
                   </span>
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => openDoctorsModal(clinic)}
+                      className="p-2 rounded-lg bg-slate-900 hover:bg-teal-500/10 border border-slate-800 hover:border-teal-500/20 text-slate-400 hover:text-teal-400 transition-all"
+                      title="Quản lý Bác sĩ"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                    </button>
+                    <button
                       onClick={() => openEditModal(clinic)}
                       className="p-2 rounded-lg bg-slate-900 hover:bg-teal-500/10 border border-slate-800 hover:border-teal-500/20 text-slate-400 hover:text-teal-400 transition-all"
                       title="Chỉnh sửa"
@@ -333,6 +402,110 @@ export default function AdminClinicsPage() {
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {submitting ? "Đang xóa..." : "Xác nhận Xóa"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Doctors Modal */}
+      {doctorsModalOpen && selectedClinicForDoctors && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 w-full max-w-2xl mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Quản lý Bác sĩ liên kết
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Phòng khám: {selectedClinicForDoctors.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setDoctorsModalOpen(false)}
+                className="text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Add Doctor Section */}
+            <div className="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 mb-6 space-y-3">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Thêm bác sĩ vào phòng khám
+              </h4>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={selectedDoctorToAdd}
+                  onChange={(e) => setSelectedDoctorToAdd(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-xs"
+                >
+                  <option value="">-- Chọn bác sĩ để liên kết --</option>
+                  {unassignedDoctors.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.name} ({doc.specialty.name})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddDoctor}
+                  disabled={doctorsLoading || !selectedDoctorToAdd}
+                  className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors disabled:opacity-50 shrink-0"
+                >
+                  Thêm bác sĩ
+                </button>
+              </div>
+            </div>
+
+            {/* Current Doctors List */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Danh sách Bác sĩ hiện tại ({clinicDoctors.length})
+              </h4>
+              <div className="max-h-[250px] overflow-y-auto border border-slate-800 rounded-xl divide-y divide-slate-800 bg-slate-950">
+                {doctorsLoading && clinicDoctors.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-500">
+                    Đang tải danh sách bác sĩ...
+                  </div>
+                ) : clinicDoctors.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-500">
+                    Chưa có bác sĩ nào thuộc phòng khám này.
+                  </div>
+                ) : (
+                  clinicDoctors.map((doc) => (
+                    <div key={doc.id} className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center">
+                          {doc.avatar ? (
+                            <img src={doc.avatar} alt={doc.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <Users className="h-4 w-4 text-slate-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-200 text-xs">{doc.name}</p>
+                          <p className="text-[10px] text-teal-400 font-semibold">{doc.specialty.name}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveDoctor(doc.id)}
+                        disabled={doctorsLoading}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                      >
+                        Hủy liên kết
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setDoctorsModalOpen(false)}
+                className="px-5 py-2 rounded-xl text-xs font-semibold text-slate-400 bg-slate-900 border border-slate-800 hover:text-slate-100 transition-colors"
+              >
+                Đóng
               </button>
             </div>
           </div>

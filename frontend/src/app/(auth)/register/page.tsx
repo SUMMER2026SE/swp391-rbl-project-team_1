@@ -12,7 +12,7 @@ import { Mail, Lock, KeyRound, Clock } from "lucide-react";
 type RegisterStep = "email" | "otp" | "password";
 
 export default function RegisterPage() {
-  const { sendOtp, verifyOtp, register, googleLogin } = useAuth();
+  const { sendOtp, verifyOtp, register } = useAuth();
   const router = useRouter();
 
   const [step, setStep] = useState<RegisterStep>("email");
@@ -25,72 +25,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  // Handle Google Login Callback
-  const handleGoogleLoginResponse = async (response: { credential?: string }) => {
-    if (!response.credential) {
-      setError("Không nhận được thông tin xác thực từ Google");
-      return;
-    }
-
-    setError(null);
-    setLoading(true);
-    try {
-      await googleLogin(response.credential);
-      setSuccess("Đăng nhập bằng Google thành công! Đang chuyển hướng...");
-      setTimeout(() => {
-        router.push("/");
-        router.refresh();
-      }, 1000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Đăng nhập bằng Google thất bại";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    window.location.href = `${backendUrl}/auth/google`;
   };
 
-  // Load Google Identity Services SDK dynamically
-  useEffect(() => {
-    if (step !== "email") return;
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
-
-    script.onload = () => {
-      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1055745812345-dummyclientid.apps.googleusercontent.com";
-      
-      // @ts-ignore
-      if (window.google && window.google.accounts) {
-        // @ts-ignore
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleGoogleLoginResponse,
-        });
-
-        const googleBtn = document.getElementById("google-register-btn");
-        if (googleBtn) {
-          // @ts-ignore
-          window.google.accounts.id.renderButton(googleBtn, {
-            theme: "outline",
-            size: "large",
-            width: 382,
-            text: "signup_with",
-            shape: "rectangular",
-          });
-        }
-      }
-    };
-
-    return () => {
-      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (existingScript && existingScript.parentNode) {
-        existingScript.parentNode.removeChild(existingScript);
-      }
-    };
-  }, [step]);
 
   // Handle email submission
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -307,9 +246,23 @@ export default function RegisterPage() {
               <span className="relative px-4 bg-white text-xs text-slate-500 font-medium">HOẶC ĐĂNG KÝ BẰNG</span>
             </div>
 
-            {/* Google Register Button Container */}
-            <div className="flex justify-center">
-              <div id="google-register-btn" className="w-full max-w-sm" />
+            {/* Google OAuth Register Button */}
+            <div>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all font-medium text-slate-700 text-sm shadow-sm cursor-pointer"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                  <g transform="matrix(1, 0, 0, 1, 0, 0)">
+                    <path d="M21.35,11.1H12v2.7h5.38c-0.24,1.28 -0.96,2.37 -2.04,3.1v2.58h3.3c1.93,-1.78 3.04,-4.4 3.04,-7.48C21.68,11.75 21.57,11.4 21.35,11.1z" fill="#4285F4" />
+                    <path d="M12,20.9c2.7,0 4.96,-0.9 6.62,-2.42l-3.3,-2.58c-0.9,0.6 -2.07,0.98 -3.32,0.98c-2.55,0 -4.71,-1.72 -5.48,-4.04H3.1v2.66C4.75,17.76 8.13,20.9 12,20.9z" fill="#34A853" />
+                    <path d="M6.52,12.84c-0.2,-0.6 -0.32,-1.24 -0.32,-1.9s0.12,-1.3 0.32,-1.9V6.38H3.1C2.41,7.76 2.02,9.31 2.02,10.94s0.39,3.18 1.08,4.56L6.52,12.84z" fill="#FBBC05" />
+                    <path d="M12,6.12c1.47,0 2.78,0.5 3.82,1.5l2.87,-2.87C16.96,3.12 14.7,2.1 12,2.1C8.13,2.1 4.75,5.24 3.1,8.5l3.42,2.66c0.77,-2.32 2.93,-4.04 5.48,-4.04z" fill="#EA4335" />
+                  </g>
+                </svg>
+                <span>Tiếp tục với Google</span>
+              </button>
             </div>
           </>
         )}

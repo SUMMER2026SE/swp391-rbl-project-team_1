@@ -91,3 +91,30 @@ export function verifyDoctor(
 
     next();
 }
+
+/**
+ * Middleware: Enforces that the authenticated user is a CLINIC_MANAGER.
+ * Must be used AFTER verifyToken middleware.
+ */
+export function verifyClinicManager(
+    req: AuthenticatedRequest,
+    _res: Response,
+    next: NextFunction
+): void {
+    if (!req.user) {
+        next(new ApiError("User not authenticated", 401));
+        return;
+    }
+
+    if (req.user.role !== Role.CLINIC_MANAGER) {
+        next(
+            new ApiError(
+                `Access denied. Required role: CLINIC_MANAGER. Your role: ${req.user.role}`,
+                403
+            )
+        );
+        return;
+    }
+
+    next();
+}

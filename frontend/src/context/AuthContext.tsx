@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (updatedUser: User) => void;
   googleLogin: (idToken: string) => Promise<User>;
+  handleOAuthSuccess: (token: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -141,6 +142,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleOAuthSuccess = async (tokenValue: string) => {
+    setIsLoading(true);
+    try {
+      localStorage.setItem("token", tokenValue);
+      setToken(tokenValue);
+      const profileResponse = await authService.getProfile();
+      setUser(profileResponse.user);
+      localStorage.setItem("user", JSON.stringify(profileResponse.user));
+    } catch (error) {
+      localStorage.removeItem("token");
+      setToken(null);
+      setUser(null);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isAuthenticated = !!token && !!user;
 
   return (
@@ -157,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateUser,
         googleLogin,
+        handleOAuthSuccess,
       }}
     >
       {children}

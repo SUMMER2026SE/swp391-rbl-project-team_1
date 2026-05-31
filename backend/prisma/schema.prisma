@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   USER
   DOCTOR
+  CLINIC_MANAGER
   ADMIN
 }
 
@@ -31,23 +32,39 @@ enum ComplaintStatus {
   RESOLVED
 }
 
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  SYSTEM
+}
+
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  password     String?
-  fullName     String?
-  avatar       String?
-  gender       String?
-  address      String?
-  dateOfBirth  DateTime?
-  role         Role          @default(USER)
-  doctorId     String?       @unique  // Link to Doctor record when role = DOCTOR
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  appointments Appointment[]
-  doctor       Doctor?       @relation(fields: [doctorId], references: [id])
-  complaints   Complaint[]
+  id             String          @id @default(uuid())
+  email          String          @unique
+  password       String?
+  fullName       String?
+  avatar         String?
+  gender         String?
+  address        String?
+  dateOfBirth    DateTime?
+  role           Role            @default(USER)
+  doctorId       String?         @unique
+  clinicId       String?
+  clinic         Clinic?         @relation(fields: [clinicId], references: [id])
+  parentId       String?
+  parent         User?           @relation("FamilyMembers", fields: [parentId], references: [id])
+  familyMembers  User[]          @relation("FamilyMembers")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  appointments   Appointment[]
+  doctor         Doctor?         @relation(fields: [doctorId], references: [id])
+  complaints     Complaint[]
   medicalRecords MedicalRecord[]
+  reviews        Review[]
+  healthProfile  HealthProfile?
+  notifications  Notification[]
+  consentTokens  MedicalConsentToken[]
 }
 
 model OTP {
@@ -60,14 +77,15 @@ model OTP {
 }
 
 model Specialty {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
   description String?
   icon        String?
   doctors     Doctor[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  articles    Article[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Doctor {
@@ -79,43 +97,44 @@ model Doctor {
   createdAt       DateTime         @default(now())
   appointments    Appointment[]
   doctorSchedules DoctorSchedule[]
-  userAccount     User?            // Reverse relation: the User account linked to this Doctor
+  userAccount     User?
   specialtyId     String
   specialty       Specialty        @relation(fields: [specialtyId], references: [id])
-  
-  // Moderation & Control
   status          DoctorStatus     @default(PENDING)
   isLocked        Boolean          @default(false)
   rejectedReason  String?
-  
-  // Clinic Relation
   clinicId        String?
   clinic          Clinic?          @relation(fields: [clinicId], references: [id])
-  // Extra info
   price           Int?
   phone           String?
   description     String?
   medicalRecords  MedicalRecord[]
+  reviews         Review[]
 }
 
 model Clinic {
-  id          String   @id @default(cuid())
-  name        String
-  address     String
-  image       String?
-  doctors     Doctor[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  image     String?
+  latitude  Float?
+  longitude Float?
+  doctors   Doctor[]
+  managers  User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Article {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String
   content     String
   thumbnail   String?
-  published   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  published   Boolean    @default(false)
+  specialtyId String?
+  specialty   Specialty? @relation(fields: [specialtyId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Complaint {
@@ -131,9 +150,9 @@ model DoctorSchedule {
   id          String   @id @default(uuid())
   doctor      Doctor   @relation(fields: [doctorId], references: [id])
   doctorId    String
-  dayOfWeek   Int      // 0 = Sunday, 1 = Monday, ... 6 = Saturday
-  startTime   String   // format HH:MM (24h)
-  endTime     String   // format HH:MM (24h)
+  dayOfWeek   Int
+  startTime   String
+  endTime     String
   isAvailable Boolean  @default(true)
   createdAt   DateTime @default(now())
 }
@@ -147,8 +166,16 @@ model Appointment {
   appointmentDate DateTime
   status          AppointmentStatus @default(PENDING)
   notes           String?
+  queueNumber     Int?
+  actualStartTime DateTime?
   createdAt       DateTime          @default(now())
   medicalRecord   MedicalRecord?
+  review          Review?
+  notifications   Notification[]
+
+  // Video Call fields
+  videoCallStatus  String            @default("IDLE")
+  videoCallRoomId  String?
 }
 
 model MedicalRecord {
@@ -169,10 +196,62 @@ model MedicalRecord {
 model Prescription {
   id              String        @id @default(uuid())
   medicalRecordId String
-  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
   medicationName  String
   dosage          String
   frequency       String
   duration        String
   createdAt       DateTime      @default(now())
+}
+
+model Review {
+  id            String      @id @default(uuid())
+  rating        Int
+  comment       String?
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  doctorId      String
+  doctor        Doctor      @relation(fields: [doctorId], references: [id])
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  createdAt     DateTime    @default(now())
+}
+
+model HealthProfile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chronicConditions String?
+  allergies         String?
+  medications       String?
+  familyHistory     String?
+  bloodType         String?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          NotificationType
+  title         String
+  message       String
+  read          Boolean          @default(false)
+  appointmentId String?
+  appointment   Appointment?     @relation(fields: [appointmentId], references: [id])
+  emailSent     Boolean          @default(false)
+  scheduledFor  DateTime?
+  createdAt     DateTime         @default(now())
+}
+
+model MedicalConsentToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorId  String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

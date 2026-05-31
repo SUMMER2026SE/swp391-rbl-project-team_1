@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import { PrismaClient, Role, AppointmentStatus } from "@prisma/client";
+import { PrismaClient, Role, AppointmentStatus, DoctorStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -197,6 +197,12 @@ const DOCTOR_DATA: DoctorData[] = [
     },
 ];
 
+const CLINIC_DATA = [
+    { id: "clinic_cho_ray", name: "Bệnh viện Chợ Rẫy", address: "201B Nguyễn Chí Thanh, Quận 5, TP.HCM" },
+    { id: "clinic_bach_mai", name: "Bệnh viện Bạch Mai", address: "78 Giải Phóng, Phương Mai, Đống Đa, Hà Nội" },
+    { id: "clinic_nha_khoa_kim", name: "Nha khoa Kim", address: "31 Nguyễn Đình Chiểu, Đa Kao, Quận 1, TP.HCM" }
+];
+
 const DEFAULT_PASSWORD = "123456";
 const BCRYPT_ROUNDS = 12;
 
@@ -262,6 +268,14 @@ async function seedDoctors(): Promise<string[]> {
         const email = generateDoctorEmail(doctorData.name);
         const hashedPassword = await hashPassword(SEED_CONFIG.adminPassword);
 
+        // Map hospital to clinic ID if matches
+        let clinicId: string | null = null;
+        if (doctorData.hospital === "Bệnh viện Chợ Rẫy") {
+            clinicId = "clinic_cho_ray";
+        } else if (doctorData.hospital === "Bệnh viện Bạch Mai") {
+            clinicId = "clinic_bach_mai";
+        }
+
         // Upsert Doctor record
         const doctor = await prisma.doctor.upsert({
             where: { id: doctorData.id },
@@ -271,8 +285,16 @@ async function seedDoctors(): Promise<string[]> {
                 hospital: doctorData.hospital,
                 avatar: doctorData.avatar,
                 specialtyId: doctorData.specialtyId,
+                status: DoctorStatus.APPROVED,
+                isLocked: false,
+                clinicId,
             },
-            create: doctorData,
+            create: {
+                ...doctorData,
+                status: DoctorStatus.APPROVED,
+                isLocked: false,
+                clinicId,
+            },
         });
 
         // Create User account for doctor and link it
@@ -392,6 +414,59 @@ async function seedAppointments(
     }
 }
 
+async function seedClinics(): Promise<void> {
+    console.log("🏢 Seeding clinics...");
+    for (const clinic of CLINIC_DATA) {
+        await prisma.clinic.upsert({
+            where: { id: clinic.id },
+            update: {
+                name: clinic.name,
+                address: clinic.address,
+            },
+            create: {
+                id: clinic.id,
+                name: clinic.name,
+                address: clinic.address,
+                image: `/public/clinics/${clinic.id}.jpg`
+            }
+        });
+        console.log(`   ✅ Clinic created: ${clinic.name}`);
+    }
+}
+
+async function seedClinicManagers(): Promise<void> {
+    console.log("💼 Seeding clinic managers...");
+    const hashedPassword = await hashPassword(DEFAULT_PASSWORD);
+
+    // Manager for Chợ Rẫy
+    await prisma.user.upsert({
+        where: { email: "manager.choray@medbooking.com" },
+        update: {},
+        create: {
+            email: "manager.choray@medbooking.com",
+            password: hashedPassword,
+            role: Role.CLINIC_MANAGER,
+            clinicId: "clinic_cho_ray",
+            fullName: "Quản lý Chợ Rẫy"
+        }
+    });
+
+    // Manager for Bạch Mai
+    await prisma.user.upsert({
+        where: { email: "manager.bachmai@medbooking.com" },
+        update: {},
+        create: {
+            email: "manager.bachmai@medbooking.com",
+            password: hashedPassword,
+            role: Role.CLINIC_MANAGER,
+            clinicId: "clinic_bach_mai",
+            fullName: "Quản lý Bạch Mai"
+        }
+    });
+
+    console.log("   ✅ Clinic managers seeded");
+}
+
 async function main(): Promise<void> {
     try {
         console.log("\n🌱 Starting database seed...\n");
@@ -401,11 +476,18 @@ async function main(): Promise<void> {
         await prisma.doctorSchedule.deleteMany({});
         await prisma.doctor.deleteMany({});
         await prisma.specialty.deleteMany({});
+        await prisma.clinic.deleteMany({});
         await prisma.user.deleteMany({});
         await prisma.oTP.deleteMany({});
         console.log("✅ Data cleared\n");
 
         await seedAdminUser();
+        console.log("");
+
+        await seedClinics();
+        console.log("");
+
+        await seedClinicManagers();
         console.log("");
 
         await seedSpecialties();

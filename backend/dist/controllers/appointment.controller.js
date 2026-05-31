@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAppointmentHandler = createAppointmentHandler;
 exports.getMyAppointments = getMyAppointments;
+exports.getAppointmentQueueStatusHandler = getAppointmentQueueStatusHandler;
 const appointment_service_1 = require("../services/appointment.service");
 const apiError_1 = require("../utils/apiError");
 /**
@@ -55,6 +56,26 @@ async function getMyAppointments(req, res, next) {
             message: "Appointments fetched successfully",
             count: appointments.length,
             appointments,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/appointments/:id/queue-status
+ * Trả về thông tin xếp hàng hiện tại của cuộc hẹn.
+ */
+async function getAppointmentQueueStatusHandler(req, res, next) {
+    try {
+        const id = req.params.id;
+        if (!id) {
+            throw new apiError_1.ApiError("Appointment ID is required", 400);
+        }
+        const queueStatus = await (0, appointment_service_1.getAppointmentQueueStatus)(id);
+        res.json({
+            message: "Queue status fetched successfully",
+            data: queueStatus,
         });
     }
     catch (error) {

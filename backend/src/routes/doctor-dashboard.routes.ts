@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { verifyToken } from "../middleware/auth.middleware";
 import { verifyDoctor } from "../middleware/authorization.middleware";
+import { verifyApprovedDoctor } from "../middleware/doctor.middleware";
 import {
     getDashboardStats,
     getDoctorProfile,
@@ -15,13 +16,15 @@ import {
     getPatientMedicalRecords,
     createMedicalRecord,
     createPrescription,
-    getAvailableSpecialtiesAndClinics
+    getAvailableSpecialtiesAndClinics,
+    getEmrTranscribeAssist,
+    getEmrTranscribeAudio
 } from "../controllers/doctor-dashboard.controller";
 
 const router = Router();
 
-// All routes here are protected and require DOCTOR role
-router.use(verifyToken, verifyDoctor);
+// All routes here require DOCTOR role + approved + not locked
+router.use(verifyToken, verifyDoctor, verifyApprovedDoctor);
 
 // Dashboard
 router.get("/dashboard/stats", getDashboardStats);
@@ -46,5 +49,7 @@ router.get("/patients", getDoctorPatients);
 router.get("/patients/:userId/records", getPatientMedicalRecords);
 router.post("/medical-records", createMedicalRecord);
 router.post("/prescriptions", createPrescription);
+router.post("/emr/transcribe-assist", getEmrTranscribeAssist);
+router.post("/emr/transcribe-audio", getEmrTranscribeAudio);
 
 export default router;

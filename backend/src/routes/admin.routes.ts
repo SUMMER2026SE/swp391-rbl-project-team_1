@@ -4,7 +4,7 @@ import { Role } from "@prisma/client";
 import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler } from "../controllers/admin.controller";
 import { getDoctors, moderateDoctorHandler, getPendingDoctorsHandler, approveDoctorHandler, rejectDoctorHandler, lockDoctorHandler } from "../controllers/admin-doctors.controller";
 import { getSpecialties, createSpecialtyHandler, updateSpecialtyHandler, deleteSpecialtyHandler } from "../controllers/admin-specialties.controller";
-import { getClinics, createClinicHandler, updateClinicHandler, deleteClinicHandler } from "../controllers/admin-clinics.controller";
+import { getClinics, createClinicHandler, updateClinicHandler, deleteClinicHandler, getClinicDoctorsHandler, getUnassignedDoctorsHandler, addDoctorToClinicHandler, removeDoctorFromClinicHandler } from "../controllers/admin-clinics.controller";
 import { getArticles, createArticleHandler, updateArticleHandler, deleteArticleHandler } from "../controllers/admin-articles.controller";
 import { getComplaints, resolveComplaintHandler } from "../controllers/admin-complaints.controller";
 import { getStatisticsHandler } from "../controllers/admin-statistics.controller";
@@ -254,6 +254,50 @@ router.delete(
     verifyToken,
     verifyAdmin,
     deleteClinicHandler
+);
+
+/**
+ * GET /api/admin/clinics/:id/doctors
+ * Returns all doctors belonging to a specific clinic.
+ */
+router.get(
+    "/admin/clinics/:id/doctors",
+    verifyToken,
+    verifyAdmin,
+    getClinicDoctorsHandler
+);
+
+/**
+ * GET /api/admin/clinics/unassigned-doctors
+ * Returns all approved doctors who are currently not assigned to any clinic.
+ */
+router.get(
+    "/admin/clinics/unassigned-doctors",
+    verifyToken,
+    verifyAdmin,
+    getUnassignedDoctorsHandler
+);
+
+/**
+ * POST /api/admin/clinics/:id/doctors/:doctorId
+ * Links a doctor to a clinic.
+ */
+router.post(
+    "/admin/clinics/:id/doctors/:doctorId",
+    verifyToken,
+    verifyAdmin,
+    addDoctorToClinicHandler
+);
+
+/**
+ * DELETE /api/admin/clinics/:id/doctors/:doctorId
+ * Unlinks a doctor from a clinic.
+ */
+router.delete(
+    "/admin/clinics/:id/doctors/:doctorId",
+    verifyToken,
+    verifyAdmin,
+    removeDoctorFromClinicHandler
 );
 
 // ─── Articles CRUD ───────────────────────────────────────────────────────────

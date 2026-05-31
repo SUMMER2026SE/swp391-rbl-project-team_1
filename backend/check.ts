@@ -1,16 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
+
 async function main() {
-  const doctor = await prisma.doctor.findFirst({ where: { userAccount: { email: 'phamvinhhuy@gmail.com' } } });
-  if (!doctor) return;
-  const pendingAppointments = await prisma.appointment.count({
-      where: { doctorId: doctor.id, status: 'PENDING' }
-  });
-  const totalPatients = await prisma.appointment.groupBy({
-      by: ['userId'],
-      where: { doctorId: doctor.id }
-  });
-  console.log("Pending:", pendingAppointments);
-  console.log("Patients length:", totalPatients.length);
+  const clinicCount = await prisma.clinic.count();
+  console.log("=== CLINIC COUNT ===", clinicCount);
+
+  if (clinicCount > 0) {
+    const clinics = await prisma.clinic.findMany({
+      take: 5,
+      select: {
+        id: true,
+        name: true,
+        latitude: true,
+        longitude: true,
+        _count: {
+          select: { doctors: true }
+        }
+      }
+    });
+    console.log("Sample clinics:", JSON.stringify(clinics, null, 2));
+  }
 }
-main();
+
+main()
+  .catch(err => console.error(err))
+  .finally(() => prisma.$disconnect());

@@ -10,13 +10,14 @@ import {
     resetPasswordController,
     googleLoginController,
 } from "../controllers/auth.controller";
+import { sendOtpLimiter, loginLimiter } from "../middleware/rateLimit.middleware";
 
 const router = Router();
 
-router.post("/send-otp", sendOtp);
+router.post("/send-otp", sendOtpLimiter, sendOtp);
 router.post("/verify-otp", verifyOtpCode);
 router.post("/register", register);
-router.post("/login", login);
+router.post("/login", loginLimiter, login);
 
 router.post("/forgot-password", forgotPassword);
 router.post("/verify-reset-otp", verifyResetOtpCode);

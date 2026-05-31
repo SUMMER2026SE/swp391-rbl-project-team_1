@@ -3,7 +3,7 @@ import { Role } from "@prisma/client";
 
 import { verifyToken } from "../middleware/auth.middleware";
 import { authorizeRoles } from "../middleware/authorization.middleware";
-import { getUserById, updateUserProfile, changeUserPassword, updateUserAvatar } from "../services/user.service";
+import { getUserById, updateUserProfile, changeUserPassword, updateUserAvatar, addFamilyMember, getFamilyMembers } from "../services/user.service";
 import { uploadAvatar } from "../middleware/upload.middleware";
 import { ApiError } from "../utils/apiError";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
@@ -149,7 +149,77 @@ router.post(
     }
 );
 
+/**
+ * POST /api/users/family
+ * Creates a new family member sub-profile.
+ */
+router.post(
+    "/family",
+    verifyToken,
+    async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+        try {
+            const parentId = req.user?.userId;
+            if (!parentId) {
+                throw new ApiError("Authentication required", 401);
+            }
 
+            const { fullName, email, gender, address, dateOfBirth } = req.body as {
+                fullName: string;
+                email?: string;
+                gender?: string;
+                address?: string;
+                dateOfBirth?: string;
+            };
+
+            if (!fullName) {
+                throw new ApiError("Full name is required for family profile", 400);
+            }
+
+            const parsedDob = dateOfBirth ? new Date(dateOfBirth) : null;
+
+            const newMember = await addFamilyMember(parentId, {
+                fullName,
+                email,
+                gender,
+                address,
+                dateOfBirth: parsedDob,
+            });
+
+            res.status(201).json({
+                message: "Family member added successfully",
+                data: newMember,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
+
+/**
+ * GET /api/users/family
+ * Lists all family sub-profiles.
+ */
+router.get(
+    "/family",
+    verifyToken,
+    async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+        try {
+            const parentId = req.user?.userId;
+            if (!parentId) {
+                throw new ApiError("Authentication required", 401);
+            }
+
+            const members = await getFamilyMembers(parentId);
+            res.json({
+                message: "Family members fetched successfully",
+                count: members.length,
+                data: members,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
 
 /**
  * GET /api/users/:id

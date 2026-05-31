@@ -1,8 +1,13 @@
-import { Response } from "express";
+import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
-import { PrismaClient, AppointmentStatus } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { AppointmentStatus } from "@prisma/client";
+import prisma from "../prisma/client";
+import {
+    createMedicalRecordForDoctor,
+    addPrescriptionToRecord,
+    getDoctorMedicalRecords,
+} from "../services/medical-record.service";
+import { getStructuredEmrFromTranscript, getStructuredEmrFromAudio } from "../services/gemini.service";
 
 // Utility to get the logged-in doctor
 const getDoctor = async (userId: string) => {
@@ -85,6 +90,15 @@ export const updateDoctorProfile = async (req: AuthenticatedRequest, res: Respon
 
         const { name, experience, avatar, specialtyId, clinicId, price, phone, description } = req.body;
 
+        // Fetch clinic name to keep the legacy `hospital` text field in sync
+        let hospitalName = undefined;
+        if (clinicId) {
+            const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } });
+            if (clinic) {
+                hospitalName = clinic.name;
+            }
+        }
+
         const updatedDoctor = await prisma.doctor.update({
             where: { id: doctor.id },
             data: {
@@ -93,6 +107,7 @@ export const updateDoctorProfile = async (req: AuthenticatedRequest, res: Respon
                 avatar,
                 specialtyId,
                 clinicId,
+                ...(hospitalName && { hospital: hospitalName }),
                 price: price ? parseInt(price) : undefined,
                 phone,
                 description
@@ -149,7 +164,7 @@ export const updateDoctorSchedule = async (req: AuthenticatedRequest, res: Respo
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const { dayOfWeek, startTime, endTime, isAvailable } = req.body;
 
         const schedule = await prisma.doctorSchedule.update({
@@ -172,7 +187,7 @@ export const deleteDoctorSchedule = async (req: AuthenticatedRequest, res: Respo
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         await prisma.doctorSchedule.delete({
             where: { id, doctorId: doctor.id }
         });
@@ -204,7 +219,7 @@ export const updateAppointmentStatus = async (req: AuthenticatedRequest, res: Re
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const { status, notes } = req.body;
 
         const appointment = await prisma.appointment.update({
@@ -242,60 +257,98 @@ export const getDoctorPatients = async (req: AuthenticatedRequest, res: Response
     }
 };
 
-export const getPatientMedicalRecords = async (req: AuthenticatedRequest, res: Response) => {
+export const getPatientMedicalRecords = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { userId } = req.params;
-        const records = await prisma.medicalRecord.findMany({
-            where: { doctorId: doctor.id, userId },
-            include: { appointment: true, prescriptions: true },
-            orderBy: { createdAt: 'desc' }
-        });
+        const { userId } = req.params as { userId: string };
+        const records = await getDoctorMedicalRecords(doctor.id, userId);
         res.json(records);
     } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+        next(error);
     }
 };
 
-export const createMedicalRecord = async (req: AuthenticatedRequest, res: Response) => {
+export const createMedicalRecord = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
         const { appointmentId, userId, diagnosis, notes } = req.body;
 
-        const record = await prisma.medicalRecord.create({
-            data: {
-                appointmentId,
-                doctorId: doctor.id,
-                userId,
-                diagnosis,
-                notes
-            }
+        const record = await createMedicalRecordForDoctor(doctor.id, {
+            appointmentId,
+            userId,
+            diagnosis,
+            notes,
         });
-        res.json({ message: "Medical record created", record });
+        res.status(201).json({ message: "Medical record created", record });
     } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+        next(error);
     }
 };
 
-export const createPrescription = async (req: AuthenticatedRequest, res: Response) => {
+export const createPrescription = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
+        const doctor = await getDoctor(req.user!.userId);
+        if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
+
         const { medicalRecordId, medicationName, dosage, frequency, duration } = req.body;
 
-        const prescription = await prisma.prescription.create({
-            data: {
-                medicalRecordId,
-                medicationName,
-                dosage,
-                frequency,
-                duration
-            }
+        const prescription = await addPrescriptionToRecord(doctor.id, {
+            medicalRecordId,
+            medicationName,
+            dosage,
+            frequency,
+            duration,
         });
-        res.json({ message: "Prescription added", prescription });
+        res.status(201).json({ message: "Prescription added", prescription });
     } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+        next(error);
     }
 };
+
+export const getEmrTranscribeAssist = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { transcript } = req.body;
+        if (!transcript) {
+            return res.status(400).json({ message: "Transcript text is required" });
+        }
+
+        const structuredEmr = await getStructuredEmrFromTranscript(transcript);
+        res.json({
+            message: "EMR structured successfully by AI",
+            data: structuredEmr,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getEmrTranscribeAudio = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { audioData, mimeType } = req.body;
+        if (!audioData) {
+            return res.status(400).json({ message: "Audio data is required" });
+        }
+
+        const result = await getStructuredEmrFromAudio(audioData, mimeType || "audio/webm");
+        res.json({
+            message: "Audio transcribed and structured successfully by AI",
+            transcript: result.transcript,
+            structuredData: result.structuredData,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+

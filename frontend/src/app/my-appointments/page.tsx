@@ -6,10 +6,64 @@ import { appointmentService } from "@/services/appointment.service";
 import { Appointment, AppointmentStatus } from "@/types/appointment";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2 } from "lucide-react";
+import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2, UserCheck } from "lucide-react";
 import Link from "next/link";
 import Button from "@/components/common/Button";
 import BookingProgress from "@/components/ui/BookingProgress";
+import api from "@/services/api";
+
+function QueueTracker({ appointmentId, status }: { appointmentId: string; status: string }) {
+  const [queueInfo, setQueueInfo] = useState<{
+    queueNumber: number | null;
+    currentlyCalling: number | null;
+    patientsAhead: number;
+    estimatedWaitMinutes: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (status !== "PENDING" && status !== "CONFIRMED") return;
+    
+    async function fetchQueue() {
+      setLoading(true);
+      try {
+        const response = await api.get(`/appointments/${appointmentId}/queue-status`);
+        setQueueInfo(response.data.queueStatus);
+      } catch (err) {
+        console.error("Queue status load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchQueue();
+    const interval = setInterval(fetchQueue, 30000);
+    return () => clearInterval(interval);
+  }, [appointmentId, status]);
+
+  if (status !== "PENDING" && status !== "CONFIRMED") return null;
+  if (loading && !queueInfo) return <div className="text-[10px] text-slate-400 mt-2">Đang đồng bộ hàng đợi...</div>;
+  if (!queueInfo || !queueInfo.queueNumber) return null;
+
+  return (
+    <div className="mt-3 p-3 bg-teal-50/50 border border-teal-100/50 rounded-xl flex items-center justify-between text-xs w-full animate-fade-in">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+          #{queueInfo.queueNumber}
+        </div>
+        <div>
+          <div className="font-bold text-slate-700">Số thứ tự khám</div>
+          <div className="text-[10px] text-teal-700 font-semibold">Hiện tại đang khám số: #{queueInfo.currentlyCalling}</div>
+        </div>
+      </div>
+
+      <div className="text-right">
+        <div className="font-bold text-slate-800">Còn lại: {queueInfo.patientsAhead} người</div>
+        <div className="text-[10px] text-slate-500 font-medium">~{queueInfo.estimatedWaitMinutes} phút chờ dự kiến</div>
+      </div>
+    </div>
+  );
+}
 
 function MyAppointmentsContent() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -194,6 +248,8 @@ function MyAppointmentsContent() {
                       </div>
                     </div>
                   )}
+                  
+                  <QueueTracker appointmentId={app.id} status={app.status} />
                 </div>
 
                 {/* Right col: status badge & actions */}

@@ -697,6 +697,7 @@ async function seedDaNangDoctors() {
                     hospital: doctor.hospital,
                     avatar: `/DoctorAvatar/${doctor.avatar}`,
                     specialtyId: specialtyId,
+                    status: "APPROVED",
                 },
             });
             doctorIndex++;

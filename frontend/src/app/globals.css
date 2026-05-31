@@ -13,5 +13,85 @@
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Glassmorphism utility classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.glass-navbar {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+}
+
+/* Glowing shadows */
+.glow-teal {
+  box-shadow: 0 0 25px -5px rgba(20, 184, 166, 0.25), 0 0 15px -5px rgba(20, 184, 166, 0.15);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25), 0 0 15px -5px rgba(16, 185, 129, 0.15);
+}
+
+/* Luxury card hover effects */
+.hover-up {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-up:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Soft transition properties */
+.transition-luxury {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium Text Gradient */
+.text-gradient-teal-emerald {
+  background: linear-gradient(135deg, #0d9488 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Glassmorphism card dark */
+.glass-card-dark {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Smooth rotating tilt anim */
+@keyframes mesh-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(1.5deg);
+  }
+}
+
+.mesh-float-slow {
+  animation: mesh-float 8s ease-in-out infinite;
+}
+
+.mesh-float-medium {
+  animation: mesh-float 5s ease-in-out infinite;
+}
+
+

@@ -34,7 +34,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+    <nav className="sticky top-0 z-50 glass-navbar shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo */}
@@ -53,13 +53,16 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`text-sm font-medium transition-colors ${
+                className={`text-sm font-medium transition-luxury relative py-2 ${
                   isActive(link.href)
-                    ? "text-teal-600 font-semibold"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "text-teal-600 font-bold"
+                    : "text-slate-600 hover:text-teal-600"
                 }`}
               >
                 {link.name}
+                {isActive(link.href) && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-500 rounded-full animate-fade-in" />
+                )}
               </Link>
             ))}
           </div>
@@ -96,7 +99,7 @@ export default function Navbar() {
                   <>
                     {/* Backdrop to close dropdown on click outside */}
                     <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-                    <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl z-20 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="absolute right-0 mt-3 w-56 rounded-3xl border border-slate-200/50 bg-white/95 backdrop-blur-md p-2 shadow-2xl z-20 animate-in fade-in slide-in-from-top-2 duration-200">
                       <Link
                         href="/profile"
                         onClick={() => setShowDropdown(false)}

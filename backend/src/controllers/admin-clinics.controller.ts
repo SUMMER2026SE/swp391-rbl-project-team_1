@@ -6,6 +6,10 @@ import {
     createClinic,
     updateClinic,
     deleteClinic,
+    getClinicDoctors,
+    getUnassignedDoctors,
+    addDoctorToClinic,
+    removeDoctorFromClinic,
 } from "../services/admin-clinics.service";
 import { ApiError } from "../utils/apiError";
 
@@ -111,6 +115,107 @@ export async function deleteClinicHandler(
         await deleteClinic(id);
         res.json({
             message: "Clinic deleted successfully",
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/admin/clinics/:id/doctors
+ * Returns all doctors belonging to a specific clinic.
+ */
+export async function getClinicDoctorsHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const id = req.params.id as string;
+        if (!id) {
+            throw new ApiError("Clinic ID is required", 400);
+        }
+
+        const doctors = await getClinicDoctors(id);
+        res.json({
+            message: "Clinic doctors retrieved successfully",
+            count: doctors.length,
+            data: doctors,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/admin/clinics/unassigned-doctors
+ * Returns all approved doctors who are currently not assigned to any clinic.
+ */
+export async function getUnassignedDoctorsHandler(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const doctors = await getUnassignedDoctors();
+        res.json({
+            message: "Unassigned doctors retrieved successfully",
+            count: doctors.length,
+            data: doctors,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/admin/clinics/:id/doctors/:doctorId
+ * Links a doctor to a clinic.
+ */
+export async function addDoctorToClinicHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const id = req.params.id as string;
+        const doctorId = req.params.doctorId as string;
+
+        if (!id || !doctorId) {
+            throw new ApiError("Clinic ID and Doctor ID are required", 400);
+        }
+
+        const doctor = await addDoctorToClinic(id, doctorId);
+        res.json({
+            message: "Doctor added to clinic successfully",
+            data: doctor,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * DELETE /api/admin/clinics/:id/doctors/:doctorId
+ * Unlinks a doctor from a clinic.
+ */
+export async function removeDoctorFromClinicHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const id = req.params.id as string;
+        const doctorId = req.params.doctorId as string;
+
+        if (!id || !doctorId) {
+            throw new ApiError("Clinic ID and Doctor ID are required", 400);
+        }
+
+        const doctor = await removeDoctorFromClinic(id, doctorId);
+        res.json({
+            message: "Doctor removed from clinic successfully",
+            data: doctor,
         });
     } catch (error) {
         next(error);

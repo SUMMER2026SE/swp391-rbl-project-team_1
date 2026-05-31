@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const client_1 = require("@prisma/client");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const authorization_middleware_1 = require("../middleware/authorization.middleware");
+const medical_record_controller_1 = require("../controllers/medical-record.controller");
+const router = (0, express_1.Router)();
+router.get("/medical-records", auth_middleware_1.verifyToken, (0, authorization_middleware_1.authorizeRoles)(client_1.Role.USER), medical_record_controller_1.listMyMedicalRecords);
+router.get("/medical-records/:id", auth_middleware_1.verifyToken, (0, authorization_middleware_1.authorizeRoles)(client_1.Role.USER), medical_record_controller_1.getMyMedicalRecord);
+router.get("/medical-records/:medicalRecordId/prescriptions", auth_middleware_1.verifyToken, (0, authorization_middleware_1.authorizeRoles)(client_1.Role.USER), medical_record_controller_1.listMyPrescriptions);
+exports.default = router;

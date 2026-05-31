@@ -6,7 +6,8 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
 import toast from "react-hot-toast";
-import { Search, Calendar, User, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { Search, Calendar, User, Clock, CheckCircle2, XCircle, FileText, Video } from "lucide-react";
+import Link from "next/link";
 
 interface UserInfo {
   id: string;
@@ -194,13 +195,21 @@ export default function DoctorAppointmentsPage() {
                           </>
                         )}
                         {app.status === "CONFIRMED" && (
-                          <button
-                            onClick={() => handleUpdateStatus(app.id, "COMPLETED")}
-                            disabled={updatingId === app.id}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-green-200"
-                          >
-                            <CheckCircle2 className="w-4 h-4" /> Hoàn thành
-                          </button>
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/doctor/video-call?appointmentId=${app.id}`}
+                              className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-teal-200"
+                            >
+                              <Video className="w-4 h-4" /> Gọi khám
+                            </Link>
+                            <button
+                              onClick={() => handleUpdateStatus(app.id, "COMPLETED")}
+                              disabled={updatingId === app.id}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-green-200"
+                            >
+                              <CheckCircle2 className="w-4 h-4" /> Hoàn thành
+                            </button>
+                          </div>
                         )}
                       </div>
                     </td>

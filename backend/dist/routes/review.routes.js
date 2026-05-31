@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const client_1 = require("@prisma/client");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const authorization_middleware_1 = require("../middleware/authorization.middleware");
+const review_controller_1 = require("../controllers/review.controller");
+const router = (0, express_1.Router)();
+router.post("/reviews", auth_middleware_1.verifyToken, (0, authorization_middleware_1.authorizeRoles)(client_1.Role.USER), review_controller_1.submitReview);
+router.get("/reviews/me", auth_middleware_1.verifyToken, (0, authorization_middleware_1.authorizeRoles)(client_1.Role.USER), review_controller_1.listMyReviews);
+router.get("/doctors/:doctorId/reviews", review_controller_1.listDoctorReviews);
+exports.default = router;

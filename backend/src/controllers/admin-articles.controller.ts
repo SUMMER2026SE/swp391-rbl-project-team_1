@@ -40,18 +40,19 @@ export async function createArticleHandler(
     next: NextFunction
 ): Promise<void> {
     try {
-        const { title, content, thumbnail, published } = req.body as {
+        const { title, content, thumbnail, published, specialtyId } = req.body as {
             title?: string;
             content?: string;
             thumbnail?: string;
             published?: boolean;
+            specialtyId?: string | null;
         };
 
         if (!title || !content) {
             throw new ApiError("Title and content are required", 400);
         }
 
-        const article = await createArticle({ title, content, thumbnail, published });
+        const article = await createArticle({ title, content, thumbnail, published, specialtyId });
         res.status(201).json({
             message: "Article created successfully",
             data: article,
@@ -77,14 +78,15 @@ export async function updateArticleHandler(
             throw new ApiError("Article ID is required", 400);
         }
 
-        const { title, content, thumbnail, published } = req.body as {
+        const { title, content, thumbnail, published, specialtyId } = req.body as {
             title?: string;
             content?: string;
             thumbnail?: string;
             published?: boolean;
+            specialtyId?: string | null;
         };
 
-        const article = await updateArticle(id, { title, content, thumbnail, published });
+        const article = await updateArticle(id, { title, content, thumbnail, published, specialtyId });
         res.json({
             message: "Article updated successfully",
             data: article,

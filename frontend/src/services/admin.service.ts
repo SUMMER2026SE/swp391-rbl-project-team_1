@@ -179,4 +179,27 @@ export const adminService = {
     const response = await api.get<AdminStatisticsResponse>("/admin/statistics");
     return response.data;
   },
+
+  // ─── Clinic Doctors Management ──────────────────────────────────
+  async getClinicDoctors(clinicId: string): Promise<AdminDoctorsResponse> {
+    const response = await api.get<AdminDoctorsResponse>(`/admin/clinics/${clinicId}/doctors`);
+    return response.data;
+  },
+
+  async getUnassignedDoctors(): Promise<AdminDoctorsResponse> {
+    const response = await api.get<AdminDoctorsResponse>("/admin/clinics/unassigned-doctors");
+    return response.data;
+  },
+
+  async addDoctorToClinic(clinicId: string, doctorId: string): Promise<{ message: string; data: AdminDoctor }> {
+    const response = await api.post<{ message: string; data: AdminDoctor }>(
+      `/admin/clinics/${clinicId}/doctors/${doctorId}`
+    );
+    return response.data;
+  },
+
+  async removeDoctorFromClinic(clinicId: string, doctorId: string): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>(`/admin/clinics/${clinicId}/doctors/${doctorId}`);
+    return response.data;
+  },
 };

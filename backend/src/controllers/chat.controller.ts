@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { getMedicalDiagnosis, ChatMessage } from "../services/gemini.service";
+import { getChatDiagnosis, ChatMessage } from "../services/gemini.service";
 import { ApiError } from "../utils/apiError";
 
 interface ChatRequestBody {
@@ -21,11 +21,11 @@ export async function chat(req: Request, res: Response, next: NextFunction): Pro
 
         const safeHistory: ChatMessage[] = Array.isArray(history) ? history : [];
 
-        // Fetch AI/Fallback diagnosis
-        const reply = await getMedicalDiagnosis(message, safeHistory);
+        const { reply, recommendations } = await getChatDiagnosis(message, safeHistory);
 
         res.json({
             reply,
+            recommendations,
         });
     } catch (error) {
         next(error);

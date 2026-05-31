@@ -1,7 +1,7 @@
 import { NextFunction, Response } from "express";
 
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
-import { createAppointment, getAppointmentsByUser } from "../services/appointment.service";
+import { createAppointment, getAppointmentsByUser, getQueueStatus } from "../services/appointment.service";
 import { ApiError } from "../utils/apiError";
 
 interface CreateAppointmentRequestBody {
@@ -79,6 +79,85 @@ export async function getMyAppointments(
             message: "Appointments fetched successfully",
             count: appointments.length,
             appointments,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/appointments/:id/queue-status
+ * Protected (USER/DOCTOR/ADMIN): Returns the appointment queue details.
+ */
+export async function getQueueStatusHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            throw new ApiError("Appointment ID is required", 400);
+        }
+
+        const queueStatus = await getQueueStatus(id as string);
+        res.json({
+            message: "Queue status fetched successfully",
+            queueStatus,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getAppointmentDetailHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            throw new ApiError("Appointment ID is required", 400);
+        }
+
+        const prisma = (await import("../prisma/client")).default;
+
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: id as string },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        avatar: true,
+                        gender: true,
+                        dateOfBirth: true,
+                    }
+                },
+                doctor: {
+                    include: {
+                        userAccount: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                avatar: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!appointment) {
+            throw new ApiError("Appointment not found", 404);
+        }
+
+        res.json({
+            message: "Appointment details fetched successfully",
+            appointment,
         });
     } catch (error) {
         next(error);

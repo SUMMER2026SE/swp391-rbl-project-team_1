@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authorizeRoles = authorizeRoles;
 exports.verifyAdmin = verifyAdmin;
+exports.verifyDoctor = verifyDoctor;
 const client_1 = require("@prisma/client");
 const apiError_1 = require("../utils/apiError");
 /**
@@ -40,6 +41,21 @@ function verifyAdmin(req, _res, next) {
     }
     if (req.user.role !== client_1.Role.ADMIN) {
         next(new apiError_1.ApiError(`Access denied. Required role: ADMIN. Your role: ${req.user.role}`, 403));
+        return;
+    }
+    next();
+}
+/**
+ * Middleware: Enforces that the authenticated user is a DOCTOR.
+ * Must be used AFTER verifyToken middleware.
+ */
+function verifyDoctor(req, _res, next) {
+    if (!req.user) {
+        next(new apiError_1.ApiError("User not authenticated", 401));
+        return;
+    }
+    if (req.user.role !== client_1.Role.DOCTOR) {
+        next(new apiError_1.ApiError(`Access denied. Required role: DOCTOR. Your role: ${req.user.role}`, 403));
         return;
     }
     next();

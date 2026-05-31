@@ -10,6 +10,8 @@ exports.deleteUser = deleteUser;
 exports.updateUserProfile = updateUserProfile;
 exports.changeUserPassword = changeUserPassword;
 exports.updateUserAvatar = updateUserAvatar;
+exports.createFamilyMember = createFamilyMember;
+exports.getFamilyMembers = getFamilyMembers;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const client_1 = require("@prisma/client");
 const client_2 = __importDefault(require("../prisma/client"));
@@ -176,5 +178,63 @@ async function updateUserAvatar(id, avatarPath) {
             createdAt: true,
             updatedAt: true,
         },
+    });
+}
+/**
+ * Creates a family member sub-profile under a parent User.
+ */
+async function createFamilyMember(parentId, data) {
+    const parent = await client_2.default.user.findUnique({ where: { id: parentId } });
+    if (!parent) {
+        throw new apiError_1.ApiError("Parent user not found", 404);
+    }
+    // Generate a unique placeholder email for the sub-profile
+    const uniqueId = Math.random().toString(36).substring(2, 15);
+    const placeholderEmail = `family_${uniqueId}@family.local`;
+    return client_2.default.user.create({
+        data: {
+            email: placeholderEmail,
+            fullName: data.fullName,
+            gender: data.gender,
+            address: data.address,
+            dateOfBirth: data.dateOfBirth,
+            role: client_1.Role.USER,
+            parentId: parentId,
+        },
+        select: {
+            id: true,
+            email: true,
+            role: true,
+            doctorId: true,
+            fullName: true,
+            avatar: true,
+            gender: true,
+            address: true,
+            dateOfBirth: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+}
+/**
+ * Retrieves all family members of a parent User.
+ */
+async function getFamilyMembers(parentId) {
+    return client_2.default.user.findMany({
+        where: { parentId },
+        select: {
+            id: true,
+            email: true,
+            role: true,
+            doctorId: true,
+            fullName: true,
+            avatar: true,
+            gender: true,
+            address: true,
+            dateOfBirth: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+        orderBy: { createdAt: "asc" },
     });
 }

@@ -126,4 +126,54 @@ router.get("/:id", auth_middleware_1.verifyToken, async (req, res, next) => {
         next(error);
     }
 });
+/**
+ * POST /api/users/family
+ * Creates a new family member sub-profile.
+ */
+router.post("/family", auth_middleware_1.verifyToken, async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            throw new apiError_1.ApiError("Authentication required", 401);
+        }
+        const { fullName, gender, address, dateOfBirth } = req.body;
+        if (!fullName) {
+            throw new apiError_1.ApiError("Full name is required", 400);
+        }
+        const parsedDob = dateOfBirth ? new Date(dateOfBirth) : null;
+        const familyMember = await (0, user_service_1.createFamilyMember)(userId, {
+            fullName,
+            gender,
+            address,
+            dateOfBirth: parsedDob,
+        });
+        res.status(201).json({
+            message: "Family member added successfully",
+            data: familyMember,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+/**
+ * GET /api/users/family
+ * Retrieves all family members of the current logged in user.
+ */
+router.get("/family", auth_middleware_1.verifyToken, async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            throw new apiError_1.ApiError("Authentication required", 401);
+        }
+        const members = await (0, user_service_1.getFamilyMembers)(userId);
+        res.json({
+            message: "Family members retrieved successfully",
+            data: members,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
 exports.default = router;
