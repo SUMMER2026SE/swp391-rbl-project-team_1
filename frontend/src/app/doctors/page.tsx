@@ -19,6 +19,7 @@ function DoctorsListContent() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
   const urlSpecialty = searchParams.get("specialty") || "";
+  const urlClinicId = searchParams.get("clinicId") || "";
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
@@ -46,13 +47,16 @@ function DoctorsListContent() {
     fetchSpecialties();
   }, []);
 
-  // Fetch doctors whenever urlSpecialty changes (relation-based backend filtering)
+  // Fetch doctors whenever urlSpecialty or urlClinicId changes
   useEffect(() => {
     async function fetchDoctors() {
       try {
         setLoading(true);
         setError(null);
-        const data = await doctorService.listDoctors(urlSpecialty || undefined);
+        const data = await doctorService.listDoctors(
+          urlSpecialty || undefined,
+          urlClinicId || undefined
+        );
         setDoctors(data.doctors);
       } catch (err: unknown) {
         const errorMsg =
@@ -66,7 +70,7 @@ function DoctorsListContent() {
     }
 
     fetchDoctors();
-  }, [urlSpecialty]);
+  }, [urlSpecialty, urlClinicId]);
 
   // Sync initialSearch query from URL if it changes
   useEffect(() => {

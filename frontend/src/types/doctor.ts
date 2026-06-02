@@ -26,6 +26,15 @@ export interface Specialty {
   };
 }
 
+export interface Clinic {
+  id: string;
+  name: string;
+  address: string;
+  image?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Doctor {
   id: string;
   name: string;
@@ -34,6 +43,8 @@ export interface Doctor {
   experience: number;
   hospital: string;
   avatar: string;
+  clinicId?: string;
+  clinic?: Clinic;
   createdAt: string;
   doctorSchedules?: DoctorSchedule[];
 }

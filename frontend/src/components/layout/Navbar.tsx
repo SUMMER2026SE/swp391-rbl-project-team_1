@@ -21,6 +21,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Trang Chủ", href: "/" },
+    { name: "Bệnh Viện", href: "/clinics" },
     { name: "Danh Sách Bác Sĩ", href: "/doctors" },
   ];
 
