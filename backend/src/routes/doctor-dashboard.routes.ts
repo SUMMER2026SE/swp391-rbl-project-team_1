@@ -17,7 +17,10 @@ import {
     createPrescription,
     getAvailableSpecialtiesAndClinics
 } from "../controllers/doctor-dashboard.controller";
+import { doctorCertificateController } from "../controllers/doctor-certificate.controller";
+import multer from "multer";
 
+const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
 // All routes here are protected and require DOCTOR role
@@ -46,5 +49,11 @@ router.get("/patients", getDoctorPatients);
 router.get("/patients/:userId/records", getPatientMedicalRecords);
 router.post("/medical-records", createMedicalRecord);
 router.post("/prescriptions", createPrescription);
+
+// Certificates
+router.get("/certificates", doctorCertificateController.getCertificates);
+router.post("/certificates", upload.single("file"), doctorCertificateController.createCertificate);
+router.put("/certificates/:id", upload.single("file"), doctorCertificateController.updateCertificate);
+router.delete("/certificates/:id", doctorCertificateController.deleteCertificate);
 
 export default router;

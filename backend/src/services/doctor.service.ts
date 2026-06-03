@@ -31,6 +31,9 @@ export async function getAllSpecialties() {
 export async function getDoctorById(id: string): Promise<Doctor> {
     const doctor = await prisma.doctor.findUnique({
         where: { id },
+        include: {
+            certificates: true,
+        }
     });
 
     if (!doctor) {
@@ -67,7 +70,7 @@ export async function getDoctorByUserId(userId: string) {
 
     const doctor = await prisma.doctor.findUnique({
         where: { id: user.doctorId },
-        include: { specialty: true },
+        include: { specialty: true, certificates: true },
     });
 
     if (!doctor) {

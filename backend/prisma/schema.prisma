@@ -96,6 +96,7 @@ model Doctor {
   phone           String?
   description     String?
   medicalRecords  MedicalRecord[]
+  certificates    DoctorCertificate[]
 }
 
 model Clinic {
@@ -176,4 +177,23 @@ model Prescription {
   frequency       String
   duration        String
   createdAt       DateTime      @default(now())
+}
+
+model DoctorCertificate {
+  id          String   @id @default(cuid())
+
+  doctorId    String
+
+  title       String
+  issuer      String?
+  issuedYear  Int?
+  description String?
+
+  imageUrl    String?
+  fileUrl     String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 }

@@ -26,6 +26,18 @@ export interface Specialty {
   };
 }
 
+export interface DoctorCertificate {
+  id: string;
+  doctorId: string;
+  title: string;
+  issuer?: string;
+  issuedYear?: number;
+  description?: string;
+  imageUrl?: string;
+  fileUrl?: string;
+  createdAt: string;
+}
+
 export interface Doctor {
   id: string;
   name: string;
@@ -36,6 +48,7 @@ export interface Doctor {
   avatar: string;
   createdAt: string;
   doctorSchedules?: DoctorSchedule[];
+  certificates?: DoctorCertificate[];
 }
 
 export interface ListDoctorsResponse {

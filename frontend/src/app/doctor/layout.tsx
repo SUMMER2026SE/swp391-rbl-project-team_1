@@ -16,7 +16,8 @@ import {
   LogOut,
   Menu,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  Award
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -28,6 +29,7 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
   const menuItems = [
     { name: "Tổng quan", href: "/doctor/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
     { name: "Hồ sơ cá nhân", href: "/doctor/profile", icon: <UserCircle className="h-5 w-5" /> },
+    { name: "Chứng chỉ", href: "/doctor/certificates", icon: <Award className="h-5 w-5" /> },
     { name: "Lịch trực", href: "/doctor/schedules", icon: <Clock className="h-5 w-5" /> },
     { name: "Lịch khám", href: "/doctor/appointments", icon: <CalendarDays className="h-5 w-5" /> },
     { name: "Bệnh nhân", href: "/doctor/patients", icon: <Users className="h-5 w-5" /> },

@@ -10,7 +10,7 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
-import { Award, Building2, Stethoscope, Clock, CalendarDays, ClipboardCheck, ArrowLeft, CalendarRange, User } from "lucide-react";
+import { Award, Building2, Stethoscope, Clock, CalendarDays, ClipboardCheck, ArrowLeft, CalendarRange, User, FileText } from "lucide-react";
 import Link from "next/link";
 import BookingProgress from "@/components/ui/BookingProgress";
 import { useBooking } from "@/hooks/useBooking";
@@ -126,41 +126,6 @@ export default function DoctorDetailPage({ params }: PageProps) {
       }
     });
     return hourlySlots;
-  };
-
-  // Helper to generate dynamic mock achievements based on doctor data
-  const generateDoctorAchievements = (doc: Doctor) => {
-    const achievements = [];
-    achievements.push("Bằng Bác sĩ Đa khoa - Đại học Y Dược TP.HCM");
-    
-    if (doc.specialty) {
-      if (doc.experience >= 15) {
-        achievements.push(`Chứng chỉ Bác sĩ Chuyên khoa II (CKII) - Chuyên khoa ${doc.specialty.name}`);
-      } else {
-        achievements.push(`Chứng chỉ Bác sĩ Chuyên khoa I (CKI) - Chuyên khoa ${doc.specialty.name}`);
-      }
-    }
-
-    if (doc.experience >= 10) {
-      achievements.push(`Nhiều năm kinh nghiệm công tác tại ${doc.hospital}`);
-    }
-
-    // Deterministic random achievements based on ID
-    const hash = doc.id.charCodeAt(0) + doc.id.charCodeAt(doc.id.length - 1);
-    if (hash % 2 === 0) {
-      achievements.push("Chứng nhận tu nghiệp Y khoa tại Pháp (F.F.I)");
-    } else {
-      achievements.push("Chứng nhận đào tạo Y khoa liên tục (CME) Quốc tế");
-    }
-
-    if (hash % 3 === 0) {
-      achievements.push("Thành viên Hội đồng Y khoa Việt Nam");
-    } else if (hash % 3 === 1) {
-      achievements.push("Giấy khen hoàn thành xuất sắc nhiệm vụ Y tế");
-    }
-
-    achievements.push("Chứng chỉ hành nghề khám bệnh, chữa bệnh do Bộ Y tế cấp");
-    return achievements;
   };
 
   // Find available schedules for selected date
@@ -337,14 +302,53 @@ export default function DoctorDetailPage({ params }: PageProps) {
               <Award className="h-4.5 w-4.5" />
               Thành tựu & Chứng chỉ y khoa
             </h3>
-            <ul className="space-y-3 text-sm text-slate-600">
-              {generateDoctorAchievements(doctor).map((achievement, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-teal-500 mt-2 shrink-0"></span>
-                  <span>{achievement}</span>
-                </li>
-              ))}
-            </ul>
+            
+            {!doctor.certificates || doctor.certificates.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">Bác sĩ chưa cập nhật chứng chỉ y khoa.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {doctor.certificates.map((cert) => (
+                  <div key={cert.id} className="border border-slate-100 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
+                    {(cert.imageUrl || cert.fileUrl) && (
+                      <div className="h-32 bg-slate-50 border-b border-slate-100 flex items-center justify-center relative group overflow-hidden">
+                        {cert.imageUrl ? (
+                          <img src={cert.imageUrl} alt={cert.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        ) : (
+                          <div className="text-center text-rose-500 flex flex-col items-center">
+                            <FileText className="h-8 w-8 mb-1" />
+                            <span className="text-xs font-semibold">Tài liệu PDF</span>
+                          </div>
+                        )}
+                        <a 
+                          href={cert.imageUrl || cert.fileUrl} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-semibold"
+                        >
+                          Xem chi tiết
+                        </a>
+                      </div>
+                    )}
+                    <div className="p-4 bg-white">
+                      <div className="flex items-start gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-teal-500 mt-1.5 shrink-0"></span>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{cert.title}</p>
+                          {(cert.issuer || cert.issuedYear) && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              {cert.issuer} {cert.issuedYear ? `- ${cert.issuedYear}` : ''}
+                            </p>
+                          )}
+                          {cert.description && (
+                            <p className="text-xs text-slate-600 mt-2 italic border-l-2 border-slate-200 pl-2">{cert.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
