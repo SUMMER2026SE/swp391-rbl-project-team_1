@@ -178,6 +178,14 @@ export default function DoctorDetailPage({ params }: PageProps) {
       return;
     }
 
+    if (!doctor?.clinicId) {
+      setBookingMessage({
+        type: "error",
+        text: "Không tìm thấy thông tin bệnh viện. Vui lòng quay lại và chọn lại.",
+      });
+      return;
+    }
+
     setBookingLoading(true);
     setBookingMessage(null);
 
@@ -187,6 +195,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
 
       await appointmentService.createAppointment({
         doctorId: id,
+        clinicId: doctor.clinicId,
         appointmentDate: appointmentDateTime.toISOString(),
         notes: notes.trim() || undefined,
       });

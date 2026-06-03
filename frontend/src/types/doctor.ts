@@ -26,6 +26,7 @@ export interface Specialty {
   };
 }
 
+<<<<<<< HEAD
 export interface DoctorCertificate {
   id: string;
   doctorId: string;
@@ -36,6 +37,15 @@ export interface DoctorCertificate {
   imageUrl?: string;
   fileUrl?: string;
   createdAt: string;
+=======
+export interface Clinic {
+  id: string;
+  name: string;
+  address: string;
+  image?: string;
+  createdAt?: string;
+  updatedAt?: string;
+>>>>>>> 4f40f257ee5cead77a09f166f448b5947fe3f649
 }
 
 export interface Doctor {
@@ -46,6 +56,8 @@ export interface Doctor {
   experience: number;
   hospital: string;
   avatar: string;
+  clinicId?: string;
+  clinic?: Clinic;
   createdAt: string;
   doctorSchedules?: DoctorSchedule[];
   certificates?: DoctorCertificate[];
