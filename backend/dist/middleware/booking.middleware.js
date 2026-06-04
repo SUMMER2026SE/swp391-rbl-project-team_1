@@ -62,7 +62,7 @@ async function validateBookingSlot(req, _res, next) {
             where: { doctorId, appointmentDate: date },
         });
         if (conflict) {
-            throw new apiError_1.ApiError("This slot is already booked. Please choose another time.", 409);
+            throw new apiError_1.ApiError("Khoảng thời gian này đã được đặt. Vui lòng chọn thời gian khác.", 409);
         }
         // Attach matched schedule ID for downstream use if needed
         r.matchedScheduleId = matched.id;

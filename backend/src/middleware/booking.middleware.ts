@@ -84,11 +84,15 @@ export async function validateBookingSlot(
 
         // Check for duplicate appointment at same doctor + exact time
         const conflict = await prisma.appointment.findFirst({
-            where: { doctorId, appointmentDate: date },
+            where: {
+                doctorId,
+                appointmentDate: date,
+                status: { not: "CANCELLED" }
+            },
         });
 
         if (conflict) {
-            throw new ApiError("This slot is already booked. Please choose another time.", 409);
+            throw new ApiError("Khoảng thời gian này đã được đặt. Vui lòng chọn thời gian khác.", 409);
         }
 
         // Attach matched schedule ID for downstream use if needed

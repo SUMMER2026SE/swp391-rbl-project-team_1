@@ -123,6 +123,12 @@ function DoctorsListContent() {
     return found ? found.name : "";
   };
 
+  const getActiveClinicName = () => {
+    if (!urlClinicId) return "";
+    const found = doctors.find(d => d.clinicId === urlClinicId);
+    return found?.clinic?.name || found?.hospital || "Bệnh viện đã chọn";
+  };
+
   return (
     <div className="space-y-8">
       {/* Specialty Scrollable Tabs */}
@@ -238,6 +244,7 @@ function DoctorsListContent() {
             <h2 className="text-sm font-semibold text-slate-600">
               Tìm thấy <span className="text-teal-600 font-bold">{filteredDoctors.length}</span> bác sĩ
               {urlSpecialty && <> thuộc chuyên khoa <span className="text-teal-600 font-bold">{getActiveSpecialtyName()}</span></>}
+              {urlClinicId && <> tại <span className="text-teal-600 font-bold">{getActiveClinicName()}</span></>}
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

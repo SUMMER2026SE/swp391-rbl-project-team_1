@@ -54,11 +54,26 @@ router.put(
                 throw new ApiError("Authentication required", 401);
             }
 
-            const { fullName, gender, address, dateOfBirth } = req.body as {
+            const { 
+                fullName, 
+                gender, 
+                address, 
+                dateOfBirth,
+                bloodType,
+                allergies,
+                chronicDiseases,
+                personalHistory,
+                familyHistory
+            } = req.body as {
                 fullName?: string | null;
                 gender?: string | null;
                 address?: string | null;
                 dateOfBirth?: string | null;
+                bloodType?: string | null;
+                allergies?: string | null;
+                chronicDiseases?: string | null;
+                personalHistory?: string | null;
+                familyHistory?: string | null;
             };
 
             const parsedDob = dateOfBirth ? new Date(dateOfBirth) : null;
@@ -68,6 +83,11 @@ router.put(
                 gender,
                 address,
                 dateOfBirth: parsedDob,
+                bloodType,
+                allergies,
+                chronicDiseases,
+                personalHistory,
+                familyHistory,
             });
 
             res.json({ message: "Profile updated successfully", data: updatedUser });

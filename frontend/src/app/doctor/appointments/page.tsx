@@ -6,8 +6,10 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
 import toast from "react-hot-toast";
-import { Search, Calendar, User, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { Search, Calendar, User, Clock, CheckCircle2, XCircle, FileText, Video } from "lucide-react";
 import { removeVietnameseTones } from "@/utils/stringUtils";
+import Link from "next/link";
+import PrescriptionModal from "@/components/ui/PrescriptionModal";
 
 interface UserInfo {
   id: string;
@@ -24,12 +26,14 @@ interface Appointment {
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
   notes: string | null;
   user: UserInfo;
+  medicalRecord?: any;
 }
 
 export default function DoctorAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
@@ -62,8 +66,9 @@ export default function DoctorAppointmentsPage() {
       await api.put(`/doctor/appointments/${id}/status`, { status: newStatus, notes: reason });
       toast.success("Cập nhật trạng thái thành công");
       fetchAppointments();
-    } catch (err) {
-      toast.error("Cập nhật trạng thái thất bại");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Cập nhật trạng thái thất bại";
+      toast.error(errorMsg);
     } finally {
       setUpdatingId(null);
     }
@@ -218,10 +223,18 @@ export default function DoctorAppointmentsPage() {
                         )}
                         {app.status === "CONFIRMED" && (
                           <>
+                            <Link href={`/video-call?appointmentId=${app.id}`}>
+                              <button
+                                className="p-2 text-teal-705 hover:bg-teal-50 rounded-lg transition-colors font-bold text-xs flex items-center gap-1 border border-teal-200 bg-teal-50/20"
+                              >
+                                <Video className="w-4 h-4" /> Vào phòng khám
+                              </button>
+                            </Link>
                             <button
                               onClick={() => handleUpdateStatus(app.id, "COMPLETED")}
-                              disabled={updatingId === app.id}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-green-200"
+                              disabled={updatingId === app.id || new Date() < new Date(app.appointmentDate)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium text-xs flex items-center gap-1 border border-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={new Date() < new Date(app.appointmentDate) ? "Chưa đến giờ khám bệnh, không thể hoàn thành" : "Đánh dấu cuộc khám hoàn thành"}
                             >
                               <CheckCircle2 className="w-4 h-4" /> Hoàn thành
                             </button>
@@ -234,6 +247,14 @@ export default function DoctorAppointmentsPage() {
                             </button>
                           </>
                         )}
+                        {app.status === "COMPLETED" && (
+                          <button
+                            onClick={() => setSelectedPrescriptionId(app.id)}
+                            className="p-2 text-teal-650 hover:bg-teal-50 rounded-lg transition-colors font-bold text-xs flex items-center gap-1 border border-teal-200"
+                          >
+                            <FileText className="w-4 h-4" /> Đơn thuốc
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -243,6 +264,13 @@ export default function DoctorAppointmentsPage() {
           </table>
         </div>
       </div>
+
+      {selectedPrescriptionId && (
+        <PrescriptionModal 
+          appointmentId={selectedPrescriptionId} 
+          onClose={() => setSelectedPrescriptionId(null)} 
+        />
+      )}
 
       {/* Cancel/Reject Modal */}
       {isCancelModalOpen && (

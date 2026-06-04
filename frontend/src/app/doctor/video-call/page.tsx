@@ -1,86 +1,146 @@
 "use client";
 
-import React from "react";
-import { Video, Mic, MicOff, VideoOff, PhoneOff, MonitorUp, Settings, MessageSquare } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import api from "@/services/api";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
+import Link from "next/link";
+import { Video, Calendar, Clock, User, ArrowRight, ShieldAlert } from "lucide-react";
 
-export default function DoctorVideoCallPage() {
-  const [isMuted, setIsMuted] = React.useState(false);
-  const [isVideoOff, setIsVideoOff] = React.useState(false);
+interface UserInfo {
+    id: string;
+    fullName: string;
+    email: string;
+    gender: string;
+    dateOfBirth: string;
+    avatar: string;
+}
 
-  return (
-    <div className="h-[calc(100vh-8rem)] min-h-[600px] flex flex-col bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-slate-800 relative">
-      {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10 bg-gradient-to-b from-slate-950/80 to-transparent">
-        <div className="flex items-center gap-2 text-white">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="font-semibold text-sm">05:24</span>
-          <span className="text-slate-400 text-sm ml-2">| Khám bệnh trực tuyến: Nguyễn Văn A</span>
-        </div>
-        <Button variant="outline" className="text-white border-slate-700 hover:bg-slate-800 border-none bg-slate-900/50 backdrop-blur">
-          <Settings className="w-4 h-4" />
-        </Button>
-      </div>
+interface Appointment {
+    id: string;
+    appointmentDate: string;
+    status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+    notes: string | null;
+    user: UserInfo;
+}
 
-      {/* Main Video Area */}
-      <div className="flex-1 relative flex items-center justify-center bg-slate-900">
-        {/* Patient Video (Mock) */}
-        <div className="absolute inset-0">
-          <img 
-            src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop" 
-            alt="Patient" 
-            className="w-full h-full object-cover opacity-80"
-          />
-        </div>
-        
-        {/* Doctor Video (Self - PIP) */}
-        <div className="absolute bottom-6 right-6 w-48 h-64 bg-slate-800 rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-700 transition-all hover:scale-105 z-20">
-          {!isVideoOff ? (
-            <img 
-              src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop" 
-              alt="Self" 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-800 text-slate-500">
-              <VideoOff className="w-8 h-8 mb-2" />
-              <span className="text-xs font-medium">Camera off</span>
+export default function DoctorVideoCallOverviewPage() {
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchAppointments = async () => {
+            try {
+                const res = await api.get("/doctor/appointments");
+                // Filter only confirmed appointments
+                const confirmed = res.data.filter((app: Appointment) => app.status === "CONFIRMED");
+                // Sort by date (closest first)
+                confirmed.sort((a: Appointment, b: Appointment) => 
+                    new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime()
+                );
+                setAppointments(confirmed);
+            } catch (err) {
+                setError("Không thể tải danh sách ca khám trực tuyến.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAppointments();
+    }, []);
+
+    if (loading) return <div className="flex justify-center p-12"><LoadingSpinner className="w-8 h-8 text-teal-600" /></div>;
+    if (error) return <Alert type="error" message={error} />;
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-2xl font-bold text-slate-800">Khám bệnh trực tuyến</h2>
+                <p className="text-slate-500">Xem và tham gia các phòng khám trực tuyến đang diễn ra hôm nay.</p>
             </div>
-          )}
+
+            {appointments.length === 0 ? (
+                <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm max-w-2xl mx-auto">
+                    <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto mb-4">
+                        <Video className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">Không có ca khám nào sắp diễn ra</h3>
+                    <p className="text-sm text-slate-500 mb-6">Bạn chưa có lịch hẹn khám trực tuyến nào ở trạng thái &quot;Đã xác nhận&quot;.</p>
+                    <Link href="/doctor/appointments">
+                        <Button variant="teal" className="rounded-xl text-xs font-semibold">
+                            Xem quản lý lịch hẹn
+                        </Button>
+                    </Link>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {appointments.map((app) => {
+                        const appDate = new Date(app.appointmentDate);
+                        const dateStr = appDate.toLocaleDateString("vi-VN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric"
+                        });
+                        const timeStr = appDate.toLocaleTimeString("vi-VN", {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                        });
+
+                        return (
+                            <div 
+                                key={app.id} 
+                                className="bg-white rounded-3xl p-6 border border-slate-105 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between gap-6"
+                            >
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                                            {app.user.avatar ? (
+                                                <img src={app.user.avatar} alt={app.user.fullName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">
+                                                    {app.user.fullName?.charAt(0) || "U"}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-base">{app.user.fullName}</h4>
+                                            <p className="text-xs text-slate-500">{app.user.gender} • Sinh năm {new Date(app.user.dateOfBirth).getFullYear() || "N/A"}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-2xl text-xs text-slate-650">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="w-4 h-4 text-teal-600" />
+                                            <span>Ngày: <strong>{dateStr}</strong></span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Clock className="w-4 h-4 text-teal-600" />
+                                            <span>Giờ hẹn: <strong>{timeStr}</strong></span>
+                                        </div>
+                                    </div>
+
+                                    {app.notes && (
+                                        <div className="text-xs text-slate-600 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                                            <span className="font-semibold block text-slate-700 mb-0.5">Triệu chứng/Ghi chú đặt khám:</span>
+                                            <p className="italic line-clamp-2">{app.notes}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
+                                    <Link href={`/video-call?appointmentId=${app.id}`} className="flex-grow">
+                                        <Button variant="teal" className="w-full rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/10 py-2.5">
+                                            <Video className="w-4 h-4" /> Vào phòng khám
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
-      </div>
-
-      {/* Control Bar */}
-      <div className="h-24 bg-slate-950 flex items-center justify-center gap-4 px-6 z-10">
-        <button 
-          onClick={() => setIsMuted(!isMuted)}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMuted ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-        >
-          {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-        </button>
-        
-        <button 
-          onClick={() => setIsVideoOff(!isVideoOff)}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isVideoOff ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-        >
-          {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-        </button>
-
-        <button className="w-12 h-12 rounded-full flex items-center justify-center bg-slate-800 text-white hover:bg-slate-700 transition-all">
-          <MonitorUp className="w-5 h-5" />
-        </button>
-
-        <button className="w-12 h-12 rounded-full flex items-center justify-center bg-slate-800 text-white hover:bg-slate-700 transition-all">
-          <MessageSquare className="w-5 h-5" />
-        </button>
-
-        <button 
-          className="w-16 h-12 rounded-2xl flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-all ml-4 shadow-lg shadow-red-500/20"
-          onClick={() => alert("Chức năng gọi video hiện đang là bản demo UI.")}
-        >
-          <PhoneOff className="w-5 h-5" />
-        </button>
-      </div>
-    </div>
-  );
+    );
 }

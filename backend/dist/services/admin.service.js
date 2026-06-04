@@ -102,7 +102,7 @@ async function linkDoctorToUser(userId, doctorId) {
 /**
  * Updates an appointment's status.
  */
-async function updateAppointmentStatus(appointmentId, status) {
+async function updateAppointmentStatus(appointmentId, status, cancellationReason) {
     const appointment = await client_1.default.appointment.findUnique({
         where: { id: appointmentId },
     });
@@ -111,7 +111,7 @@ async function updateAppointmentStatus(appointmentId, status) {
     }
     return client_1.default.appointment.update({
         where: { id: appointmentId },
-        data: { status },
+        data: { status, cancellationReason },
         include: {
             user: {
                 select: {

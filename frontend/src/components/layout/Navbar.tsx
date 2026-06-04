@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Menu, X, Calendar, LogOut, User as UserIcon, ShieldAlert, LayoutDashboard } from "lucide-react";
 import Button from "../common/Button";
+import OnboardingSurveyModal from "../ui/OnboardingSurveyModal";
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -13,6 +14,23 @@ export default function Navbar() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
+
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      user &&
+      user.role === "USER" &&
+      !user.bloodType &&
+      pathname !== "/video-call" &&
+      sessionStorage.getItem("skipped_health_survey") !== "true"
+    ) {
+      const timer = setTimeout(() => {
+        setShowSurveyModal(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, user, pathname]);
 
   const handleLogout = () => {
     logout();
@@ -23,9 +41,11 @@ export default function Navbar() {
     { name: "Trang Chủ", href: "/" },
     { name: "Bệnh Viện", href: "/clinics" },
     { name: "Danh Sách Bác Sĩ", href: "/doctors" },
+    { name: "Kiểm Tra Sức Khỏe", href: "/health-tests" },
+    { name: "Tin Tức", href: "/news" },
   ];
 
-  if (isAuthenticated && user?.role === "USER") {
+  if (isAuthenticated && (user?.role === "USER" || user?.role === "DOCTOR")) {
     navLinks.push({ name: "Lịch Hẹn Của Tôi", href: "/my-appointments" });
   }
 
@@ -75,7 +95,7 @@ export default function Navbar() {
                 >
                   {user.avatar ? (
                     <img
-                      src={user.avatar.startsWith("http") ? user.avatar : `http://localhost:5000${user.avatar}`}
+                      src={user.avatar.startsWith("http") ? user.avatar : (user.avatar.startsWith("/public/") ? `http://localhost:5000${user.avatar}` : user.avatar)}
                       alt={user.fullName || user.email}
                       className="h-6 w-6 rounded-full object-cover border border-slate-200"
                     />
@@ -106,7 +126,7 @@ export default function Navbar() {
                         <UserIcon className="h-4 w-4 text-teal-600" />
                         <span>Trang cá nhân</span>
                       </Link>
-                      {user.role === "USER" && (
+                      {(user.role === "USER" || user.role === "DOCTOR") && (
                         <Link
                           href="/my-appointments"
                           onClick={() => setShowDropdown(false)}
@@ -207,7 +227,7 @@ export default function Navbar() {
                 >
                   {user.avatar ? (
                     <img
-                      src={user.avatar.startsWith("http") ? user.avatar : `http://localhost:5000${user.avatar}`}
+                      src={user.avatar.startsWith("http") ? user.avatar : (user.avatar.startsWith("/public/") ? `http://localhost:5000${user.avatar}` : user.avatar)}
                       alt={user.fullName || user.email}
                       className="h-6 w-6 rounded-full object-cover"
                     />
@@ -266,6 +286,9 @@ export default function Navbar() {
             )}
           </div>
         </div>
+      )}
+      {showSurveyModal && (
+        <OnboardingSurveyModal onClose={() => setShowSurveyModal(false)} />
       )}
     </nav>
   );

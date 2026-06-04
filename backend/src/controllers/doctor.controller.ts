@@ -21,8 +21,8 @@ export async function listDoctors(
     next: NextFunction
 ): Promise<void> {
     try {
-        const { specialty } = req.query as { specialty?: string };
-        const doctors = await getAllDoctors(specialty);
+        const { specialty, clinicId } = req.query as { specialty?: string; clinicId?: string };
+        const doctors = await getAllDoctors(specialty, clinicId);
         res.json({
             message: "Doctors fetched successfully",
             count: doctors.length,

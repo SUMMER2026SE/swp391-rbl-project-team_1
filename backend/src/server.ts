@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import { createServer } from "http";
+import { initSocket } from "./utils/socket";
 
 import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
@@ -10,6 +12,9 @@ import appointmentRoutes from "./routes/appointment.routes";
 import adminRoutes from "./routes/admin.routes";
 import chatRoutes from "./routes/chat.routes";
 import doctorDashboardRoutes from "./routes/doctor-dashboard.routes";
+import articleRoutes from "./routes/article.routes";
+import reviewRoutes from "./routes/review.routes";
+import { initReminderScheduler } from "./utils/emailService";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { getProfile } from "./controllers/auth.controller";
@@ -39,6 +44,8 @@ app.use("/api", doctorRoutes);
 app.use("/api", appointmentRoutes);
 app.use("/api", adminRoutes);
 app.use("/api", chatRoutes);
+app.use("/api", articleRoutes);
+app.use("/api", reviewRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
 app.get("/api/profile", verifyToken, getProfile);
 
@@ -50,6 +57,10 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const httpServer = createServer(app);
+initSocket(httpServer, allowedOrigins);
+
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  initReminderScheduler();
 });

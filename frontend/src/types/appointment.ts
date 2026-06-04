@@ -10,6 +10,43 @@ export interface Clinic {
   image?: string;
 }
 
+export interface Prescription {
+  id: string;
+  medicalRecordId: string;
+  medicationName: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  createdAt: string;
+}
+
+export interface MedicalRecord {
+  id: string;
+  appointmentId: string;
+  doctorId: string;
+  userId: string;
+  diagnosis: string;
+  notes: string | null;
+  prescriptions?: Prescription[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Review {
+  id: string;
+  appointmentId: string;
+  doctorId: string;
+  userId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    fullName: string | null;
+    avatar: string | null;
+  };
+}
+
 export interface Appointment {
   id: string;
   userId: string;
@@ -23,6 +60,8 @@ export interface Appointment {
   doctor?: Doctor;
   clinic?: Clinic;
   user?: User;
+  medicalRecord?: MedicalRecord | null;
+  review?: Review | null;
 }
 
 export interface CreateAppointmentRequest {

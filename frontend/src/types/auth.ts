@@ -10,6 +10,14 @@ export interface User {
   gender: string | null;
   address: string | null;
   dateOfBirth: string | null;
+  
+  // Medical Background
+  bloodType: string | null;
+  allergies: string | null;
+  chronicDiseases: string | null;
+  personalHistory: string | null;
+  familyHistory: string | null;
+
   createdAt: string;
   updatedAt: string;
 }

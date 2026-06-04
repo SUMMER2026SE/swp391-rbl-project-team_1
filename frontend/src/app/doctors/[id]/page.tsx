@@ -10,7 +10,7 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
-import { Award, Building2, Stethoscope, Clock, CalendarDays, ClipboardCheck, ArrowLeft, CalendarRange, User, FileText } from "lucide-react";
+import { Award, Building2, Stethoscope, Clock, CalendarDays, ClipboardCheck, ArrowLeft, CalendarRange, User, FileText, Star } from "lucide-react";
 import Link from "next/link";
 import BookingProgress from "@/components/ui/BookingProgress";
 import { useBooking } from "@/hooks/useBooking";
@@ -32,6 +32,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
 
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +43,19 @@ export default function DoctorDetailPage({ params }: PageProps) {
   const [notes, setNotes] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingMessage, setBookingMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Reviews States
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [stats, setStats] = useState<{
+    averageRating: number;
+    totalReviews: number;
+    distribution: Record<number, number>;
+  }>({
+    averageRating: 0,
+    totalReviews: 0,
+    distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  });
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   // Fetch doctor data on mount
   useEffect(() => {
@@ -58,6 +72,9 @@ export default function DoctorDetailPage({ params }: PageProps) {
         // Fetch schedules
         const scheduleRes = await doctorService.listSchedules(id);
         setSchedules(scheduleRes.schedules);
+        if (scheduleRes.bookedSlots) {
+          setBookedSlots(scheduleRes.bookedSlots);
+        }
       } catch (err: unknown) {
         const errorMsg =
           err && typeof err === "object" && "message" in err
@@ -70,6 +87,24 @@ export default function DoctorDetailPage({ params }: PageProps) {
     }
 
     fetchDoctorDetail();
+  }, [id]);
+
+  useEffect(() => {
+    async function fetchReviews() {
+      try {
+        setReviewsLoading(true);
+        const res = await doctorService.getReviews(id);
+        if (res && res.data) {
+          setReviews(res.data.reviews);
+          setStats(res.data.stats);
+        }
+      } catch (err) {
+        console.error("Failed to load doctor reviews:", err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    }
+    fetchReviews();
   }, [id]);
 
   // Generate next 7 days for picking
@@ -145,7 +180,20 @@ export default function DoctorDetailPage({ params }: PageProps) {
     
     // Generate 1-hour slots
     const hourlySlots = generateHourlySlots(slotsForDay);
-    setAvailableTimeSlots(hourlySlots);
+    
+    // Map slots and mark if they are booked
+    const mappedSlots = hourlySlots.map((slot) => {
+      const slotDateTime = new Date(`${dateString}T${slot.startTime}:00`);
+      const isBooked = bookedSlots.some(
+        (bookedIso) => new Date(bookedIso).getTime() === slotDateTime.getTime()
+      );
+      return {
+        ...slot,
+        isBooked,
+      };
+    });
+
+    setAvailableTimeSlots(mappedSlots);
   };
 
   // Format Day of Week from 0-6
@@ -162,10 +210,18 @@ export default function DoctorDetailPage({ params }: PageProps) {
       return;
     }
 
-    if (user?.role !== "USER") {
+    if (user?.role !== "USER" && user?.role !== "DOCTOR") {
       setBookingMessage({
         type: "error",
-        text: "Chỉ tài khoản người bệnh (USER) mới được phép đặt lịch khám.",
+        text: "Chỉ tài khoản người bệnh hoặc bác sĩ mới được phép đặt lịch khám.",
+      });
+      return;
+    }
+
+    if (user?.role === "DOCTOR" && doctor?.id === user?.doctorId) {
+      setBookingMessage({
+        type: "error",
+        text: "Bạn không thể tự đặt lịch khám với chính mình.",
       });
       return;
     }
@@ -416,25 +472,34 @@ export default function DoctorDetailPage({ params }: PageProps) {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {availableTimeSlots.map((slot) => (
-                        <button
-                          key={slot.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedSlot(slot);
-                            setGlobalSlot(slot);
-                            setBookingMessage(null);
-                          }}
-                          className={`flex items-center justify-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all ${
-                            selectedSlot?.id === slot.id
-                              ? "bg-teal-600 border-teal-600 text-white shadow-md shadow-teal-600/10"
-                              : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-400 hover:bg-white"
-                          }`}
-                        >
-                          <Clock className="h-3.5 w-3.5 shrink-0" />
-                          <span>{slot.startTime} - {slot.endTime}</span>
-                        </button>
-                      ))}
+                      {availableTimeSlots.map((slot) => {
+                        const isBooked = slot.isBooked;
+                        return (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            disabled={isBooked}
+                            onClick={() => {
+                              setSelectedSlot(slot);
+                              setGlobalSlot(slot);
+                              setBookingMessage(null);
+                            }}
+                            className={`flex items-center justify-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all ${
+                              isBooked
+                                ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                                : selectedSlot?.id === slot.id
+                                ? "bg-teal-600 border-teal-600 text-white shadow-md shadow-teal-600/10"
+                                : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-400 hover:bg-white"
+                            }`}
+                          >
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              {slot.startTime} - {slot.endTime}
+                              {isBooked && " (Đầy)"}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -482,6 +547,130 @@ export default function DoctorDetailPage({ params }: PageProps) {
             </form>
           )}
         </div>
+      </div>
+
+      {/* Ratings & Reviews Section */}
+      <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm mt-8 space-y-8">
+        <div className="border-b border-slate-100 pb-4">
+          <h2 className="text-lg font-bold text-slate-955 flex items-center gap-2">
+            <Star className="h-5 w-5 text-amber-500 fill-amber-400" />
+            Đánh Giá & Nhận Xét Từ Bệnh Nhân
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">Ý kiến phản hồi thực tế từ những người đã trải nghiệm dịch vụ khám với bác sĩ.</p>
+        </div>
+
+        {reviewsLoading ? (
+          <div className="flex justify-center p-8"><LoadingSpinner className="w-8 h-8 text-teal-600" /></div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+            
+            {/* Stats Summary Column */}
+            <div className="md:col-span-4 bg-slate-50/50 border border-slate-100 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+              <span className="text-5xl font-black text-slate-900 leading-none">{stats.averageRating}</span>
+              <div className="flex items-center gap-1 mt-3">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star 
+                    key={star} 
+                    className={`w-4 h-4 ${
+                      star <= Math.round(stats.averageRating)
+                        ? "fill-amber-400 text-amber-450 stroke-amber-500"
+                        : "text-slate-200 stroke-slate-300"
+                    }`} 
+                  />
+                ))}
+              </div>
+              <p className="text-xs font-semibold text-slate-500 mt-2">Đánh giá trung bình ({stats.totalReviews} lượt nhận xét)</p>
+
+              {/* Progress bars for stars */}
+              <div className="w-full mt-6 space-y-2">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = stats.distribution[star] || 0;
+                  const percent = stats.totalReviews > 0 ? (count / stats.totalReviews) * 100 : 0;
+                  return (
+                    <div key={star} className="flex items-center text-xs text-slate-600 gap-2">
+                      <span className="w-10 text-right font-medium">{star} sao</span>
+                      <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-teal-500 rounded-full transition-all duration-500" 
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <span className="w-6 text-left font-semibold text-slate-400">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Reviews List Column */}
+            <div className="md:col-span-8 space-y-4">
+              {reviews.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-slate-200 rounded-2xl">
+                  <Star className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-700">Chưa có lượt đánh giá nào</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Bệnh nhân khám xong lịch trực tuyến sẽ gửi nhận xét đầu tiên.</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin">
+                  {reviews.map((review) => {
+                    const reviewerName = review.user?.fullName || "Bệnh nhân MedBooking";
+                    // Mask name
+                    const maskedName = reviewerName.split(" ").map((word: string, i: number, arr: string[]) => {
+                      if (i === 0 || i === arr.length - 1) return word;
+                      return word[0] + ".";
+                    }).join(" ");
+
+                    const reviewerInitials = reviewerName.charAt(0).toUpperCase();
+
+                    return (
+                      <div key={review.id} className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 hover:shadow-sm transition-shadow space-y-3">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden relative flex items-center justify-center border border-slate-200 shrink-0">
+                              {review.user?.avatar ? (
+                                <img src={review.user.avatar} alt={reviewerName} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="font-bold text-slate-400 text-xs">{reviewerInitials}</span>
+                              )}
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-slate-800 text-xs sm:text-sm">{maskedName}</h5>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <div className="flex items-center gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-3 h-3 ${
+                                        star <= review.rating
+                                          ? "fill-amber-400 text-amber-450 stroke-amber-500"
+                                          : "text-slate-200 stroke-slate-300"
+                                      }`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-semibold">•</span>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  {new Date(review.createdAt).toLocaleDateString("vi-VN")}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {review.comment && (
+                          <p className="text-xs text-slate-600 leading-relaxed pl-1 whitespace-pre-wrap">
+                            &ldquo;{review.comment}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
       </div>
     </div>
   );

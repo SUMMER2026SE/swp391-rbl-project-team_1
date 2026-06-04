@@ -30,6 +30,11 @@ function ProfileContent() {
   const [gender, setGender] = useState("");
   const [address, setAddress] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [bloodType, setBloodType] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [chronicDiseases, setChronicDiseases] = useState("");
+  const [personalHistory, setPersonalHistory] = useState("");
+  const [familyHistory, setFamilyHistory] = useState("");
 
   // Tab 2: Change Password State
   const [oldPassword, setOldPassword] = useState("");
@@ -55,6 +60,11 @@ function ProfileContent() {
       } else {
         setDateOfBirth("");
       }
+      setBloodType(user.bloodType || "");
+      setAllergies(user.allergies || "");
+      setChronicDiseases(user.chronicDiseases || "");
+      setPersonalHistory(user.personalHistory || "");
+      setFamilyHistory(user.familyHistory || "");
     }
   }, [user]);
 
@@ -138,6 +148,11 @@ function ProfileContent() {
         gender,
         address: address.trim(),
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : null,
+        bloodType: bloodType || null,
+        allergies: allergies.trim() || null,
+        chronicDiseases: chronicDiseases.trim() || null,
+        personalHistory: personalHistory.trim() || null,
+        familyHistory: familyHistory.trim() || null,
       });
 
       updateUser(response.data);
@@ -202,7 +217,7 @@ function ProfileContent() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const currentAvatarUrl = previewUrl || (user.avatar ? (user.avatar.startsWith("http") ? user.avatar : `http://localhost:5000${user.avatar}`) : null);
+  const currentAvatarUrl = previewUrl || (user.avatar ? (user.avatar.startsWith("http") ? user.avatar : (user.avatar.startsWith("/public/") ? `http://localhost:5000${user.avatar}` : user.avatar)) : null);
 
   return (
     <div className="flex-grow bg-slate-50 py-10">
@@ -410,6 +425,94 @@ function ProfileContent() {
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
                     />
                   </div>
+
+                  {user.role === "USER" && (
+                    <div className="mt-8 pt-6 border-t border-slate-100 space-y-6">
+                      <h4 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-teal-650" />
+                        Hồ Sơ Sức Khỏe Ban Đầu
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                          <label htmlFor="bloodType" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Nhóm Máu
+                          </label>
+                          <select
+                            id="bloodType"
+                            value={bloodType}
+                            onChange={(e) => setBloodType(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm"
+                          >
+                            <option value="">-- Chưa chọn --</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="O">O</option>
+                            <option value="AB">AB</option>
+                            <option value="Không rõ">Không rõ</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="allergies" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Tiền sử dị ứng
+                          </label>
+                          <Input
+                            id="allergies"
+                            type="text"
+                            placeholder="Dị ứng thuốc, thức ăn..."
+                            value={allergies}
+                            onChange={(e) => setAllergies(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6">
+                        <div>
+                          <label htmlFor="chronicDiseases" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Bệnh lý nền / Mãn tính
+                          </label>
+                          <Input
+                            id="chronicDiseases"
+                            type="text"
+                            placeholder="Tiểu đường, cao huyết áp, hen suyễn..."
+                            value={chronicDiseases}
+                            onChange={(e) => setChronicDiseases(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                          <label htmlFor="personalHistory" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Tiền sử phẫu thuật / Chấn thương
+                          </label>
+                          <textarea
+                            id="personalHistory"
+                            placeholder="Lịch sử phẫu thuật, tai nạn lớn..."
+                            value={personalHistory}
+                            onChange={(e) => setPersonalHistory(e.target.value)}
+                            rows={3}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="familyHistory" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Tiền sử bệnh gia đình
+                          </label>
+                          <textarea
+                            id="familyHistory"
+                            placeholder="Các bệnh lý di truyền trong gia đình..."
+                            value={familyHistory}
+                            onChange={(e) => setFamilyHistory(e.target.value)}
+                            rows={3}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pt-4 flex justify-end border-t border-slate-100">
                     <Button type="submit" variant="teal" className="py-2.5 px-6 font-semibold rounded-xl" isLoading={loading}>

@@ -6,43 +6,48 @@ import { appointmentService } from "@/services/appointment.service";
 import { Appointment, AppointmentStatus } from "@/types/appointment";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2 } from "lucide-react";
+import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2, Video } from "lucide-react";
 import Link from "next/link";
 import Button from "@/components/common/Button";
 import BookingProgress from "@/components/ui/BookingProgress";
+import PrescriptionModal from "@/components/ui/PrescriptionModal";
+import SubmitReviewModal from "@/components/ui/SubmitReviewModal";
+import { Star } from "lucide-react";
 
 function MyAppointmentsContent() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPrescriptionApptId, setSelectedPrescriptionApptId] = useState<string | null>(null);
+  const [reviewTargetAppt, setReviewTargetAppt] = useState<{ id: string; doctorName: string; specialtyName: string } | null>(null);
   
   // Tab State
   const [activeTab, setActiveTab] = useState<AppointmentStatus | "ALL">("ALL");
 
-  useEffect(() => {
-    async function fetchAppointments() {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await appointmentService.getMyAppointments();
-        
-        // Sort appointments by date desc
-        const sorted = data.appointments.sort(
-          (a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()
-        );
-        setAppointments(sorted);
-      } catch (err: unknown) {
-        const errorMsg =
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message: unknown }).message)
-            : "Không thể tải danh sách cuộc hẹn của bạn.";
-        setError(errorMsg);
-      } finally {
-        setLoading(false);
-      }
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await appointmentService.getMyAppointments();
+      
+      // Sort appointments by date desc
+      const sorted = data.appointments.sort(
+        (a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()
+      );
+      setAppointments(sorted);
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "Không thể tải danh sách cuộc hẹn của bạn.";
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchAppointments();
   }, []);
 
@@ -223,9 +228,46 @@ function MyAppointmentsContent() {
                     </div>
                   )}
                   {app.status === "CONFIRMED" && (
-                    <div className="text-[10px] text-blue-600 flex items-center gap-1 bg-blue-50 rounded-lg px-2 py-1">
-                      <CheckCircle2 className="h-3 w-3 shrink-0" />
-                      <span>Vui lòng đến đúng hẹn</span>
+                    <div className="flex flex-col gap-2 items-stretch w-full sm:w-auto md:items-end">
+                      <Link href={`/video-call?appointmentId=${app.id}`}>
+                        <Button variant="teal" className="rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 w-full px-4 py-2 shadow-md shadow-teal-500/10 hover:scale-[1.02] transition-all">
+                          <Video className="h-4 w-4" /> Vào phòng khám
+                        </Button>
+                      </Link>
+                      <div className="text-[10px] text-blue-600 flex items-center gap-1 bg-blue-50 rounded-lg px-2 py-1 justify-center">
+                        <CheckCircle2 className="h-3 w-3 shrink-0" />
+                        <span>Sẵn sàng kết nối trực tuyến</span>
+                      </div>
+                    </div>
+                  )}
+                  {app.status === "COMPLETED" && (
+                    <div className="flex flex-col gap-2 items-stretch w-full sm:w-auto md:items-end">
+                      <Button 
+                        variant="teal" 
+                        onClick={() => setSelectedPrescriptionApptId(app.id)}
+                        className="rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 w-full px-4 py-2 shadow-md shadow-teal-500/10 hover:scale-[1.02] transition-all"
+                      >
+                        <FileText className="h-4 w-4" /> Xem Đơn Thuốc
+                      </Button>
+
+                      {app.review ? (
+                        <div className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-xl px-3.5 py-1.5 text-xs font-bold justify-center">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-450 shrink-0" />
+                          <span>Đã đánh giá: {app.review.rating}/5★</span>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="outline"
+                          onClick={() => setReviewTargetAppt({
+                            id: app.id,
+                            doctorName: app.doctor?.name || "Bác sĩ Chuyên gia",
+                            specialtyName: app.doctor?.specialty?.name || "Đang cập nhật"
+                          })}
+                          className="rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 w-full px-4 py-2 hover:scale-[1.02] transition-all border-teal-500 text-teal-650 hover:bg-teal-50/20"
+                        >
+                          Đánh Giá Bác Sĩ
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -233,6 +275,23 @@ function MyAppointmentsContent() {
             );
           })}
         </div>
+      )}
+
+      {selectedPrescriptionApptId && (
+        <PrescriptionModal 
+          appointmentId={selectedPrescriptionApptId} 
+          onClose={() => setSelectedPrescriptionApptId(null)} 
+        />
+      )}
+
+      {reviewTargetAppt && (
+        <SubmitReviewModal
+          appointmentId={reviewTargetAppt.id}
+          doctorName={reviewTargetAppt.doctorName}
+          specialtyName={reviewTargetAppt.specialtyName}
+          onClose={() => setReviewTargetAppt(null)}
+          onSuccess={fetchAppointments}
+        />
       )}
     </div>
   );

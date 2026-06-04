@@ -3,15 +3,22 @@ import { Doctor } from "@prisma/client";
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
 
-export async function getAllDoctors(specialtySlug?: string) {
-    const whereClause = specialtySlug
-        ? { specialty: { slug: specialtySlug } }
-        : {};
+export async function getAllDoctors(specialtySlug?: string, clinicId?: string) {
+    const whereClause: any = {};
+    
+    if (specialtySlug) {
+        whereClause.specialty = { slug: specialtySlug };
+    }
+    
+    if (clinicId) {
+        whereClause.clinicId = clinicId;
+    }
 
     return prisma.doctor.findMany({
         where: whereClause,
         include: {
             specialty: true,
+            clinic: true,
         },
         orderBy: { name: "asc" },
     });

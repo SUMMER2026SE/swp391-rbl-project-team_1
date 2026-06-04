@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import { PrismaClient, AppointmentStatus } from "@prisma/client";
+import { sendBookingStatusUpdateEmail } from "../utils/emailService";
 
 const prisma = new PrismaClient();
 
@@ -122,6 +123,13 @@ export const getDoctorSchedules = async (req: AuthenticatedRequest, res: Respons
     }
 };
 
+const timeToMinutes = (t: string): number => {
+    const parts = t.split(":");
+    const hh = parseInt(parts[0] ?? "0", 10);
+    const mm = parseInt(parts[1] ?? "0", 10);
+    return hh * 60 + mm;
+};
+
 export const createDoctorSchedule = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const doctor = await getDoctor(req.user!.userId);
@@ -129,10 +137,49 @@ export const createDoctorSchedule = async (req: AuthenticatedRequest, res: Respo
 
         const { dayOfWeek, startTime, endTime, isAvailable } = req.body;
 
+        if (dayOfWeek === undefined || !startTime || !endTime) {
+            return res.status(400).json({ message: "Vui lòng nhập đầy đủ các trường Thứ, Giờ bắt đầu, Giờ kết thúc." });
+        }
+
+        const dow = parseInt(dayOfWeek);
+        if (isNaN(dow) || dow < 0 || dow > 6) {
+            return res.status(400).json({ message: "Thứ trong tuần không hợp lệ." });
+        }
+
+        const timeRegex = /^\d{2}:\d{2}$/;
+        if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+            return res.status(400).json({ message: "Định dạng thời gian không hợp lệ. Vui lòng dùng định dạng HH:MM." });
+        }
+
+        const startMin = timeToMinutes(startTime);
+        const endMin = timeToMinutes(endTime);
+
+        if (startMin >= endMin) {
+            return res.status(400).json({ message: "Giờ bắt đầu phải trước giờ kết thúc." });
+        }
+
+        // Check overlap
+        const existingSchedules = await prisma.doctorSchedule.findMany({
+            where: {
+                doctorId: doctor.id,
+                dayOfWeek: dow
+            }
+        });
+
+        const hasOverlap = existingSchedules.some(sch => {
+            const schStart = timeToMinutes(sch.startTime);
+            const schEnd = timeToMinutes(sch.endTime);
+            return startMin < schEnd && endMin > schStart;
+        });
+
+        if (hasOverlap) {
+            return res.status(400).json({ message: "Khung giờ này bị trùng lặp với lịch trực đã có vào ngày này." });
+        }
+
         const schedule = await prisma.doctorSchedule.create({
             data: {
                 doctorId: doctor.id,
-                dayOfWeek: parseInt(dayOfWeek),
+                dayOfWeek: dow,
                 startTime,
                 endTime,
                 isAvailable: isAvailable ?? true
@@ -149,15 +196,57 @@ export const updateDoctorSchedule = async (req: AuthenticatedRequest, res: Respo
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { dayOfWeek, startTime, endTime, isAvailable } = req.body;
+
+        const currentSchedule = await prisma.doctorSchedule.findFirst({
+            where: { id, doctorId: doctor.id }
+        });
+        if (!currentSchedule) {
+            return res.status(404).json({ message: "Không tìm thấy khung giờ trực này." });
+        }
+
+        const finalDayOfWeek = dayOfWeek !== undefined ? parseInt(dayOfWeek) : currentSchedule.dayOfWeek;
+        const finalStartTime = startTime !== undefined ? startTime : currentSchedule.startTime;
+        const finalEndTime = endTime !== undefined ? endTime : currentSchedule.endTime;
+
+        const timeRegex = /^\d{2}:\d{2}$/;
+        if (!timeRegex.test(finalStartTime) || !timeRegex.test(finalEndTime)) {
+            return res.status(400).json({ message: "Định dạng thời gian không hợp lệ. Vui lòng dùng định dạng HH:MM." });
+        }
+
+        const startMin = timeToMinutes(finalStartTime);
+        const endMin = timeToMinutes(finalEndTime);
+
+        if (startMin >= endMin) {
+            return res.status(400).json({ message: "Giờ bắt đầu phải trước giờ kết thúc." });
+        }
+
+        // Check overlap (excluding the schedule itself)
+        const existingSchedules = await prisma.doctorSchedule.findMany({
+            where: {
+                doctorId: doctor.id,
+                dayOfWeek: finalDayOfWeek,
+                id: { not: id }
+            }
+        });
+
+        const hasOverlap = existingSchedules.some(sch => {
+            const schStart = timeToMinutes(sch.startTime);
+            const schEnd = timeToMinutes(sch.endTime);
+            return startMin < schEnd && endMin > schStart;
+        });
+
+        if (hasOverlap) {
+            return res.status(400).json({ message: "Khung giờ này bị trùng lặp với lịch trực đã có vào ngày này." });
+        }
 
         const schedule = await prisma.doctorSchedule.update({
             where: { id, doctorId: doctor.id },
             data: {
-                dayOfWeek: dayOfWeek !== undefined ? parseInt(dayOfWeek) : undefined,
-                startTime,
-                endTime,
+                dayOfWeek: finalDayOfWeek,
+                startTime: finalStartTime,
+                endTime: finalEndTime,
                 isAvailable
             }
         });
@@ -172,7 +261,7 @@ export const deleteDoctorSchedule = async (req: AuthenticatedRequest, res: Respo
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         await prisma.doctorSchedule.delete({
             where: { id, doctorId: doctor.id }
         });
@@ -204,13 +293,54 @@ export const updateAppointmentStatus = async (req: AuthenticatedRequest, res: Re
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { status, notes, cancellationReason } = req.body;
+
+        const appointmentObj = await prisma.appointment.findUnique({
+            where: { id, doctorId: doctor.id }
+        });
+
+        if (!appointmentObj) {
+            return res.status(404).json({ message: "Không tìm thấy lịch hẹn" });
+        }
+
+        if (status === "COMPLETED") {
+            const appointmentTime = new Date(appointmentObj.appointmentDate);
+            const now = new Date();
+            if (now < appointmentTime) {
+                return res.status(400).json({
+                    message: "Không thể hoàn thành lịch hẹn trước thời gian khám dự kiến."
+                });
+            }
+        }
 
         const appointment = await prisma.appointment.update({
             where: { id, doctorId: doctor.id },
-            data: { status, notes, cancellationReason }
+            data: { status, notes, cancellationReason },
+            include: {
+                user: true,
+                doctor: {
+                    include: {
+                        specialty: true,
+                        clinic: true
+                    }
+                }
+            }
         });
+
+        if (appointment.user.email) {
+            sendBookingStatusUpdateEmail(appointment.user.email, {
+                patientName: appointment.user.fullName || appointment.user.email,
+                doctorName: appointment.doctor.name,
+                specialtyName: appointment.doctor.specialty.name,
+                clinicName: appointment.doctor.clinic?.name || appointment.doctor.hospital,
+                appointmentDate: appointment.appointmentDate,
+                status: appointment.status,
+                cancellationReason: appointment.cancellationReason,
+                notes: appointment.notes
+            }).catch((err) => console.error("Error sending status update email:", err));
+        }
+
         res.json({ message: "Appointment status updated", appointment });
     } catch (error) {
         res.status(500).json({ message: "Server error", error });
@@ -247,7 +377,7 @@ export const getPatientMedicalRecords = async (req: AuthenticatedRequest, res: R
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
-        const { userId } = req.params;
+        const userId = req.params.userId as string;
         const records = await prisma.medicalRecord.findMany({
             where: { doctorId: doctor.id, userId },
             include: { appointment: true, prescriptions: true },

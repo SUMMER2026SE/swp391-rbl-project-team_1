@@ -36,6 +36,11 @@ export async function getUserById(id: string): Promise<UserSafeDto | null> {
             gender: true,
             address: true,
             dateOfBirth: true,
+            bloodType: true,
+            allergies: true,
+            chronicDiseases: true,
+            personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -73,6 +78,11 @@ export async function updateUserRole(id: string, role: Role): Promise<UserSafeDt
             gender: true,
             address: true,
             dateOfBirth: true,
+            bloodType: true,
+            allergies: true,
+            chronicDiseases: true,
+            personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -106,6 +116,11 @@ export async function updateUserProfile(
         gender?: string | null;
         address?: string | null;
         dateOfBirth?: Date | null;
+        bloodType?: string | null;
+        allergies?: string | null;
+        chronicDiseases?: string | null;
+        personalHistory?: string | null;
+        familyHistory?: string | null;
     }
 ): Promise<UserSafeDto> {
     const user = await prisma.user.findUnique({ where: { id } });
@@ -121,6 +136,11 @@ export async function updateUserProfile(
             gender: data.gender !== undefined ? data.gender : user.gender,
             address: data.address !== undefined ? data.address : user.address,
             dateOfBirth: data.dateOfBirth !== undefined ? data.dateOfBirth : user.dateOfBirth,
+            bloodType: data.bloodType !== undefined ? data.bloodType : user.bloodType,
+            allergies: data.allergies !== undefined ? data.allergies : user.allergies,
+            chronicDiseases: data.chronicDiseases !== undefined ? data.chronicDiseases : user.chronicDiseases,
+            personalHistory: data.personalHistory !== undefined ? data.personalHistory : user.personalHistory,
+            familyHistory: data.familyHistory !== undefined ? data.familyHistory : user.familyHistory,
         },
         select: {
             id: true,
@@ -132,6 +152,11 @@ export async function updateUserProfile(
             gender: true,
             address: true,
             dateOfBirth: true,
+            bloodType: true,
+            allergies: true,
+            chronicDiseases: true,
+            personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -196,6 +221,11 @@ export async function updateUserAvatar(id: string, avatarPath: string): Promise<
             gender: true,
             address: true,
             dateOfBirth: true,
+            bloodType: true,
+            allergies: true,
+            chronicDiseases: true,
+            personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },

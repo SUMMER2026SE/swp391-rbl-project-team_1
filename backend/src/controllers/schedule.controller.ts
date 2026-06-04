@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { createDoctorSchedule, getSchedulesByDoctor } from "../services/schedule.service";
 import { ApiError } from "../utils/apiError";
+import prisma from "../prisma/client";
 
 interface CreateScheduleBody {
     dayOfWeek: number;
@@ -51,7 +52,33 @@ export async function listSchedules(
         }
 
         const schedules = await getSchedulesByDoctor(doctorId);
-        res.json({ message: "Schedules fetched", schedules });
+
+        // Fetch active appointments (not cancelled) starting from 24 hours ago
+        const startThreshold = new Date();
+        startThreshold.setHours(startThreshold.getHours() - 24);
+
+        const activeAppointments = await prisma.appointment.findMany({
+            where: {
+                doctorId,
+                appointmentDate: {
+                    gte: startThreshold,
+                },
+                status: {
+                    in: ["PENDING", "CONFIRMED", "COMPLETED"]
+                }
+            },
+            select: {
+                appointmentDate: true
+            }
+        });
+
+        const bookedSlots = activeAppointments.map(app => app.appointmentDate.toISOString());
+
+        res.json({
+            message: "Schedules fetched",
+            schedules,
+            bookedSlots
+        });
     } catch (error) {
         next(error);
     }

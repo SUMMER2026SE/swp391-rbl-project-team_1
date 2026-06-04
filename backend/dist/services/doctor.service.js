@@ -34,6 +34,9 @@ async function getAllSpecialties() {
 async function getDoctorById(id) {
     const doctor = await client_1.default.doctor.findUnique({
         where: { id },
+        include: {
+            certificates: true,
+        }
     });
     if (!doctor) {
         throw new apiError_1.ApiError("Doctor not found", 404);
@@ -61,7 +64,7 @@ async function getDoctorByUserId(userId) {
     }
     const doctor = await client_1.default.doctor.findUnique({
         where: { id: user.doctorId },
-        include: { specialty: true },
+        include: { specialty: true, certificates: true },
     });
     if (!doctor) {
         throw new apiError_1.ApiError("Doctor profile not found", 404);

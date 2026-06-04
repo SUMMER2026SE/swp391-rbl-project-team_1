@@ -123,11 +123,11 @@ async function updateAppointmentStatusHandler(req, res, next) {
         if (!id) {
             throw new apiError_1.ApiError("Appointment ID is required", 400);
         }
-        const { status } = req.body;
+        const { status, cancellationReason } = req.body;
         if (!status || !Object.values(client_1.AppointmentStatus).includes(status)) {
             throw new apiError_1.ApiError(`Invalid status. Must be one of: ${Object.values(client_1.AppointmentStatus).join(", ")}`, 400);
         }
-        const appointment = await (0, admin_service_1.updateAppointmentStatus)(id, status);
+        const appointment = await (0, admin_service_1.updateAppointmentStatus)(id, status, cancellationReason);
         res.json({
             message: "Appointment status updated successfully",
             data: appointment,

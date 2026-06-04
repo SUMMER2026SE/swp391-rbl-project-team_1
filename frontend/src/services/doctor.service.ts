@@ -21,4 +21,9 @@ export const doctorService = {
     const response = await api.get<SchedulesResponse>(`/doctors/${id}/schedules`);
     return response.data;
   },
+
+  async getReviews(id: string): Promise<any> {
+    const response = await api.get(`/doctors/${id}/reviews`);
+    return response.data;
+  },
 };

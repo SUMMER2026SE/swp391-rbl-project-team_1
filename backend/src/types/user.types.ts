@@ -14,6 +14,14 @@ export interface UserSafeDto {
     gender: string | null;
     address: string | null;
     dateOfBirth: Date | null;
+    
+    // Medical Background
+    bloodType: string | null;
+    allergies: string | null;
+    chronicDiseases: string | null;
+    personalHistory: string | null;
+    familyHistory: string | null;
+
     createdAt: Date;
     updatedAt: Date;
 }

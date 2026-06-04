@@ -42,12 +42,21 @@ model User {
   dateOfBirth  DateTime?
   role         Role          @default(USER)
   doctorId     String?       @unique  // Link to Doctor record when role = DOCTOR
+  
+  // Medical Background Fields
+  bloodType       String?
+  allergies       String?
+  chronicDiseases String?
+  personalHistory String?
+  familyHistory   String?
+
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   appointments Appointment[]
   doctor       Doctor?       @relation(fields: [doctorId], references: [id])
   complaints   Complaint[]
   medicalRecords MedicalRecord[]
+  reviews      Review[]
 }
 
 model OTP {
@@ -97,6 +106,7 @@ model Doctor {
   description     String?
   medicalRecords  MedicalRecord[]
   certificates    DoctorCertificate[]
+  reviews         Review[]
 }
 
 model Clinic {
@@ -151,6 +161,7 @@ model Appointment {
   cancellationReason String?
   createdAt       DateTime          @default(now())
   medicalRecord   MedicalRecord?
+  review          Review?
 }
 
 model MedicalRecord {
@@ -196,4 +207,18 @@ model DoctorCertificate {
   updatedAt   DateTime @updatedAt
 
   doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id            String      @id @default(uuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  doctorId      String
+  doctor        Doctor      @relation(fields: [doctorId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  rating        Int
+  comment       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }

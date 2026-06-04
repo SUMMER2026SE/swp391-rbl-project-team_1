@@ -13,6 +13,7 @@ const doctor_routes_1 = __importDefault(require("./routes/doctor.routes"));
 const appointment_routes_1 = __importDefault(require("./routes/appointment.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const chat_routes_1 = __importDefault(require("./routes/chat.routes"));
+const doctor_dashboard_routes_1 = __importDefault(require("./routes/doctor-dashboard.routes"));
 const auth_middleware_1 = require("./middleware/auth.middleware");
 const error_middleware_1 = require("./middleware/error.middleware");
 const auth_controller_1 = require("./controllers/auth.controller");
@@ -35,6 +36,7 @@ app.use("/api", doctor_routes_1.default);
 app.use("/api", appointment_routes_1.default);
 app.use("/api", admin_routes_1.default);
 app.use("/api", chat_routes_1.default);
+app.use("/api/doctor", doctor_dashboard_routes_1.default);
 app.get("/api/profile", auth_middleware_1.verifyToken, auth_controller_1.getProfile);
 app.get("/", (req, res) => {
     res.send("Healthcare Booking API Running...");

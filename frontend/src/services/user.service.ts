@@ -6,6 +6,11 @@ export interface UpdateProfileData {
   gender?: string | null;
   address?: string | null;
   dateOfBirth?: string | null;
+  bloodType?: string | null;
+  allergies?: string | null;
+  chronicDiseases?: string | null;
+  personalHistory?: string | null;
+  familyHistory?: string | null;
 }
 
 export const userService = {

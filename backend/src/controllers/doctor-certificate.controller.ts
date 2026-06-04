@@ -1,11 +1,26 @@
 import { Request, Response } from "express";
 import { doctorCertificateService } from "../services/doctor-certificate.service";
+import prisma from "../prisma/client";
+import { AuthenticatedRequest } from "../middleware/auth.middleware";
+
+async function getDoctorIdByUserId(userId: string): Promise<string | null> {
+  const doctor = await prisma.doctor.findFirst({
+    where: { userAccount: { id: userId } }
+  });
+  return doctor ? doctor.id : null;
+}
 
 export class DoctorCertificateController {
   async getCertificates(req: Request, res: Response): Promise<void> {
     try {
-      // req.user from auth middleware
-      const doctorId = req.user?.doctorId;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.userId;
+      if (!userId) {
+        res.status(401).json({ message: "Chưa xác thực." });
+        return;
+      }
+
+      const doctorId = await getDoctorIdByUserId(userId);
       if (!doctorId) {
         res.status(403).json({ message: "Không tìm thấy thông tin bác sĩ." });
         return;
@@ -21,7 +36,14 @@ export class DoctorCertificateController {
 
   async createCertificate(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = req.user?.doctorId;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.userId;
+      if (!userId) {
+        res.status(401).json({ message: "Chưa xác thực." });
+        return;
+      }
+
+      const doctorId = await getDoctorIdByUserId(userId);
       if (!doctorId) {
         res.status(403).json({ message: "Không tìm thấy thông tin bác sĩ." });
         return;
@@ -55,13 +77,20 @@ export class DoctorCertificateController {
 
   async updateCertificate(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = req.user?.doctorId;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.userId;
+      if (!userId) {
+        res.status(401).json({ message: "Chưa xác thực." });
+        return;
+      }
+
+      const doctorId = await getDoctorIdByUserId(userId);
       if (!doctorId) {
         res.status(403).json({ message: "Không tìm thấy thông tin bác sĩ." });
         return;
       }
 
-      const certificateId = req.params.id;
+      const certificateId = req.params.id as string;
       const { title, issuer, issuedYear, description } = req.body;
       const file = req.file;
 
@@ -86,13 +115,20 @@ export class DoctorCertificateController {
 
   async deleteCertificate(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = req.user?.doctorId;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.userId;
+      if (!userId) {
+        res.status(401).json({ message: "Chưa xác thực." });
+        return;
+      }
+
+      const doctorId = await getDoctorIdByUserId(userId);
       if (!doctorId) {
         res.status(403).json({ message: "Không tìm thấy thông tin bác sĩ." });
         return;
       }
 
-      const certificateId = req.params.id;
+      const certificateId = req.params.id as string;
       await doctorCertificateService.deleteCertificate(certificateId, doctorId);
 
       res.json({ message: "Đã xóa chứng chỉ thành công." });

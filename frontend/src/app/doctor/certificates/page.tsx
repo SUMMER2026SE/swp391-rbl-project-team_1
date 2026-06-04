@@ -167,39 +167,36 @@ export default function DoctorCertificatesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {certificates.map((cert) => (
-            <div key={cert.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-              <div className="h-40 bg-slate-50 border-b border-slate-100 flex items-center justify-center relative group">
-                {cert.imageUrl ? (
-                  <img src={cert.imageUrl} alt={cert.title} className="w-full h-full object-cover" />
-                ) : cert.fileUrl ? (
-                  <div className="text-center text-rose-500 flex flex-col items-center">
-                    <FileText className="h-10 w-10 mb-2" />
-                    <span className="text-xs font-semibold">Tài liệu PDF</span>
+            <div key={cert.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[140px]">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start gap-4">
+                  <h3 className="font-bold text-slate-800 text-base leading-snug line-clamp-2" title={cert.title}>{cert.title}</h3>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => handleOpenModal(cert)} className="p-1.5 hover:bg-teal-50 text-slate-500 hover:text-teal-600 rounded-lg transition-colors" title="Chỉnh sửa">
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => setDeleteId(cert.id)} className="p-1.5 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-colors" title="Xóa">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                ) : (
-                  <div className="text-center text-slate-400 flex flex-col items-center">
-                    <ImageIcon className="h-10 w-10 mb-2" />
-                    <span className="text-xs">Không có ảnh đính kèm</span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                  <button onClick={() => handleOpenModal(cert)} className="p-2 bg-white text-teal-600 rounded-full hover:bg-teal-50">
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setDeleteId(cert.id)} className="p-2 bg-white text-rose-600 rounded-full hover:bg-rose-50">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  {(cert.imageUrl || cert.fileUrl) && (
-                    <a href={cert.imageUrl || cert.fileUrl} target="_blank" rel="noreferrer" className="p-2 bg-white text-slate-700 rounded-full hover:bg-slate-50">
-                      <FileText className="h-4 w-4" />
-                    </a>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  {cert.issuer && (
+                    <p className="text-slate-600">
+                      <span className="text-slate-400">Nơi cấp:</span> <span className="font-medium text-slate-700">{cert.issuer}</span>
+                    </p>
+                  )}
+                  {cert.issuedYear && (
+                    <p className="text-slate-600">
+                      <span className="text-slate-400">Năm cấp:</span> <span className="font-medium text-slate-700">{cert.issuedYear}</span>
+                    </p>
+                  )}
+                  {cert.description && (
+                    <p className="text-slate-500 italic mt-2 border-l-2 border-slate-100 pl-2 text-[11px] line-clamp-2">
+                      {cert.description}
+                    </p>
                   )}
                 </div>
-              </div>
-              <div className="p-5 space-y-2">
-                <h3 className="font-bold text-slate-800 line-clamp-1" title={cert.title}>{cert.title}</h3>
-                {cert.issuer && <p className="text-sm text-slate-500">Nơi cấp: {cert.issuer}</p>}
-                {cert.issuedYear && <p className="text-xs text-slate-400">Năm cấp: {cert.issuedYear}</p>}
               </div>
             </div>
           ))}
