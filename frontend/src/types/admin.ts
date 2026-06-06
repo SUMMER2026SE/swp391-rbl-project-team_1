@@ -248,3 +248,26 @@ export interface AdminStatisticsResponse {
   message: string;
   data: AdminStatistics;
 }
+
+export interface AdminOverview {
+  totalAppointments: number;
+  totalDoctors: number;
+  totalUsers: number;
+  cancelledToday: number;
+}
+
+export interface AdminOverviewResponse {
+  success: boolean;
+  data: AdminOverview;
+}
+
+export interface AdminChartData {
+  date: string;
+  bookings: number;
+  cancelled: number;
+}
+
+export interface AdminChartResponse {
+  success: boolean;
+  data: AdminChartData[];
+}
