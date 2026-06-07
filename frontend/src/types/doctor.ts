@@ -61,6 +61,9 @@ export interface Doctor {
   createdAt: string;
   doctorSchedules?: DoctorSchedule[];
   certificates?: DoctorCertificate[];
+  price?: number;
+  phone?: string;
+  description?: string;
 }
 
 export interface ListDoctorsResponse {

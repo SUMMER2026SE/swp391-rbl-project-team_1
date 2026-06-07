@@ -13,6 +13,7 @@ import BookingProgress from "@/components/ui/BookingProgress";
 import PrescriptionModal from "@/components/ui/PrescriptionModal";
 import SubmitReviewModal from "@/components/ui/SubmitReviewModal";
 import { Star } from "lucide-react";
+import toast from "react-hot-toast";
 
 function MyAppointmentsContent() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -55,8 +56,9 @@ function MyAppointmentsContent() {
   useEffect(() => {
     if (activeTab === "ALL") {
       setFilteredAppointments(appointments);
+    } else if (activeTab === "CANCELLED") {
+      setFilteredAppointments(appointments.filter((app) => app.status === "CANCELLED" || app.status === "EXPIRED"));
     } else {
-      filteredAppointments;
       setFilteredAppointments(appointments.filter((app) => app.status === activeTab));
     }
   }, [activeTab, appointments]);
@@ -64,10 +66,12 @@ function MyAppointmentsContent() {
   // Map status names in Vietnamese
   const getStatusLabel = (status: AppointmentStatus) => {
     const labels = {
-      PENDING: "Chờ xác nhận",
+      PENDING_PAYMENT: "Chờ thanh toán",
+      PENDING: "Chờ duyệt",
       CONFIRMED: "Đã xác nhận",
-      COMPLETED: "Đã hoàn thành",
+      COMPLETED: "Đã khám xong",
       CANCELLED: "Đã hủy",
+      EXPIRED: "Quá hạn",
     };
     return labels[status] || status;
   };
@@ -75,20 +79,23 @@ function MyAppointmentsContent() {
   // Map status color classes
   const getStatusStyles = (status: AppointmentStatus) => {
     const styles = {
-      PENDING: "bg-amber-50 text-amber-800 border-amber-100",
-      CONFIRMED: "bg-blue-50 text-blue-800 border-blue-100",
+      PENDING_PAYMENT: "bg-amber-50 text-amber-800 border-amber-100",
+      PENDING: "bg-indigo-50 text-indigo-800 border-indigo-100",
+      CONFIRMED: "bg-blue-50 text-blue-850 border-blue-150",
       COMPLETED: "bg-emerald-50 text-emerald-800 border-emerald-100",
       CANCELLED: "bg-red-50 text-red-800 border-red-100",
+      EXPIRED: "bg-slate-100 text-slate-600 border-slate-200",
     };
     return styles[status] || "bg-slate-50 text-slate-700 border-slate-100";
   };
 
   const tabs: { label: string; value: AppointmentStatus | "ALL" }[] = [
     { label: "Tất cả", value: "ALL" },
-    { label: "Chờ xác nhận", value: "PENDING" },
+    { label: "Chờ thanh toán", value: "PENDING_PAYMENT" },
+    { label: "Chờ duyệt", value: "PENDING" },
     { label: "Đã xác nhận", value: "CONFIRMED" },
     { label: "Đã khám xong", value: "COMPLETED" },
-    { label: "Đã hủy", value: "CANCELLED" },
+    { label: "Đã hủy/Quá hạn", value: "CANCELLED" },
   ];
 
   return (
@@ -209,6 +216,37 @@ function MyAppointmentsContent() {
                       </div>
                     </div>
                   )}
+
+                  {/* Payment details row */}
+                  <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-slate-500">
+                      Chi phí khám: <strong className="text-slate-800">{(app.amount || app.doctor?.price || 2000).toLocaleString("vi-VN")} VND</strong>
+                    </span>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <span className="text-slate-500">Thanh toán:</span>
+                      {app.status === "CONFIRMED" || app.status === "COMPLETED" ? (
+                        <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-semibold text-[10px]">
+                          Đã thanh toán
+                        </span>
+                      ) : app.status === "PENDING" ? (
+                        <span className="text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 font-semibold text-[10px]">
+                          Chờ duyệt
+                        </span>
+                      ) : app.status === "PENDING_PAYMENT" ? (
+                        <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 font-semibold text-[10px]">
+                          Chờ thanh toán
+                        </span>
+                      ) : app.status === "EXPIRED" ? (
+                        <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-semibold text-[10px]">
+                          Quá hạn
+                        </span>
+                      ) : (
+                        <span className="text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-100 font-semibold text-[10px]">
+                          Đã hủy
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Right col: status badge & actions */}
@@ -221,10 +259,23 @@ function MyAppointmentsContent() {
                     {getStatusLabel(app.status)}
                   </span>
                   
+                  {app.status === "PENDING_PAYMENT" && (
+                    <div className="flex flex-col gap-1.5 w-full">
+                      <Link href={`/payment/${app.id}`} className="w-full">
+                        <Button
+                          variant="teal"
+                          className="rounded-xl text-[10px] font-bold px-3 py-1.5 flex items-center justify-center gap-1 w-full text-white bg-teal-600 hover:bg-teal-700"
+                        >
+                          Thanh toán ngay
+                        </Button>
+                      </Link>
+                      <p className="text-[9px] text-slate-500 text-center italic leading-tight">Chuyển khoản VietQR trong 30 phút</p>
+                    </div>
+                  )}
+
                   {app.status === "PENDING" && (
-                    <div className="text-[10px] text-amber-600 flex items-center gap-1 bg-amber-50 rounded-lg px-2 py-1">
-                      <ShieldAlert className="h-3 w-3 shrink-0" />
-                      <span>Hệ thống đang xử lý</span>
+                    <div className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-2 font-medium justify-center w-full text-center leading-normal">
+                      Đã nhận biên lai thanh toán. Vui lòng chờ xác nhận.
                     </div>
                   )}
                   {app.status === "CONFIRMED" && (
@@ -234,10 +285,19 @@ function MyAppointmentsContent() {
                           <Video className="h-4 w-4" /> Vào phòng khám
                         </Button>
                       </Link>
-                      <div className="text-[10px] text-blue-600 flex items-center gap-1 bg-blue-50 rounded-lg px-2 py-1 justify-center">
-                        <CheckCircle2 className="h-3 w-3 shrink-0" />
-                        <span>Sẵn sàng kết nối trực tuyến</span>
+                      <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5 justify-center text-center font-medium leading-normal w-full">
+                        Lịch hẹn của bạn đã được xác nhận.
                       </div>
+                    </div>
+                  )}
+                  {app.status === "CANCELLED" && (
+                    <div className="text-[10px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5 justify-center text-center font-medium leading-normal w-full">
+                      Thanh toán không hợp lệ. Lịch hẹn đã bị hủy.
+                    </div>
+                  )}
+                  {app.status === "EXPIRED" && (
+                    <div className="text-[10px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 justify-center text-center font-medium leading-normal w-full italic">
+                      Lịch hẹn đã quá hạn thanh toán.
                     </div>
                   )}
                   {app.status === "COMPLETED" && (

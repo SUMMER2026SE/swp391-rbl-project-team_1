@@ -87,7 +87,9 @@ export async function validateBookingSlot(
             where: {
                 doctorId,
                 appointmentDate: date,
-                status: { not: "CANCELLED" }
+                status: {
+                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
+                }
             },
         });
 

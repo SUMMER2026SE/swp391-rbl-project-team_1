@@ -14,10 +14,12 @@ import chatRoutes from "./routes/chat.routes";
 import doctorDashboardRoutes from "./routes/doctor-dashboard.routes";
 import articleRoutes from "./routes/article.routes";
 import reviewRoutes from "./routes/review.routes";
+import paymentRoutes from "./routes/payment.routes";
 import { initReminderScheduler } from "./utils/emailService";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { getProfile } from "./controllers/auth.controller";
+import { autoCancelExpiredAppointments } from "./services/appointment.service";
 
 dotenv.config();
 
@@ -46,8 +48,10 @@ app.use("/api", adminRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", articleRoutes);
 app.use("/api", reviewRoutes);
+app.use("/api", paymentRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
 app.get("/api/profile", verifyToken, getProfile);
+
 
 app.get("/", (req, res) => {
   res.send("Healthcare Booking API Running...");
@@ -63,4 +67,17 @@ initSocket(httpServer, allowedOrigins);
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   initReminderScheduler();
+  
+  // Run expired payment check immediately on startup
+  console.log("[Scheduler] Initializing auto-cancellation scheduler for expired payments...");
+  autoCancelExpiredAppointments().catch((err) =>
+    console.error("[Scheduler] Expired payments cleanup failed on startup:", err)
+  );
+
+  // Run expired payment check every 5 minutes (300000 ms)
+  setInterval(() => {
+    autoCancelExpiredAppointments().catch((err) =>
+      console.error("[Scheduler] Scheduled expired payments cleanup failed:", err)
+    );
+  }, 5 * 60 * 1000);
 });

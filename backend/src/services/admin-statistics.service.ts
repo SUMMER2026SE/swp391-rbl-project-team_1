@@ -2,10 +2,12 @@ import prisma from "../prisma/client";
 import { AppointmentStatus } from "@prisma/client";
 
 interface AppointmentsByStatus {
+    PENDING_PAYMENT: number;
     PENDING: number;
     CONFIRMED: number;
     COMPLETED: number;
     CANCELLED: number;
+    EXPIRED: number;
 }
 
 interface AppointmentsBySpecialty {
@@ -65,14 +67,16 @@ async function getAppointmentsByStatus(): Promise<AppointmentsByStatus> {
     });
 
     const result: AppointmentsByStatus = {
+        PENDING_PAYMENT: 0,
         PENDING: 0,
         CONFIRMED: 0,
         COMPLETED: 0,
         CANCELLED: 0,
+        EXPIRED: 0,
     };
 
     for (const item of counts) {
-        result[item.status] = item._count.status;
+        result[item.status as keyof AppointmentsByStatus] = item._count.status;
     }
 
     return result;

@@ -1,7 +1,7 @@
 import { Doctor } from "./doctor";
 import { User } from "./auth";
 
-export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+export type AppointmentStatus = "PENDING_PAYMENT" | "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
 
 export interface Clinic {
   id: string;
@@ -47,6 +47,17 @@ export interface Review {
   };
 }
 
+export interface Payment {
+  id: string;
+  amount: number;
+  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  method: "VNPAY" | "MOCK";
+  transactionId?: string | null;
+  paymentGateway?: string | null;
+  payDate?: string | null;
+  createdAt: string;
+}
+
 export interface Appointment {
   id: string;
   userId: string;
@@ -62,6 +73,13 @@ export interface Appointment {
   user?: User;
   medicalRecord?: MedicalRecord | null;
   review?: Review | null;
+  payment?: Payment | null;
+  
+  // Prepayment fields
+  transactionCode?: string | null;
+  amount?: number;
+  paymentProof?: string | null;
+  paymentAt?: string | null;
 }
 
 export interface CreateAppointmentRequest {

@@ -1,11 +1,19 @@
 import { Router } from "express";
 import { Role } from "@prisma/client";
+import multer from "multer";
 
-import { createAppointmentHandler, getMyAppointments, getAppointmentByIdHandler, getPublicPrescriptionHandler } from "../controllers/appointment.controller";
+import {
+    createAppointmentHandler,
+    getMyAppointments,
+    getAppointmentByIdHandler,
+    getPublicPrescriptionHandler,
+    uploadPaymentProofHandler
+} from "../controllers/appointment.controller";
 import { verifyToken } from "../middleware/auth.middleware";
 import { authorizeRoles } from "../middleware/authorization.middleware";
 import { validateBookingSlot } from "../middleware/booking.middleware";
 
+const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
 /**
@@ -50,6 +58,18 @@ router.get(
 router.get(
     "/appointments/:id/prescription/public",
     getPublicPrescriptionHandler
+);
+
+/**
+ * POST /api/appointments/:id/pay-proof
+ * Upload payment proof image (requires USER role)
+ */
+router.post(
+    "/appointments/:id/pay-proof",
+    verifyToken,
+    authorizeRoles(Role.USER),
+    upload.single("paymentProof"),
+    uploadPaymentProofHandler
 );
 
 export default router;

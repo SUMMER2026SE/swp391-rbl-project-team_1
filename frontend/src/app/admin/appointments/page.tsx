@@ -101,11 +101,13 @@ export default function AdminAppointmentsPage() {
   };
 
   const getStatusBadgeStyles = (status: AppointmentStatus) => {
-    const styles = {
+    const styles: Record<AppointmentStatus, string> = {
+      PENDING_PAYMENT: "bg-purple-500/10 text-purple-400 border-purple-500/20",
       PENDING: "bg-amber-500/10 text-amber-400 border-amber-500/20",
       CONFIRMED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
       COMPLETED: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
       CANCELLED: "bg-red-500/10 text-red-400 border-red-500/20",
+      EXPIRED: "bg-slate-500/10 text-slate-400 border-slate-550/20",
     };
     return styles[status] || "bg-slate-800 text-slate-400 border-slate-700";
   };
@@ -150,10 +152,12 @@ export default function AdminAppointmentsPage() {
               className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm cursor-pointer"
             >
               <option value="ALL">Tất cả trạng thái</option>
-              <option value="PENDING">Chờ xác nhận (PENDING)</option>
+              <option value="PENDING_PAYMENT">Chờ thanh toán (PENDING_PAYMENT)</option>
+              <option value="PENDING">Chờ duyệt thanh toán (PENDING)</option>
               <option value="CONFIRMED">Đã xác nhận (CONFIRMED)</option>
               <option value="COMPLETED">Đã hoàn thành (COMPLETED)</option>
               <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+              <option value="EXPIRED">Hết hạn thanh toán (EXPIRED)</option>
             </select>
           </div>
         </div>
@@ -271,10 +275,12 @@ export default function AdminAppointmentsPage() {
                           onChange={(e) => handleUpdateStatus(app.id, e.target.value as AppointmentStatus)}
                           className="px-2.5 py-1.5 text-[10px] uppercase font-bold tracking-wider rounded-lg border border-slate-800 bg-slate-900 text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer"
                         >
+                          <option value="PENDING_PAYMENT">Duyệt: PENDING_PAYMENT</option>
                           <option value="PENDING">Duyệt: PENDING</option>
                           <option value="CONFIRMED">Duyệt: CONFIRMED</option>
                           <option value="COMPLETED">Duyệt: COMPLETED</option>
                           <option value="CANCELLED">Duyệt: CANCELLED</option>
+                          <option value="EXPIRED">Duyệt: EXPIRED</option>
                         </select>
                       </td>
                     </tr>

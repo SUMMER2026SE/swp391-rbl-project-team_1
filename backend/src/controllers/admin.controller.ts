@@ -8,6 +8,7 @@ import {
     deleteUser,
     linkDoctorToUser as linkDoctorToUserService,
     updateAppointmentStatus,
+    getPendingPayments,
 } from "../services/admin.service";
 import { updateUserRole } from "../services/user.service";
 import { ApiError } from "../utils/apiError";
@@ -177,6 +178,27 @@ export async function updateAppointmentStatusHandler(
         res.json({
             message: "Appointment status updated successfully",
             data: appointment,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/admin/appointments/pending-approval
+ * Returns all appointments with status PENDING and a paymentProof upload. ADMIN only.
+ */
+export async function getPendingPaymentsHandler(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const appointments = await getPendingPayments();
+        res.json({
+            message: "Pending approval payments retrieved successfully",
+            count: appointments.length,
+            data: appointments,
         });
     } catch (error) {
         next(error);

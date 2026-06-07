@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Role } from "@prisma/client";
 
-import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler } from "../controllers/admin.controller";
+import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler, getPendingPaymentsHandler } from "../controllers/admin.controller";
 import { getDoctors, moderateDoctorHandler, getPendingDoctorsHandler, approveDoctorHandler, rejectDoctorHandler, lockDoctorHandler } from "../controllers/admin-doctors.controller";
 import { getSpecialties, createSpecialtyHandler, updateSpecialtyHandler, deleteSpecialtyHandler } from "../controllers/admin-specialties.controller";
 import { getClinics, createClinicHandler, updateClinicHandler, deleteClinicHandler } from "../controllers/admin-clinics.controller";
@@ -72,6 +72,17 @@ router.get(
     verifyToken,
     verifyAdmin,
     getAppointments
+);
+
+/**
+ * GET /api/admin/appointments/pending-approval
+ * Returns all appointments with status PENDING and a paymentProof upload.
+ */
+router.get(
+    "/admin/appointments/pending-approval",
+    verifyToken,
+    verifyAdmin,
+    getPendingPaymentsHandler
 );
 
 /**

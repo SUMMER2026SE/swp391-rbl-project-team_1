@@ -249,7 +249,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
       // Build ISO Date: selectedDate "YYYY-MM-DD" + selectedSlot.startTime "HH:MM"
       const appointmentDateTime = new Date(`${selectedDate}T${selectedSlot.startTime}:00`);
 
-      await appointmentService.createAppointment({
+      const response = await appointmentService.createAppointment({
         doctorId: id,
         clinicId: doctor.clinicId,
         appointmentDate: appointmentDateTime.toISOString(),
@@ -258,7 +258,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
 
       setBookingMessage({
         type: "success",
-        text: "Đặt lịch khám thành công! Bạn đang được chuyển tới danh sách lịch hẹn của tôi.",
+        text: "Đặt lịch khám thành công! Bạn đang được chuyển tới trang thanh toán để xác nhận lịch hẹn.",
       });
 
       // Clear states
@@ -268,7 +268,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
       resetBooking();
 
       setTimeout(() => {
-        router.push("/my-appointments");
+        router.push(`/payment/${response.appointment.id}`);
         router.refresh();
       }, 1500);
     } catch (err: unknown) {

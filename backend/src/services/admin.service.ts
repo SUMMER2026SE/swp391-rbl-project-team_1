@@ -178,3 +178,36 @@ export async function updateAppointmentStatus(
         },
     }) as unknown as Promise<AppointmentWithRelations>;
 }
+
+/**
+ * Returns appointments that are pending approval (status PENDING and has paymentProof)
+ */
+export async function getPendingPayments() {
+    return prisma.appointment.findMany({
+        where: {
+            status: "PENDING",
+            paymentProof: {
+                not: null
+            }
+        },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    fullName: true,
+                    avatar: true,
+                },
+            },
+            doctor: {
+                select: {
+                    id: true,
+                    name: true,
+                    specialty: true,
+                    hospital: true,
+                },
+            },
+        },
+        orderBy: { paymentAt: "asc" },
+    });
+}

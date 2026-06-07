@@ -1,7 +1,7 @@
 import { NextFunction, Response, Request } from "express";
 
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
-import { createAppointment, getAppointmentsByUser, getAppointmentById } from "../services/appointment.service";
+import { createAppointment, getAppointmentsByUser, getAppointmentById, uploadPaymentProof } from "../services/appointment.service";
 import { ApiError } from "../utils/apiError";
 import prisma from "../prisma/client";
 
@@ -135,10 +135,20 @@ export async function getAppointmentByIdHandler(
             throw new ApiError("You are not authorized to view this appointment", 403);
         }
 
-        res.json({
+        const responseData: any = {
             message: "Appointment fetched successfully",
             appointment,
-        });
+        };
+
+        if (appointment.status === "PENDING_PAYMENT") {
+            responseData.bankDetails = {
+                bankName: process.env.BANK_NAME || "MBBank",
+                bankAccount: process.env.BANK_ACCOUNT || "123456789",
+                bankOwner: process.env.BANK_OWNER || "NGUYEN MINH TRUNG",
+            };
+        }
+
+        res.json(responseData);
     } catch (error) {
         next(error);
     }
@@ -215,6 +225,59 @@ export async function getPublicPrescriptionHandler(
             message: "Prescription verified successfully",
             verified: true,
             prescription: appointment,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/appointments/:id/pay-proof
+ * Bệnh nhân upload ảnh biên lai. Cập nhật status thành PENDING.
+ */
+export async function uploadPaymentProofHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        const id = req.params.id as string;
+
+        if (!userId) {
+            throw new ApiError("Yêu cầu đăng nhập", 401);
+        }
+
+        if (!id) {
+            throw new ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
+        }
+
+        if (!req.file) {
+            throw new ApiError("Vui lòng tải lên ảnh biên lai thanh toán", 400);
+        }
+
+        // Check ownership
+        const appointment = await prisma.appointment.findUnique({
+            where: { id },
+        });
+
+        if (!appointment) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        if (appointment.userId !== userId) {
+            throw new ApiError("Bạn không có quyền cập nhật lịch hẹn này", 403);
+        }
+
+        const updated = await uploadPaymentProof(
+            id,
+            req.file.buffer,
+            req.file.mimetype
+        );
+
+        res.status(200).json({
+            message: "Đã nhận biên lai thanh toán. Vui lòng chờ xác nhận.",
+            appointment: updated,
         });
     } catch (error) {
         next(error);

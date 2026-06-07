@@ -17,6 +17,7 @@ import {
   FileText,
   MessageSquare,
   BarChart3,
+  Landmark,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -41,6 +42,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       name: "Quản lý Lịch hẹn",
       href: "/admin/appointments",
       icon: <CalendarRange className="h-5 w-5" />,
+    },
+    {
+      name: "Duyệt Thanh toán",
+      href: "/admin/payments",
+      icon: <Landmark className="h-5 w-5" />,
     },
     {
       name: "Kiểm duyệt Bác sĩ",
