@@ -61,12 +61,28 @@ export interface AdminStats {
 
 export type DoctorStatus = "PENDING" | "APPROVED" | "REJECTED";
 
+export interface DoctorCertificate {
+  id: string;
+  doctorId: string;
+  title: string;
+  issuer: string | null;
+  issuedYear: number | null;
+  description: string | null;
+  imageUrl: string | null;
+  fileUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AdminDoctor {
   id: string;
   name: string;
   experience: number;
   hospital: string;
   avatar: string;
+  price: number | null;
+  phone: string | null;
+  description: string | null;
   specialty: {
     id: string;
     name: string;
@@ -77,6 +93,7 @@ export interface AdminDoctor {
     id: string;
     name: string;
   } | null;
+  certificates: DoctorCertificate[];
   status: DoctorStatus;
   isLocked: boolean;
   rejectedReason: string | null;
@@ -247,4 +264,27 @@ export interface AdminStatistics {
 export interface AdminStatisticsResponse {
   message: string;
   data: AdminStatistics;
+}
+
+export interface AdminOverview {
+  totalAppointments: number;
+  totalDoctors: number;
+  totalUsers: number;
+  cancelledToday: number;
+}
+
+export interface AdminOverviewResponse {
+  success: boolean;
+  data: AdminOverview;
+}
+
+export interface AdminChartData {
+  date: string;
+  bookings: number;
+  cancelled: number;
+}
+
+export interface AdminChartResponse {
+  success: boolean;
+  data: AdminChartData[];
 }

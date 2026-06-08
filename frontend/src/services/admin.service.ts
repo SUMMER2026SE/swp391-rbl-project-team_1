@@ -21,6 +21,8 @@ import {
   AdminComplaintsResponse,
   AdminComplaint,
   AdminStatisticsResponse,
+  AdminOverviewResponse,
+  AdminChartResponse,
 } from "../types/admin";
 import { UserRole } from "../types/auth";
 import { AppointmentStatus } from "../types/appointment";
@@ -177,6 +179,16 @@ export const adminService = {
   // ─── Statistics ────────────────────────────────────────────────
   async getStatistics(): Promise<AdminStatisticsResponse> {
     const response = await api.get<AdminStatisticsResponse>("/admin/statistics");
+    return response.data;
+  },
+
+  async getOverview(): Promise<AdminOverviewResponse> {
+    const response = await api.get<AdminOverviewResponse>("/admin/statistics/overview");
+    return response.data;
+  },
+
+  async getChart(days: number = 30): Promise<AdminChartResponse> {
+    const response = await api.get<AdminChartResponse>(`/admin/statistics/chart?days=${days}`);
     return response.data;
   },
 };

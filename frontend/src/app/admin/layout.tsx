@@ -4,121 +4,107 @@ import React, { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AdminRoute from "@/components/common/AdminRoute";
+import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard,
+  BarChart2,
+  UserCheck,
+  Hospital,
+  FileText,
+  AlertCircle,
+  Tag,
   Users,
-  CalendarRange,
-  ArrowLeft,
+  LogOut,
   Activity,
-  ShieldCheck,
+  ArrowLeft,
+  LayoutDashboard,
+  CalendarRange,
   Stethoscope,
   BookOpen,
   Building2,
-  FileText,
   MessageSquare,
   BarChart3,
+  ShieldCheck,
 } from "lucide-react";
+
+function AdminSidebar() {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  const menuItems = [
+    { name: "Thống kê", href: "/admin/statistics", icon: <BarChart2 className="w-5 h-5" /> },
+    { name: "Bác sĩ", href: "/admin/doctors", icon: <UserCheck className="w-5 h-5" /> },
+    { name: "Cơ sở y tế", href: "/admin/clinics", icon: <Hospital className="w-5 h-5" /> },
+    { name: "Bài viết", href: "/admin/articles", icon: <FileText className="w-5 h-5" /> },
+    { name: "Khiếu nại", href: "/admin/complaints", icon: <AlertCircle className="w-5 h-5" /> },
+    { name: "Chuyên khoa", href: "/admin/specialties", icon: <Tag className="w-5 h-5" /> },
+    { name: "Người dùng", href: "/admin/users", icon: <Users className="w-5 h-5" /> },
+  ];
+
+  return (
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 hidden md:flex h-full shadow-sm">
+      {/* Brand header */}
+      <div className="h-16 px-6 border-b border-gray-100 flex items-center gap-2 text-teal-600 font-bold text-lg tracking-wider uppercase">
+        <Activity className="h-5 w-5 shrink-0" />
+        <span>MedAdmin</span>
+      </div>
+
+      {/* Navigation Links */}
+      <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
+        {menuItems.map((item) => {
+          const isActive = pathname ? pathname.startsWith(item.href) : false;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all ${
+                isActive
+                  ? "bg-teal-600 text-white rounded-lg shadow-md"
+                  : "text-gray-600 hover:bg-teal-50 hover:text-teal-700 rounded-lg"
+              }`}
+            >
+              {item.icon}
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User profile and logout */}
+      <div className="p-4 border-t border-gray-100">
+        <div className="flex items-center gap-3 mb-4 px-2">
+          <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center font-bold">
+            {user?.email?.charAt(0).toUpperCase() || "A"}
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <p className="text-sm font-semibold text-gray-800 truncate">{user?.email || "Admin User"}</p>
+            <p className="text-xs text-gray-500 capitalize">{user?.role || "Admin"}</p>
+          </div>
+        </div>
+        <button
+          onClick={logout}
+          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border border-red-100 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Đăng xuất</span>
+        </button>
+      </div>
+    </aside>
+  );
+}
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const pathname = usePathname();
-
-  const menuItems = [
-    {
-      name: "Tổng quan Dashboard",
-      href: "/admin",
-      icon: <LayoutDashboard className="h-5 w-5" />,
-    },
-    {
-      name: "Quản lý Thành viên",
-      href: "/admin/users",
-      icon: <Users className="h-5 w-5" />,
-    },
-    {
-      name: "Quản lý Lịch hẹn",
-      href: "/admin/appointments",
-      icon: <CalendarRange className="h-5 w-5" />,
-    },
-    {
-      name: "Kiểm duyệt Bác sĩ",
-      href: "/admin/doctors",
-      icon: <Stethoscope className="h-5 w-5" />,
-    },
-    {
-      name: "Quản lý Chuyên khoa",
-      href: "/admin/specialties",
-      icon: <BookOpen className="h-5 w-5" />,
-    },
-    {
-      name: "Quản lý Phòng khám",
-      href: "/admin/clinics",
-      icon: <Building2 className="h-5 w-5" />,
-    },
-    {
-      name: "Quản lý Bài viết",
-      href: "/admin/articles",
-      icon: <FileText className="h-5 w-5" />,
-    },
-    {
-      name: "Phản hồi & Khiếu nại",
-      href: "/admin/complaints",
-      icon: <MessageSquare className="h-5 w-5" />,
-    },
-    {
-      name: "Thống kê & Báo cáo",
-      href: "/admin/statistics",
-      icon: <BarChart3 className="h-5 w-5" />,
-    },
-  ];
-
-  const isActive = (href: string) => {
-    if (href === "/admin") return pathname === "/admin";
-    return pathname.startsWith(href);
-  };
-
   return (
     <AdminRoute>
+      {/* Kept existing dark background for main container to preserve "giữ nguyên code cũ" feeling for the rest, 
+          but added the required light sidebar logic in AdminSidebar */}
       <div className="min-h-screen flex bg-slate-900 text-slate-100 font-sans">
-        {/* Sidebar */}
-        <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 hidden md:flex">
-          {/* Brand header */}
-          <div className="h-16 px-6 border-b border-slate-800 flex items-center gap-2 text-teal-400 font-bold text-lg tracking-wider uppercase">
-            <Activity className="h-5 w-5 shrink-0" />
-            <span>MedAdmin Zone</span>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex-grow p-4 space-y-1.5 pt-6 overflow-y-auto">
-            {menuItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                  isActive(item.href)
-                    ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20"
-                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                }`}
-              >
-                {item.icon}
-                <span>{item.name}</span>
-              </Link>
-            ))}
-          </nav>
-
-          {/* Back to Client Home */}
-          <div className="p-4 border-t border-slate-800">
-            <Link
-              href="/"
-              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-slate-800 text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Quay lại trang chủ</span>
-            </Link>
-          </div>
-        </aside>
+        
+        {/* Render the new sidebar */}
+        <AdminSidebar />
 
         {/* Right side container */}
         <div className="flex-grow flex flex-col min-w-0">
@@ -133,20 +119,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             
             {/* Mobile Header Nav Trigger */}
             <div className="md:hidden flex gap-4 overflow-x-auto">
-              <Link href="/admin" className="text-slate-400 hover:text-teal-400">
-                <LayoutDashboard className="h-5 w-5" />
-              </Link>
-              <Link href="/admin/users" className="text-slate-400 hover:text-teal-400">
-                <Users className="h-5 w-5" />
-              </Link>
-              <Link href="/admin/appointments" className="text-slate-400 hover:text-teal-400">
-                <CalendarRange className="h-5 w-5" />
+              <Link href="/admin/statistics" className="text-slate-400 hover:text-teal-400">
+                <BarChart3 className="h-5 w-5" />
               </Link>
               <Link href="/admin/doctors" className="text-slate-400 hover:text-teal-400">
                 <Stethoscope className="h-5 w-5" />
-              </Link>
-              <Link href="/admin/specialties" className="text-slate-400 hover:text-teal-400">
-                <BookOpen className="h-5 w-5" />
               </Link>
               <Link href="/admin/clinics" className="text-slate-400 hover:text-teal-400">
                 <Building2 className="h-5 w-5" />
@@ -157,8 +134,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Link href="/admin/complaints" className="text-slate-400 hover:text-teal-400">
                 <MessageSquare className="h-5 w-5" />
               </Link>
-              <Link href="/admin/statistics" className="text-slate-400 hover:text-teal-400">
-                <BarChart3 className="h-5 w-5" />
+              <Link href="/admin/specialties" className="text-slate-400 hover:text-teal-400">
+                <BookOpen className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/users" className="text-slate-400 hover:text-teal-400">
+                <Users className="h-5 w-5" />
               </Link>
               <Link href="/" className="text-slate-400 hover:text-teal-400">
                 <ArrowLeft className="h-5 w-5" />
