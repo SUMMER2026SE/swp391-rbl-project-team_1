@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import toast from "react-hot-toast";
 import { adminService } from "@/services/admin.service";
 import { AdminDoctor, DoctorStatus } from "@/types/admin";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
-import Alert from "@/components/common/Alert";
+import DoctorDetailModal from "@/components/ui/DoctorDetailModal";
+import RejectModal from "@/components/ui/RejectModal";
 import {
   Search,
   Stethoscope,
@@ -12,58 +14,270 @@ import {
   XCircle,
   Lock,
   Unlock,
-  X,
-  AlertTriangle,
+  Eye,
+  Clock,
+  ShieldCheck,
+  ShieldX,
+  ShieldOff,
 } from "lucide-react";
 
-const STATUS_TABS: { label: string; value: DoctorStatus | "ALL" }[] = [
-  { label: "Tất cả", value: "ALL" },
-  { label: "Chờ duyệt", value: "PENDING" },
-  { label: "Đã duyệt", value: "APPROVED" },
-  { label: "Đã từ chối", value: "REJECTED" },
+// ─── Tab Definitions ────────────────────────────────────────────────────────
+
+type TabKey = "PENDING" | "APPROVED" | "REJECTED" | "LOCKED";
+
+interface TabDef {
+  key: TabKey;
+  label: string;
+  icon: React.ReactNode;
+}
+
+const TABS: TabDef[] = [
+  {
+    key: "PENDING",
+    label: "Chờ duyệt",
+    icon: <Clock className="h-3.5 w-3.5" />,
+  },
+  {
+    key: "APPROVED",
+    label: "Đã duyệt",
+    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+  },
+  {
+    key: "REJECTED",
+    label: "Từ chối",
+    icon: <ShieldX className="h-3.5 w-3.5" />,
+  },
+  {
+    key: "LOCKED",
+    label: "Bị khóa",
+    icon: <ShieldOff className="h-3.5 w-3.5" />,
+  },
 ];
 
-const statusBadgeStyles: Record<DoctorStatus, string> = {
+// ─── Status Badge Styles ────────────────────────────────────────────────────
+
+const statusBadge: Record<DoctorStatus, string> = {
   PENDING: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   APPROVED: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   REJECTED: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
+const statusLabel: Record<DoctorStatus, string> = {
+  PENDING: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Từ chối",
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function filterByTab(doctors: AdminDoctor[], tab: TabKey): AdminDoctor[] {
+  switch (tab) {
+    case "PENDING":
+      return doctors.filter((d) => d.status === "PENDING");
+    case "APPROVED":
+      return doctors.filter((d) => d.status === "APPROVED" && !d.isLocked);
+    case "REJECTED":
+      return doctors.filter((d) => d.status === "REJECTED");
+    case "LOCKED":
+      return doctors.filter((d) => d.isLocked);
+  }
+}
+
+function countTab(doctors: AdminDoctor[], tab: TabKey): number {
+  return filterByTab(doctors, tab).length;
+}
+
+// ─── Doctor Card ────────────────────────────────────────────────────────────
+
+interface DoctorCardProps {
+  doctor: AdminDoctor;
+  activeTab: TabKey;
+  onView: (doctor: AdminDoctor) => void;
+  onApprove: (doctor: AdminDoctor) => void;
+  onRejectOpen: (doctor: AdminDoctor) => void;
+  onLock: (doctor: AdminDoctor) => void;
+  onUnlock: (doctor: AdminDoctor) => void;
+  submitting: boolean;
+}
+
+function DoctorCard({
+  doctor,
+  activeTab,
+  onView,
+  onApprove,
+  onRejectOpen,
+  onLock,
+  onUnlock,
+  submitting,
+}: DoctorCardProps) {
+  return (
+    <div className="relative bg-slate-900/70 border border-slate-800 rounded-2xl p-4 hover:border-teal-500/30 hover:bg-slate-900 transition-all group">
+      {/* Status badge top-right */}
+      <span
+        className={`absolute top-4 right-4 inline-block px-2.5 py-0.5 rounded-lg border text-[10px] font-bold tracking-wide uppercase ${
+          doctor.isLocked
+            ? "bg-red-500/10 text-red-400 border-red-500/20"
+            : statusBadge[doctor.status]
+        }`}
+      >
+        {doctor.isLocked ? "Bị khóa" : statusLabel[doctor.status]}
+      </span>
+
+      {/* Avatar + Name */}
+      <div className="flex items-start gap-3 mb-3 pr-20">
+        <div className="h-12 w-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+          {doctor.avatar ? (
+            <img
+              src={doctor.avatar}
+              alt={doctor.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <Stethoscope className="h-5 w-5 text-slate-500" />
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold text-white text-base leading-tight truncate">
+            {doctor.name}
+          </p>
+          <p className="text-teal-400 text-xs font-medium mt-0.5">
+            {doctor.specialty.name}
+          </p>
+        </div>
+      </div>
+
+      {/* Info rows */}
+      <div className="space-y-1.5 mb-4 text-xs text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="text-slate-600">Kinh nghiệm:</span>
+          <span className="text-slate-300 font-medium">{doctor.experience} năm</span>
+          {doctor.hospital && (
+            <>
+              <span className="text-slate-700">·</span>
+              <span className="truncate">{doctor.hospital}</span>
+            </>
+          )}
+        </div>
+        {doctor.price != null && (
+          <div className="flex items-center gap-2">
+            <span className="text-slate-600">Giá khám:</span>
+            <span className="text-emerald-400 font-semibold">
+              {doctor.price.toLocaleString("vi-VN")} đ
+            </span>
+          </div>
+        )}
+        {doctor.status === "REJECTED" && doctor.rejectedReason && (
+          <div className="flex items-start gap-2">
+            <span className="text-slate-600 shrink-0">Lý do:</span>
+            <span className="text-red-400 italic truncate">{doctor.rejectedReason}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* View Profile — always shown */}
+        <button
+          onClick={() => onView(doctor)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 hover:text-white transition-all"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Xem hồ sơ
+        </button>
+
+        {/* PENDING actions */}
+        {activeTab === "PENDING" && (
+          <>
+            <button
+              onClick={() => onApprove(doctor)}
+              disabled={submitting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-all"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Duyệt
+            </button>
+            <button
+              onClick={() => onRejectOpen(doctor)}
+              disabled={submitting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-all"
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Từ chối
+            </button>
+          </>
+        )}
+
+        {/* APPROVED actions */}
+        {activeTab === "APPROVED" && (
+          <button
+            onClick={() => onLock(doctor)}
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-orange-300 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 disabled:opacity-50 transition-all"
+          >
+            <Lock className="h-3.5 w-3.5" />
+            Khóa tài khoản
+          </button>
+        )}
+
+        {/* REJECTED actions */}
+        {activeTab === "REJECTED" && (
+          <button
+            onClick={() => onApprove(doctor)}
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-all"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Duyệt lại
+          </button>
+        )}
+
+        {/* LOCKED actions */}
+        {activeTab === "LOCKED" && (
+          <button
+            onClick={() => onUnlock(doctor)}
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 disabled:opacity-50 transition-all"
+          >
+            <Unlock className="h-3.5 w-3.5" />
+            Mở khóa
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
+
 export default function AdminDoctorsPage() {
   const [doctors, setDoctors] = useState<AdminDoctor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<DoctorStatus | "ALL">("ALL");
+  const [activeTab, setActiveTab] = useState<TabKey>("PENDING");
+
+  // Detail modal
+  const [detailDoctor, setDetailDoctor] = useState<AdminDoctor | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Reject modal
-  const [rejectModalDoctor, setRejectModalDoctor] = useState<AdminDoctor | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const [rejectDoctor, setRejectDoctor] = useState<AdminDoctor | null>(null);
+  const [rejectOpen, setRejectOpen] = useState(false);
 
-  // Confirm dialog
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  // ─── Load doctors ────────────────────────────────────────────────────────
 
   const loadDoctors = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const res = await adminService.getDoctors();
       setDoctors(res.data);
     } catch (err: unknown) {
-      const errorMsg =
+      const msg =
         err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message)
           : "Không thể tải danh sách bác sĩ.";
-      setError(errorMsg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -73,93 +287,130 @@ export default function AdminDoctorsPage() {
     loadDoctors();
   }, [loadDoctors]);
 
-  // Auto-clear action messages
-  useEffect(() => {
-    if (actionMessage) {
-      const timer = setTimeout(() => setActionMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [actionMessage]);
+  // ─── Filtered list ───────────────────────────────────────────────────────
 
-  const filteredDoctors = doctors.filter((doc) => {
-    const matchesSearch =
-      !searchQuery.trim() ||
-      doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.specialty.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTab = activeTab === "ALL" || doc.status === activeTab;
-    return matchesSearch && matchesTab;
+  const tabDoctors = filterByTab(doctors, activeTab);
+
+  const filteredDoctors = tabDoctors.filter((doc) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      doc.name.toLowerCase().includes(q) ||
+      doc.specialty.name.toLowerCase().includes(q) ||
+      (doc.hospital && doc.hospital.toLowerCase().includes(q))
+    );
   });
 
-  const handleApprove = (doctor: AdminDoctor) => {
-    setConfirmDialog({
-      open: true,
-      title: "Phê duyệt Bác sĩ",
-      message: `Bạn có chắc chắn muốn phê duyệt bác sĩ "${doctor.name}"?`,
-      onConfirm: async () => {
-        setConfirmDialog((prev) => ({ ...prev, open: false }));
-        setSubmitting(true);
-        try {
-          await adminService.approveDoctor(doctor.id);
-          setActionMessage({ type: "success", text: `Đã phê duyệt bác sĩ "${doctor.name}" thành công!` });
-          loadDoctors();
-        } catch (err: unknown) {
-          const errorMsg =
-            err && typeof err === "object" && "message" in err
-              ? String((err as { message: unknown }).message)
-              : "Không thể phê duyệt bác sĩ này.";
-          setActionMessage({ type: "error", text: errorMsg });
-        } finally {
-          setSubmitting(false);
+  // ─── Actions ─────────────────────────────────────────────────────────────
+
+  const handleApprove = useCallback(
+    async (doctor: AdminDoctor) => {
+      setSubmitting(true);
+      const toastId = toast.loading(`Đang duyệt bác sĩ ${doctor.name}...`);
+      try {
+        await adminService.approveDoctor(doctor.id);
+        toast.success(`Đã duyệt bác sĩ "${doctor.name}" thành công!`, { id: toastId });
+        // Close detail modal if open for this doctor
+        if (detailDoctor?.id === doctor.id) {
+          setDetailOpen(false);
+          setDetailDoctor(null);
         }
-      },
-    });
+        loadDoctors();
+      } catch (err: unknown) {
+        const msg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Không thể duyệt bác sĩ này.";
+        toast.error(msg, { id: toastId });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [loadDoctors, detailDoctor]
+  );
+
+  const handleRejectConfirm = useCallback(
+    async (reason: string) => {
+      if (!rejectDoctor) return;
+      setSubmitting(true);
+      const toastId = toast.loading(`Đang từ chối bác sĩ ${rejectDoctor.name}...`);
+      try {
+        await adminService.rejectDoctor(rejectDoctor.id, reason);
+        toast.success(`Đã từ chối hồ sơ bác sĩ "${rejectDoctor.name}".`, { id: toastId });
+        setRejectOpen(false);
+        setRejectDoctor(null);
+        if (detailDoctor?.id === rejectDoctor.id) {
+          setDetailOpen(false);
+          setDetailDoctor(null);
+        }
+        loadDoctors();
+      } catch (err: unknown) {
+        const msg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Không thể từ chối bác sĩ này.";
+        toast.error(msg, { id: toastId });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [rejectDoctor, detailDoctor, loadDoctors]
+  );
+
+  const handleLock = useCallback(
+    async (doctor: AdminDoctor) => {
+      setSubmitting(true);
+      const toastId = toast.loading(`Đang khóa tài khoản ${doctor.name}...`);
+      try {
+        await adminService.lockDoctor(doctor.id);
+        toast.success(`Đã khóa tài khoản bác sĩ "${doctor.name}".`, { id: toastId });
+        loadDoctors();
+      } catch (err: unknown) {
+        const msg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Không thể khóa tài khoản bác sĩ này.";
+        toast.error(msg, { id: toastId });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [loadDoctors]
+  );
+
+  const handleUnlock = useCallback(
+    async (doctor: AdminDoctor) => {
+      setSubmitting(true);
+      const toastId = toast.loading(`Đang mở khóa tài khoản ${doctor.name}...`);
+      try {
+        await adminService.lockDoctor(doctor.id); // backend toggles lock/unlock automatically
+        toast.success(`Đã mở khóa tài khoản bác sĩ "${doctor.name}".`, { id: toastId });
+        loadDoctors();
+      } catch (err: unknown) {
+        const msg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Không thể mở khóa tài khoản bác sĩ này.";
+        toast.error(msg, { id: toastId });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [loadDoctors]
+  );
+
+  // Modal helpers
+  const openDetail = (doctor: AdminDoctor) => {
+    setDetailDoctor(doctor);
+    setDetailOpen(true);
   };
 
-  const handleRejectSubmit = async () => {
-    if (!rejectModalDoctor) return;
-    setSubmitting(true);
-    try {
-      await adminService.rejectDoctor(rejectModalDoctor.id, rejectReason || undefined);
-      setActionMessage({ type: "success", text: `Đã từ chối bác sĩ "${rejectModalDoctor.name}".` });
-      setRejectModalDoctor(null);
-      setRejectReason("");
-      loadDoctors();
-    } catch (err: unknown) {
-      const errorMsg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: unknown }).message)
-          : "Không thể từ chối bác sĩ này.";
-      setActionMessage({ type: "error", text: errorMsg });
-    } finally {
-      setSubmitting(false);
-    }
+  const openReject = (doctor: AdminDoctor) => {
+    setRejectDoctor(doctor);
+    setRejectOpen(true);
   };
 
-  const handleToggleLock = (doctor: AdminDoctor) => {
-    const actionLabel = doctor.isLocked ? "Mở khóa" : "Khóa";
-    setConfirmDialog({
-      open: true,
-      title: `${actionLabel} Bác sĩ`,
-      message: `Bạn có chắc chắn muốn ${actionLabel.toLowerCase()} tài khoản bác sĩ "${doctor.name}"?`,
-      onConfirm: async () => {
-        setConfirmDialog((prev) => ({ ...prev, open: false }));
-        setSubmitting(true);
-        try {
-          await adminService.lockDoctor(doctor.id);
-          setActionMessage({ type: "success", text: `Đã ${actionLabel.toLowerCase()} bác sĩ "${doctor.name}".` });
-          loadDoctors();
-        } catch (err: unknown) {
-          const errorMsg =
-            err && typeof err === "object" && "message" in err
-              ? String((err as { message: unknown }).message)
-              : `Không thể ${actionLabel.toLowerCase()} bác sĩ này.`;
-          setActionMessage({ type: "error", text: errorMsg });
-        } finally {
-          setSubmitting(false);
-        }
-      },
-    });
-  };
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -179,31 +430,40 @@ export default function AdminDoctorsPage() {
         </p>
       </div>
 
-      {error && <Alert type="error" message={error} className="bg-red-950/40 border-red-900/50 text-red-300" />}
-      {actionMessage && <Alert type={actionMessage.type} message={actionMessage.text} className="my-2" />}
-
-      {/* Status Tabs + Search */}
+      {/* Tabs + Search */}
       <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-        {/* Status Tabs */}
+        {/* Tab Navigation */}
         <div className="flex flex-wrap gap-2">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                activeTab === tab.value
-                  ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20"
-                  : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-100"
-              }`}
-            >
-              {tab.label}
-              {tab.value !== "ALL" && (
-                <span className="ml-1.5">
-                  ({doctors.filter((d) => d.status === tab.value).length})
+          {TABS.map((tab) => {
+            const count = countTab(doctors, tab.key);
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                id={`tab-${tab.key.toLowerCase()}`}
+                onClick={() => setActiveTab(tab.key)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  isActive
+                    ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20"
+                    : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-100 hover:border-slate-700"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+                <span
+                  className={`inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full text-[10px] font-black ${
+                    isActive
+                      ? "bg-slate-950/30 text-slate-950"
+                      : count > 0
+                      ? "bg-teal-500/10 text-teal-400"
+                      : "bg-slate-800 text-slate-600"
+                  }`}
+                >
+                  {count}
                 </span>
-              )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         {/* Search */}
@@ -211,7 +471,8 @@ export default function AdminDoctorsPage() {
           <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
           <input
             type="text"
-            placeholder="Tìm theo tên bác sĩ hoặc chuyên khoa..."
+            id="doctor-search"
+            placeholder="Tìm theo tên bác sĩ, chuyên khoa, bệnh viện..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm"
@@ -219,198 +480,65 @@ export default function AdminDoctorsPage() {
         </div>
       </div>
 
-      {/* Doctor Table */}
-      <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          {filteredDoctors.length === 0 ? (
-            <div className="text-center py-20 text-slate-500 text-sm font-medium">
-              <Stethoscope className="h-10 w-10 mx-auto mb-3 text-slate-700" />
-              Không tìm thấy bác sĩ nào phù hợp.
-            </div>
-          ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 bg-slate-950 text-[10px] text-slate-500 uppercase tracking-wider font-bold">
-                  <th className="p-5 font-semibold">Bác sĩ</th>
-                  <th className="p-5 font-semibold">Chuyên khoa</th>
-                  <th className="p-5 font-semibold">Bệnh viện</th>
-                  <th className="p-5 font-semibold">Kinh nghiệm</th>
-                  <th className="p-5 font-semibold">Trạng thái</th>
-                  <th className="p-5 font-semibold">Khóa</th>
-                  <th className="p-5 font-semibold text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="text-xs divide-y divide-slate-900">
-                {filteredDoctors.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-slate-900/40 transition-colors">
-                    <td className="p-5">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden shrink-0">
-                          {doc.avatar ? (
-                            <img src={doc.avatar} alt={doc.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <Stethoscope className="h-4 w-4 text-slate-500" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-200">{doc.name}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            {doc.userAccount?.email || "Chưa liên kết"}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-5 text-teal-400 font-semibold">{doc.specialty.name}</td>
-                    <td className="p-5 text-slate-400">{doc.hospital}</td>
-                    <td className="p-5 text-slate-400">{doc.experience} năm</td>
-                    <td className="p-5">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-lg border font-bold text-[10px] tracking-wide uppercase ${
-                          statusBadgeStyles[doc.status]
-                        }`}
-                      >
-                        {doc.status}
-                      </span>
-                      {doc.status === "REJECTED" && doc.rejectedReason && (
-                        <p className="text-[10px] text-red-400/70 mt-1 max-w-[150px] truncate" title={doc.rejectedReason}>
-                          Lý do: {doc.rejectedReason}
-                        </p>
-                      )}
-                    </td>
-                    <td className="p-5">
-                      {doc.isLocked ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                          <Lock className="h-3 w-3" /> Đã khóa
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          <Unlock className="h-3 w-3" /> Hoạt động
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {doc.status === "PENDING" && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(doc)}
-                              disabled={submitting}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Duyệt
-                            </button>
-                            <button
-                              onClick={() => {
-                                setRejectModalDoctor(doc);
-                                setRejectReason("");
-                              }}
-                              disabled={submitting}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50"
-                            >
-                              <XCircle className="h-3.5 w-3.5" /> Từ chối
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => handleToggleLock(doc)}
-                          disabled={submitting}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all disabled:opacity-50 ${
-                            doc.isLocked
-                              ? "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
-                              : "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700"
-                          }`}
-                        >
-                          {doc.isLocked ? (
-                            <>
-                              <Unlock className="h-3.5 w-3.5" /> Mở khóa
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="h-3.5 w-3.5" /> Khóa
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {/* Doctor Card Grid */}
+      <div>
+        {filteredDoctors.length === 0 ? (
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl text-center py-20 text-slate-500 text-sm font-medium">
+            <Stethoscope className="h-10 w-10 mx-auto mb-3 text-slate-700" />
+            Không tìm thấy bác sĩ nào phù hợp.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredDoctors.map((doc) => (
+              <DoctorCard
+                key={doc.id}
+                doctor={doc}
+                activeTab={activeTab}
+                onView={openDetail}
+                onApprove={handleApprove}
+                onRejectOpen={openReject}
+                onLock={handleLock}
+                onUnlock={handleUnlock}
+                submitting={submitting}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Reject Reason Modal */}
-      {rejectModalDoctor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-400" />
-                Từ chối Bác sĩ
-              </h3>
-              <button
-                onClick={() => setRejectModalDoctor(null)}
-                className="text-slate-500 hover:text-slate-300 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="text-sm text-slate-400 mb-4">
-              Bác sĩ: <strong className="text-slate-200">{rejectModalDoctor.name}</strong>
-            </p>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Lý do từ chối (tùy chọn)
-            </label>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Nhập lý do từ chối..."
-              rows={3}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm resize-none"
-            />
-            <div className="flex justify-end gap-3 mt-5">
-              <button
-                onClick={() => setRejectModalDoctor(null)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 bg-slate-900 border border-slate-800 hover:text-slate-100 transition-colors"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                onClick={handleRejectSubmit}
-                disabled={submitting}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                Xác nhận Từ chối
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Doctor Detail Modal */}
+      <DoctorDetailModal
+        doctor={detailDoctor}
+        isOpen={detailOpen}
+        onClose={() => {
+          setDetailOpen(false);
+          setDetailDoctor(null);
+        }}
+        onApprove={(id) => {
+          const doc = doctors.find((d) => d.id === id);
+          if (doc) handleApprove(doc);
+        }}
+        onReject={(id) => {
+          const doc = doctors.find((d) => d.id === id);
+          if (doc) {
+            setDetailOpen(false);
+            openReject(doc);
+          }
+        }}
+        isSubmitting={submitting}
+      />
 
-      {/* Confirm Dialog */}
-      {confirmDialog.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-2">{confirmDialog.title}</h3>
-            <p className="text-sm text-slate-400 mb-5">{confirmDialog.message}</p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 bg-slate-900 border border-slate-800 hover:text-slate-100 transition-colors"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 transition-colors"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Reject Modal */}
+      <RejectModal
+        isOpen={rejectOpen}
+        doctorName={rejectDoctor?.name ?? ""}
+        onConfirm={handleRejectConfirm}
+        onClose={() => {
+          setRejectOpen(false);
+          setRejectDoctor(null);
+        }}
+        isSubmitting={submitting}
+      />
     </div>
   );
 }

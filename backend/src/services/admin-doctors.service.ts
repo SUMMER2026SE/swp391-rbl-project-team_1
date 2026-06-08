@@ -6,6 +6,7 @@ type DoctorWithRelations = Prisma.DoctorGetPayload<{
     include: {
         specialty: true;
         clinic: true;
+        certificates: true;
         userAccount: {
             select: {
                 id: true;
@@ -32,6 +33,7 @@ export async function getAllDoctors(): Promise<DoctorWithRelations[]> {
         include: {
             specialty: true,
             clinic: true,
+            certificates: true,
             userAccount: {
                 select: {
                     id: true,
@@ -54,6 +56,7 @@ export async function getPendingDoctors(): Promise<DoctorWithRelations[]> {
         include: {
             specialty: true,
             clinic: true,
+            certificates: true,
             userAccount: {
                 select: {
                     id: true,
@@ -126,6 +129,7 @@ export async function moderateDoctor(
         include: {
             specialty: true,
             clinic: true,
+            certificates: true,
             userAccount: {
                 select: {
                     id: true,

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { Role } from "@prisma/client";
 
 import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler } from "../controllers/admin.controller";
 import { getDoctors, moderateDoctorHandler, getPendingDoctorsHandler, approveDoctorHandler, rejectDoctorHandler, lockDoctorHandler } from "../controllers/admin-doctors.controller";
@@ -7,7 +6,7 @@ import { getSpecialties, createSpecialtyHandler, updateSpecialtyHandler, deleteS
 import { getClinics, createClinicHandler, updateClinicHandler, deleteClinicHandler } from "../controllers/admin-clinics.controller";
 import { getArticles, createArticleHandler, updateArticleHandler, deleteArticleHandler } from "../controllers/admin-articles.controller";
 import { getComplaints, resolveComplaintHandler } from "../controllers/admin-complaints.controller";
-import { getStatisticsHandler } from "../controllers/admin-statistics.controller";
+import { getStatisticsHandler, getOverviewHandler, getChartHandler } from "../controllers/admin-statistics.controller";
 import { verifyToken } from "../middleware/auth.middleware";
 import { verifyAdmin } from "../middleware/authorization.middleware";
 
@@ -337,6 +336,28 @@ router.get(
     verifyToken,
     verifyAdmin,
     getStatisticsHandler
+);
+
+/**
+ * GET /api/admin/statistics/overview
+ * Returns dashboard overview numbers.
+ */
+router.get(
+    "/admin/statistics/overview",
+    verifyToken,
+    verifyAdmin,
+    getOverviewHandler
+);
+
+/**
+ * GET /api/admin/statistics/chart
+ * Returns dashboard chart data.
+ */
+router.get(
+    "/admin/statistics/chart",
+    verifyToken,
+    verifyAdmin,
+    getChartHandler
 );
 
 export default router;
