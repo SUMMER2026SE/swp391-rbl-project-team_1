@@ -42,7 +42,7 @@ export default function DoctorDashboard() {
       }
     };
 
-    if (user?.role === "DOCTOR") {
+    if (user?.role === "MENTOR") {
       fetchStats();
     }
   }, [user]);

@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
 
   // Stats Calculations
   const totalUsers = users.length;
-  const totalDoctors = users.filter((u) => u.role === "DOCTOR").length;
+  const totalDoctors = users.filter((u) => u.role === "MENTOR").length;
   const totalAdmins = users.filter((u) => u.role === "ADMIN").length;
   const totalAppointments = appointments.length;
   const pendingAppointments = appointments.filter((a) => a.status === "PENDING").length;

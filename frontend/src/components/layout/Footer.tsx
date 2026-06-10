@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calendar, Phone, Mail, MapPin, Heart } from "lucide-react";
+import { GraduationCap, Phone, Mail, MapPin, Heart } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -11,13 +11,13 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="space-y-4 col-span-1 md:col-span-1.5">
             <Link href="/" className="flex items-center gap-2 text-white font-bold text-xl tracking-tight">
-              <div className="p-2 bg-teal-600 rounded-xl text-white">
-                <Calendar className="h-5 w-5" />
+              <div className="p-2 bg-blue-600 rounded-xl text-white">
+                <GraduationCap className="h-5 w-5" />
               </div>
-              <span>MedBooking</span>
+              <span>EduPath</span>
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Giải pháp đặt lịch khám bệnh trực tuyến thông minh, nhanh chóng, kết nối người bệnh và đội ngũ chuyên gia bác sĩ hàng đầu tại Việt Nam.
+              Hệ thống học tập thích ứng thông minh — tự động phân tích năng lực và cá nhân hóa lộ trình học tập cho từng người.
             </p>
           </div>
 
@@ -31,13 +31,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/doctors" className="hover:text-white transition-colors">
-                  Danh sách bác sĩ
+                <Link href="/courses" className="hover:text-white transition-colors">
+                  Lộ trình học
                 </Link>
               </li>
               <li>
-                <Link href="/my-appointments" className="hover:text-white transition-colors">
-                  Lịch hẹn của tôi
+                <Link href="/my-learning" className="hover:text-white transition-colors">
+                  Học tập của tôi
                 </Link>
               </li>
             </ul>
@@ -45,12 +45,12 @@ export default function Footer() {
 
           {/* Specialties */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-200 tracking-wider uppercase mb-4">Chuyên Khoa</h3>
+            <h3 className="text-sm font-semibold text-slate-200 tracking-wider uppercase mb-4">Tính Năng</h3>
             <ul className="space-y-2.5 text-sm">
-              <li className="hover:text-white transition-colors cursor-pointer">Nhi Khoa</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Tim Mạch</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Da Liễu</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Nội Tổng Quát</li>
+              <li className="hover:text-white transition-colors cursor-pointer">Lộ trình cá nhân hóa</li>
+              <li className="hover:text-white transition-colors cursor-pointer">Dự báo rủi ro học tập</li>
+              <li className="hover:text-white transition-colors cursor-pointer">Giám sát từ Mentor</li>
+              <li className="hover:text-white transition-colors cursor-pointer">Cảnh báo real-time</li>
             </ul>
           </div>
 
@@ -59,15 +59,15 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-slate-200 tracking-wider uppercase mb-4">Liên hệ</h3>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2.5">
-                <Phone className="h-4 w-4 text-teal-500 shrink-0" />
-                <span>0368604762 (Tư vấn 24/7)</span>
+                <Phone className="h-4 w-4 text-blue-500 shrink-0" />
+                <span>support@edupath.vn</span>
               </li>
               <li className="flex items-center gap-2.5">
-                <Mail className="h-4 w-4 text-teal-500 shrink-0" />
-                <span>Bondz1607@gmail.com</span>
+                <Mail className="h-4 w-4 text-blue-500 shrink-0" />
+                <span>contact@edupath.vn</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <MapPin className="h-4 w-4 text-teal-500 shrink-0 mt-0.5" />
+                <MapPin className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
                 <span>Trường Đại Học FPT Đà Nẵng</span>
               </li>
             </ul>
@@ -75,7 +75,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-slate-800 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© {currentYear} MedBooking. Bảo lưu mọi quyền.</p>
+          <p>© {currentYear} EduPath — FPT University SWP391. Bảo lưu mọi quyền.</p>
           <p className="flex items-center gap-1">
             Được phát triển với <Heart className="h-3 w-3 text-red-500 fill-red-500" /> bởi đội ngũ Nhóm 1 Class SE20A07.
           </p>

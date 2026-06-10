@@ -157,16 +157,15 @@ export interface AdminClinic {
   name: string;
   address: string;
   image: string | null;
-  _count: {
-    doctors: number;
-  };
+  doctors: AdminDoctor[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AdminClinicsResponse {
-  message: string;
-  count: number;
+  success: boolean;
+  total: number;
+  totalPages: number;
   data: AdminClinic[];
 }
 

@@ -96,7 +96,7 @@ export default function VideoCallPage() {
             let stream: MediaStream | null = null;
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 640, height: 480, facingMode: "user" },
+                    video: { width: 640, height: 480, facingMode: "STUDENT" },
                     audio: true
                 });
                 setLocalStream(stream);
@@ -134,10 +134,10 @@ export default function VideoCallPage() {
                 // Listeners
                 socket.on("user-connected", ({ role, name }) => {
                     setConnectionStatus("connected");
-                    toast.success(`${name} (${role === "DOCTOR" ? "Bác sĩ" : "Bệnh nhân"}) đã tham gia phòng.`);
+                    toast.success(`${name} (${role === "MENTOR" ? "Bác sĩ" : "Bệnh nhân"}) đã tham gia phòng.`);
                     
                     // If current user is the doctor, initiate peer connection
-                    if (currentUser.role === "DOCTOR") {
+                    if (currentUser.role === "MENTOR") {
                         initiateCall(stream, socket);
                     }
                 });
@@ -324,7 +324,7 @@ export default function VideoCallPage() {
     };
 
     const exitRoom = () => {
-        if (user?.role === "DOCTOR") {
+        if (user?.role === "MENTOR") {
             router.push("/doctor/appointments");
         } else {
             router.push("/my-appointments");
@@ -433,7 +433,7 @@ export default function VideoCallPage() {
     );
 
     // Dynamic UI labels based on role
-    const otherPartyName = user?.role === "DOCTOR" 
+    const otherPartyName = user?.role === "MENTOR" 
         ? appointment?.user?.fullName || "Bệnh nhân" 
         : appointment?.doctor?.name || "Bác sĩ Chuyên khoa";
 
@@ -559,7 +559,7 @@ export default function VideoCallPage() {
                             <MessageSquare className="w-4 h-4" /> Trò chuyện
                         </button>
                         
-                        {user?.role === "DOCTOR" && (
+                        {user?.role === "MENTOR" && (
                             <button
                                 onClick={() => setActiveTab("medical")}
                                 className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors ${

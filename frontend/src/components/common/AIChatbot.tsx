@@ -40,7 +40,7 @@ export default function AIChatbot() {
   const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
 
-    const userMessage: ChatMessage = { role: "user", text: textToSend };
+    const userMessage: ChatMessage = { role: "STUDENT", text: textToSend };
     setMessages((prev) => [...prev, userMessage]);
     setInputText("");
     setIsLoading(true);

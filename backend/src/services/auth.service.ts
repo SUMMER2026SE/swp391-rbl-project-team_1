@@ -5,13 +5,15 @@ import { User, Role } from "@prisma/client";
 
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
-import { generateOtp, sendOtpEmail, sendResetPasswordOtpEmail } from "../utils/emailService";
+import { generateOtp, sendOtpEmail, sendResetPasswordOtpEmail } from "./email.service";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-    throw new Error("JWT_SECRET environment variable is required");
-}
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error("JWT_SECRET environment variable is missing");
+    }
+    return secret;
+};
 
 export interface AuthTokenPayload {
     userId: string;
@@ -197,7 +199,7 @@ export async function authenticateUser(
         role: user.role,
     };
 
-    const token = jwt.sign(payload, JWT_SECRET as string, {
+    const token = jwt.sign(payload, getJwtSecret() as string, {
         expiresIn: "7d",
     });
 
@@ -407,7 +409,7 @@ export async function googleLogin(idToken: string): Promise<AuthResult> {
             role: user.role,
         };
 
-        const token = jwt.sign(tokenPayload, JWT_SECRET as string, {
+        const token = jwt.sign(tokenPayload, getJwtSecret() as string, {
             expiresIn: "7d",
         });
 

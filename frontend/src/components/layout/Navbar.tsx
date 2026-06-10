@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, X, Calendar, LogOut, User as UserIcon, ShieldAlert, LayoutDashboard } from "lucide-react";
+import { Menu, X, GraduationCap, LogOut, User as UserIcon, ShieldAlert, LayoutDashboard, BookOpen } from "lucide-react";
 import Button from "../common/Button";
 import OnboardingSurveyModal from "../ui/OnboardingSurveyModal";
 
@@ -20,7 +20,7 @@ export default function Navbar() {
     if (
       isAuthenticated &&
       user &&
-      user.role === "USER" &&
+      user.role === "STUDENT" &&
       !user.bloodType &&
       pathname !== "/video-call" &&
       sessionStorage.getItem("skipped_health_survey") !== "true"
@@ -39,14 +39,13 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Trang Chủ", href: "/" },
-    { name: "Bệnh Viện", href: "/clinics" },
-    { name: "Danh Sách Bác Sĩ", href: "/doctors" },
-    { name: "Kiểm Tra Sức Khỏe", href: "/health-tests" },
-    { name: "Tin Tức", href: "/news" },
+    { name: "Lộ Trình Học", href: "/courses" },
+    { name: "Bài Tập", href: "/exercises" },
+    { name: "Tiến Độ", href: "/progress" },
   ];
 
-  if (isAuthenticated && (user?.role === "USER" || user?.role === "DOCTOR")) {
-    navLinks.push({ name: "Lịch Hẹn Của Tôi", href: "/my-appointments" });
+  if (isAuthenticated && (user?.role === "STUDENT" || user?.role === "MENTOR")) {
+    navLinks.push({ name: "Lộ Trình Của Tôi", href: "/my-learning" });
   }
 
   const isActive = (href: string) => {
@@ -60,11 +59,11 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2 text-teal-600 font-bold text-xl tracking-tight">
-              <div className="p-2 bg-teal-50 rounded-xl text-teal-600">
-                <Calendar className="h-6 w-6" />
+            <Link href="/" className="flex items-center gap-2 text-blue-600 font-bold text-xl tracking-tight">
+              <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
+                <GraduationCap className="h-6 w-6" />
               </div>
-              <span>MedBooking</span>
+              <span>EduPath</span>
             </Link>
           </div>
 
@@ -119,30 +118,30 @@ export default function Navbar() {
                     <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
                     <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl z-20 animate-in fade-in slide-in-from-top-2 duration-150">
                       <Link
-                        href="/profile"
+                        href={user.role === "STUDENT" ? "/student/profile" : "/profile"}
                         onClick={() => setShowDropdown(false)}
                         className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <UserIcon className="h-4 w-4 text-teal-600" />
                         <span>Trang cá nhân</span>
                       </Link>
-                      {(user.role === "USER" || user.role === "DOCTOR") && (
+                      {(user.role === "STUDENT" || user.role === "MENTOR") && (
                         <Link
-                          href="/my-appointments"
+                          href="/my-learning"
                           onClick={() => setShowDropdown(false)}
                           className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                         >
-                          <Calendar className="h-4 w-4 text-teal-600" />
-                          <span>Lịch hẹn của tôi</span>
+                          <BookOpen className="h-4 w-4 text-blue-600" />
+                          <span>Lộ trình của tôi</span>
                         </Link>
                       )}
-                      {user.role === "DOCTOR" && (
+                      {user.role === "MENTOR" && (
                         <Link
-                          href="/doctor/dashboard"
+                          href="/mentor/dashboard"
                           onClick={() => setShowDropdown(false)}
                           className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                         >
-                          <LayoutDashboard className="h-4 w-4 text-teal-600" />
+                          <LayoutDashboard className="h-4 w-4 text-blue-600" />
                           <span>Bảng điều khiển</span>
                         </Link>
                       )}
@@ -239,14 +238,14 @@ export default function Navbar() {
                     {user.role}
                   </span>
                 </Link>
-                {user.role === "DOCTOR" && (
+                {user.role === "MENTOR" && (
                   <Link
-                    href="/doctor/dashboard"
+                    href="/mentor/dashboard"
                     onClick={() => setIsOpen(false)}
                     className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                   >
-                    <LayoutDashboard className="h-5 w-5 text-teal-600" />
-                    <span>Bảng điều khiển Bác sĩ</span>
+                    <LayoutDashboard className="h-5 w-5 text-blue-600" />
+                    <span>Bảng điều khiển Mentor</span>
                   </Link>
                 )}
                 {user.role === "ADMIN" && (

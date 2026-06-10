@@ -204,8 +204,8 @@ export default function AdminUsersPage() {
               className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm cursor-pointer"
             >
               <option value="ALL">Tất cả vai trò</option>
-              <option value="USER">Người bệnh (USER)</option>
-              <option value="DOCTOR">Bác sĩ (DOCTOR)</option>
+              <option value="STUDENT">Người bệnh (USER)</option>
+              <option value="MENTOR">Bác sĩ (DOCTOR)</option>
               <option value="ADMIN">Quản trị viên (ADMIN)</option>
             </select>
           </div>
@@ -230,9 +230,9 @@ export default function AdminUsersPage() {
               </thead>
               <tbody className="text-xs divide-y divide-slate-900">
                 {filteredUsers.map((u) => {
-                  const roleColors = {
-                    USER: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-                    DOCTOR: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+                  const roleColors: Record<string, string> = {
+                    STUDENT: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+                    MENTOR: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
                     ADMIN: "bg-red-500/10 text-red-400 border-red-500/20",
                   };
 
@@ -259,8 +259,8 @@ export default function AdminUsersPage() {
                               onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
                               className="px-2 py-1 text-xs rounded border border-slate-700 bg-slate-900 text-slate-100"
                             >
-                              <option value="USER">USER</option>
-                              <option value="DOCTOR">DOCTOR</option>
+                              <option value="STUDENT">USER</option>
+                              <option value="MENTOR">DOCTOR</option>
                               <option value="ADMIN">ADMIN</option>
                             </select>
                             <button
@@ -284,7 +284,7 @@ export default function AdminUsersPage() {
                         )}
                       </td>
                       <td className="p-5 text-slate-400 font-medium">
-                        {u.role === "DOCTOR" ? (
+                        {u.role === "MENTOR" ? (
                           linkingUserId === u.id ? (
                             <div className="flex items-center gap-2">
                               <select

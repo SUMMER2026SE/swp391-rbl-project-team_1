@@ -36,10 +36,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyToken = verifyToken;
 const jsonwebtoken_1 = __importStar(require("jsonwebtoken"));
 const apiError_1 = require("../utils/apiError");
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-    throw new Error("JWT_SECRET environment variable is required");
-}
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error("JWT_SECRET environment variable is required");
+    }
+    return secret;
+};
 /**
  * Middleware: Verifies Bearer JWT token and attaches payload to req.user.
  * Returns 401 for missing/invalid tokens, 401 for expired tokens.
@@ -56,7 +59,7 @@ function verifyToken(req, _res, next) {
         return;
     }
     try {
-        const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
+        const decoded = jsonwebtoken_1.default.verify(token, getJwtSecret());
         if (typeof decoded !== "object" || decoded === null) {
             throw new apiError_1.ApiError("Invalid token payload", 401);
         }

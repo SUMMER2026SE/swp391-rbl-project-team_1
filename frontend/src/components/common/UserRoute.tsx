@@ -38,7 +38,7 @@ export default function UserRoute({ children }: UserRouteProps) {
   }
 
   // Access denied for DOCTOR and ADMIN roles (only normal USER can access patient routes)
-  if (user?.role === "DOCTOR" || user?.role === "ADMIN") {
+  if (user?.role === "MENTOR" || user?.role === "ADMIN") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md w-full text-center bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-6">
@@ -52,7 +52,7 @@ export default function UserRoute({ children }: UserRouteProps) {
             </p>
           </div>
           <div className="pt-2">
-            {user?.role === "DOCTOR" ? (
+            {user?.role === "MENTOR" ? (
               <Link href="/doctor/dashboard">
                 <Button variant="teal" className="w-full rounded-xl py-3 flex items-center justify-center gap-1.5 font-bold">
                   <ArrowLeft className="h-4 w-4" /> Quay lại Doctor Dashboard

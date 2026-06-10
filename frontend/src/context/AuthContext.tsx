@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function loadStoredAuth() {
       try {
         const storedToken = localStorage.getItem("token");
-        const storedUser = localStorage.getItem("user");
+        const storedUser = localStorage.getItem("STUDENT");
 
         if (storedToken) {
           setToken(storedToken);
@@ -38,18 +38,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const profileResponse = await authService.getProfile();
             setUser(profileResponse.user);
-            localStorage.setItem("user", JSON.stringify(profileResponse.user));
+            localStorage.setItem("STUDENT", JSON.stringify(profileResponse.user));
           } catch (profileError) {
             console.error("Token verification failed:", profileError);
             // Token is invalid/expired
             localStorage.removeItem("token");
-            localStorage.removeItem("user");
+            localStorage.removeItem("STUDENT");
             setToken(null);
             setUser(null);
           }
         } else if (storedUser) {
           // If no token but user exists, clear it for consistency
-          localStorage.removeItem("user");
+          localStorage.removeItem("STUDENT");
         }
       } catch (e) {
         console.error("Error reading from localStorage:", e);
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.login(email, password);
       localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
+      localStorage.setItem("STUDENT", JSON.stringify(response.user));
       setToken(response.token);
       setUser(response.user);
       return response.user;
@@ -115,14 +115,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem("STUDENT");
     setToken(null);
     setUser(null);
   };
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
+    localStorage.setItem("STUDENT", JSON.stringify(updatedUser));
   };
 
   const googleLogin = async (idToken: string) => {
@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.googleLogin(idToken);
       localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
+      localStorage.setItem("STUDENT", JSON.stringify(response.user));
       setToken(response.token);
       setUser(response.user);
       return response.user;

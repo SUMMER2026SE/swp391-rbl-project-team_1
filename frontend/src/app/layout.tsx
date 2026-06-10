@@ -14,8 +14,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "MedBooking - Hệ thống đặt lịch hẹn bác sĩ trực tuyến",
-  description: "Đặt lịch khám bệnh nhanh chóng với đội ngũ bác sĩ uy tín nhất tại MedBooking.",
+  title: "EduPath - Học tập thông minh hơn",
+  description: "Nền tảng học tập thích ứng — tự động phân tích năng lực và cá nhân hóa lộ trình học tập theo từng người.",
 };
 
 export default function RootLayout({

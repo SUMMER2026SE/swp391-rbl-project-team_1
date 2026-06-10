@@ -263,13 +263,13 @@ export default function RegisterPage() {
           {step === "password" && <Lock className="h-12 w-12 text-teal-600 mx-auto mb-4" />}
 
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            {step === "email" && "Nhập Email"}
-            {step === "otp" && "Xác Nhận OTP"}
+            {step === "email" && "Tạo Tài Khoản EduPath"}
+            {step === "otp" && "Xác Minh Email"}
             {step === "password" && "Tạo Mật Khẩu"}
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            {step === "email" && "Tạo tài khoản MedBooking để trải nghiệm đặt lịch nhanh chóng"}
-            {step === "otp" && `Nhập mã OTP đã được gửi đến ${email}`}
+            {step === "email" && "Bắt đầu hành trình học tập thông minh của bạn"}
+            {step === "otp" && `Nhập mã 6 số đã được gửi đến ${email}`}
             {step === "password" && "Tạo mật khẩu mạnh để bảo vệ tài khoản"}
           </p>
         </div>
@@ -297,7 +297,7 @@ export default function RegisterPage() {
 
               <div className="pt-2">
                 <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-                  Gửi Mã OTP
+                  Gửi mã xác minh
                 </Button>
               </div>
             </form>
@@ -341,7 +341,7 @@ export default function RegisterPage() {
 
             <div className="pt-2">
               <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-                Xác Nhận OTP
+                Xác nhận
               </Button>
             </div>
 
@@ -350,9 +350,9 @@ export default function RegisterPage() {
                 type="button"
                 onClick={handleResendOtp}
                 disabled={resendCountdown > 0 || loading}
-                className="text-sm text-teal-600 hover:text-teal-700 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                className="text-sm text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
               >
-                {resendCountdown > 0 ? `Gửi lại trong ${resendCountdown}s` : "Gửi lại mã OTP"}
+                {resendCountdown > 0 ? `Gửi lại trong ${resendCountdown}s` : "Gửi lại mã"}
               </button>
             </div>
           </form>
@@ -391,7 +391,7 @@ export default function RegisterPage() {
 
             <div className="pt-2">
               <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-                Hoàn Tất Đăng Ký
+                Đăng ký
               </Button>
             </div>
           </form>
@@ -400,8 +400,8 @@ export default function RegisterPage() {
         <div className="text-center pt-2">
           <p className="text-sm text-slate-600">
             Đã có tài khoản?{" "}
-            <Link href="/login" className="font-semibold text-teal-600 hover:text-teal-700 transition-colors">
-              Đăng nhập ngay
+            <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              Đăng nhập
             </Link>
           </p>
         </div>

@@ -272,7 +272,7 @@ export default function PrescriptionModal({ appointmentId, onClose }: Prescripti
                 
                 {/* simulated doctor signature */}
                 <div className="my-2 select-none opacity-80 rotate-[-3deg] font-mono text-teal-650 text-sm font-bold tracking-widest italic pr-4">
-                  Dr. {appointment.doctor?.name ? appointment.doctor.name.split(" ").pop() : "Doctor"}
+                  Dr. {appointment.doctor?.name ? appointment.doctor.name.split(" ").pop() : "MENTOR"}
                 </div>
 
                 <div className="text-[10px] text-slate-400">MedBooking Digital Signature</div>

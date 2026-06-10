@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
 import Alert from "@/components/common/Alert";
-import { KeyRound, User, Activity } from "lucide-react";
+import { KeyRound, User, GraduationCap } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
@@ -31,7 +31,7 @@ export default function LoginPage() {
     try {
       const loggedInUser = await googleLogin(response.credential);
       
-      if (loggedInUser.role === 'DOCTOR') {
+      if (loggedInUser.role === 'MENTOR') {
         toast.success(`Chào mừng quay trở lại, Dr. ${loggedInUser.fullName || ''}`, { duration: 3000 });
         setTimeout(() => {
           router.push("/doctor/dashboard");
@@ -123,7 +123,7 @@ export default function LoginPage() {
     try {
       const loggedInUser = await login(email, password);
       
-      if (loggedInUser.role === 'DOCTOR') {
+      if (loggedInUser.role === 'MENTOR') {
         toast.success(`Chào mừng quay trở lại, Dr. ${loggedInUser.fullName || ''}`, { duration: 3000 });
         setTimeout(() => {
           router.push("/doctor/dashboard");
@@ -158,12 +158,12 @@ export default function LoginPage() {
 
       <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl border border-slate-100 shadow-xl relative z-10">
         <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-xl bg-teal-50 text-teal-600 mb-4">
-            <Activity className="h-6 w-6 animate-pulse" />
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-xl bg-blue-50 text-blue-600 mb-4">
+            <GraduationCap className="h-6 w-6 animate-pulse" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Mừng bạn quay trở lại</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Chào mừng trở lại</h2>
           <p className="mt-2 text-sm text-slate-500">
-            Đăng nhập để đặt lịch khám bệnh và xem kết quả nhanh chóng
+            Đăng nhập để tiếp tục lộ trình học tập của bạn
           </p>
         </div>
 
@@ -208,7 +208,7 @@ export default function LoginPage() {
 
           <div className="pt-2">
             <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-              Đăng Nhập
+              Đăng nhập
             </Button>
           </div>
         </form>
@@ -226,7 +226,7 @@ export default function LoginPage() {
         <div className="text-center pt-2">
           <p className="text-sm text-slate-600">
             Chưa có tài khoản?{" "}
-            <Link href="/register" className="font-semibold text-teal-600 hover:text-teal-700 transition-colors">
+            <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
               Đăng ký ngay
             </Link>
           </p>

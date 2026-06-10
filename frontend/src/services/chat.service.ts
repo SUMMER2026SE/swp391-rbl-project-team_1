@@ -1,7 +1,7 @@
 import api from "./api";
 
 export interface ChatMessage {
-  role: "user" | "model";
+  role: "STUDENT" | "model";
   text: string;
 }
 

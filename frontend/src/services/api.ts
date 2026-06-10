@@ -37,7 +37,7 @@ api.interceptors.response.use(
     if (status === 401 && typeof window !== "undefined") {
       // Clear storage on unauthorized token
       localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      localStorage.removeItem("STUDENT");
       // Optional: redirect to login if necessary
     }
 

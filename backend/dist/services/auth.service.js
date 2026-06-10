@@ -18,11 +18,14 @@ const axios_1 = __importDefault(require("axios"));
 const client_1 = require("@prisma/client");
 const client_2 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
-const emailService_1 = require("../utils/emailService");
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    throw new Error("JWT_SECRET environment variable is required");
-}
+const email_service_1 = require("./email.service");
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error("JWT_SECRET environment variable is missing");
+    }
+    return secret;
+};
 /**
  * Step 1: Send OTP to email
  */
@@ -36,7 +39,7 @@ async function sendOtpToEmail(email) {
         throw new apiError_1.ApiError("Email already registered", 409);
     }
     // Generate OTP (6 digits)
-    const otp = (0, emailService_1.generateOtp)();
+    const otp = (0, email_service_1.generateOtp)();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
     // Clear old OTPs for this email to avoid clutter
     await client_2.default.oTP.deleteMany({
@@ -52,7 +55,7 @@ async function sendOtpToEmail(email) {
         },
     });
     // Send OTP via email
-    await (0, emailService_1.sendOtpEmail)(normalizedEmail, otp);
+    await (0, email_service_1.sendOtpEmail)(normalizedEmail, otp);
 }
 /**
  * Step 2: Verify OTP
@@ -149,7 +152,7 @@ async function authenticateUser(email, password) {
         userId: user.id,
         role: user.role,
     };
-    const token = jsonwebtoken_1.default.sign(payload, JWT_SECRET, {
+    const token = jsonwebtoken_1.default.sign(payload, getJwtSecret(), {
         expiresIn: "7d",
     });
     const { password: _password, ...safeUser } = user;
@@ -168,6 +171,11 @@ async function findUserById(id) {
             gender: true,
             address: true,
             dateOfBirth: true,
+            bloodType: true,
+            allergies: true,
+            chronicDiseases: true,
+            personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -187,7 +195,7 @@ async function sendResetOtpToEmail(email) {
         throw new apiError_1.ApiError("Email not found in our database", 404);
     }
     // Generate OTP (6 digits)
-    const otp = (0, emailService_1.generateOtp)();
+    const otp = (0, email_service_1.generateOtp)();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
     // Clear old OTPs for this email to avoid clutter
     await client_2.default.oTP.deleteMany({
@@ -203,7 +211,7 @@ async function sendResetOtpToEmail(email) {
         },
     });
     // Send OTP via email
-    await (0, emailService_1.sendResetPasswordOtpEmail)(normalizedEmail, otp);
+    await (0, email_service_1.sendResetPasswordOtpEmail)(normalizedEmail, otp);
 }
 /**
  * Verify OTP for password reset flow
@@ -313,7 +321,7 @@ async function googleLogin(idToken) {
             userId: user.id,
             role: user.role,
         };
-        const token = jsonwebtoken_1.default.sign(tokenPayload, JWT_SECRET, {
+        const token = jsonwebtoken_1.default.sign(tokenPayload, getJwtSecret(), {
             expiresIn: "7d",
         });
         const { password: _password, ...safeUser } = user;

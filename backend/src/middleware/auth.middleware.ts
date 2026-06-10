@@ -8,11 +8,13 @@ export interface AuthenticatedRequest extends Request {
     user?: AuthTokenPayload;
 }
 
-const jwtSecret = process.env.JWT_SECRET;
-
-if (!jwtSecret) {
-    throw new Error("JWT_SECRET environment variable is required");
-}
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error("JWT_SECRET environment variable is required");
+    }
+    return secret;
+};
 
 /**
  * Middleware: Verifies Bearer JWT token and attaches payload to req.user.
@@ -38,7 +40,7 @@ export function verifyToken(
     }
 
     try {
-        const decoded = jwt.verify(token, jwtSecret as string);
+        const decoded = jwt.verify(token, getJwtSecret() as string);
 
         if (typeof decoded !== "object" || decoded === null) {
             throw new ApiError("Invalid token payload", 401);

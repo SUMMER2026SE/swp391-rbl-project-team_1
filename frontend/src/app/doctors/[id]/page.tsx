@@ -210,7 +210,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
       return;
     }
 
-    if (user?.role !== "USER" && user?.role !== "DOCTOR") {
+    if (user?.role !== "STUDENT" && user?.role !== "MENTOR") {
       setBookingMessage({
         type: "error",
         text: "Chỉ tài khoản người bệnh hoặc bác sĩ mới được phép đặt lịch khám.",
@@ -218,7 +218,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
       return;
     }
 
-    if (user?.role === "DOCTOR" && doctor?.id === user?.doctorId) {
+    if (user?.role === "MENTOR" && doctor?.id === user?.doctorId) {
       setBookingMessage({
         type: "error",
         text: "Bạn không thể tự đặt lịch khám với chính mình.",

@@ -124,8 +124,8 @@ export const adminService = {
   },
 
   // ─── Clinics CRUD ──────────────────────────────────────────────
-  async getClinics(): Promise<AdminClinicsResponse> {
-    const response = await api.get<AdminClinicsResponse>("/admin/clinics");
+  async getClinics(search: string = "", page: number = 1, limit: number = 10): Promise<AdminClinicsResponse> {
+    const response = await api.get<AdminClinicsResponse>(`/admin/clinics?search=${encodeURIComponent(search)}&page=${page}&limit=${limit}`);
     return response.data;
   },
 
@@ -141,6 +141,21 @@ export const adminService = {
 
   async deleteClinic(id: string): Promise<{ message: string }> {
     const response = await api.delete<{ message: string }>(`/admin/clinics/${id}`);
+    return response.data;
+  },
+
+  async getClinicDoctors(clinicId: string): Promise<{ success: boolean; data: AdminDoctor[] }> {
+    const response = await api.get<{ success: boolean; data: AdminDoctor[] }>(`/admin/clinics/${clinicId}/doctors`);
+    return response.data;
+  },
+
+  async addDoctorToClinic(clinicId: string, doctorId: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.post<{ success: boolean; message: string }>(`/admin/clinics/${clinicId}/doctors`, { doctorId });
+    return response.data;
+  },
+
+  async removeDoctorFromClinic(clinicId: string, doctorId: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.delete<{ success: boolean; message: string }>(`/admin/clinics/${clinicId}/doctors/${doctorId}`);
     return response.data;
   },
 

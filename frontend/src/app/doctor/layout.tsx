@@ -59,14 +59,14 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center font-bold text-xl uppercase overflow-hidden ring-2 ring-teal-500/20">
                 {user?.avatar ? (
-                  <img src={user.avatar} alt={user.fullName || "Doctor"} className="w-full h-full object-cover" />
+                  <img src={user.avatar} alt={user.fullName || "MENTOR"} className="w-full h-full object-cover" />
                 ) : (
                   user?.fullName?.charAt(0) || "D"
                 )}
               </div>
               <div className="flex-1 overflow-hidden">
                 <h3 className="font-semibold text-slate-800 truncate" title={user?.fullName || "Bác sĩ"}>
-                  Dr. {user?.fullName?.split(" ").pop() || "Doctor"}
+                  Dr. {user?.fullName?.split(" ").pop() || "MENTOR"}
                 </h3>
                 <span className="text-xs font-medium text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
                   Bác sĩ

@@ -8,7 +8,7 @@ import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
 import Alert from "@/components/common/Alert";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
-import { User, Activity, MapPin, Calendar, Mail, Shield, UserSquare, KeyRound, Lock, Sparkles, Camera } from "lucide-react";
+import { User, BookOpen, MapPin, Calendar, Mail, Shield, UserSquare, KeyRound, Lock, Sparkles, Camera, TrendingUp, Clock, Flame, AlertTriangle } from "lucide-react";
 
 type ProfileTab = "info" | "password";
 
@@ -225,11 +225,11 @@ function ProfileContent() {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <UserSquare className="h-8 w-8 text-teal-600" />
-            Hồ Sơ Cá Nhân
+            <UserSquare className="h-8 w-8 text-blue-600" />
+            Thông Tin Cá Nhân
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Quản lý thông tin cá nhân và thiết lập mật khẩu bảo vệ tài khoản của bạn.
+            Quản lý thông tin cá nhân và thiết lập mật khẩu bảo vệ tài khoản EduPath của bạn.
           </p>
         </div>
 
@@ -250,7 +250,7 @@ function ProfileContent() {
                     className="h-28 w-28 rounded-full object-cover border-4 border-teal-50 shadow-inner group-hover:opacity-80 transition-all duration-200"
                   />
                 ) : (
-                  <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-teal-500 to-emerald-400 text-white flex items-center justify-center text-3xl font-bold shadow-md border-4 border-teal-50 group-hover:opacity-80 transition-all duration-200">
+                  <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-400 text-white flex items-center justify-center text-3xl font-bold shadow-md border-4 border-blue-50 group-hover:opacity-80 transition-all duration-200">
                     {getInitials(user.fullName, user.email)}
                   </div>
                 )}
@@ -270,7 +270,7 @@ function ProfileContent() {
 
                 {/* Small check icon */}
                 {!avatarLoading && (
-                  <div className="absolute bottom-0 right-0 h-7 w-7 bg-teal-500 border-2 border-white rounded-full flex items-center justify-center text-white text-xs shadow">
+                  <div className="absolute bottom-0 right-0 h-7 w-7 bg-blue-500 border-2 border-white rounded-full flex items-center justify-center text-white text-xs shadow">
                     ✓
                   </div>
                 )}
@@ -288,9 +288,9 @@ function ProfileContent() {
               <div>
                 <h2 className="text-xl font-bold text-slate-900">{user.fullName || "Chưa cập nhật tên"}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">{user.email}</p>
-                <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-100">
+                <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                   <Shield className="h-3 w-3" />
-                  {user.role === "ADMIN" ? "Quản trị viên" : user.role === "DOCTOR" ? "Bác sĩ" : "Bệnh nhân"}
+                  {user.role === "ADMIN" ? "Quản trị viên" : user.role === "MENTOR" ? "Mentor" : "Học viên"}
                 </div>
               </div>
 
@@ -307,8 +307,32 @@ function ProfileContent() {
                 )}
                 <div className="flex items-center gap-3">
                   <Calendar className="h-4.5 w-4.5 text-slate-400" />
-                  <span>Tham gia: {new Date(user.createdAt).toLocaleDateString("vi-VN")}</span>
+                  <span>Tham gia EduPath: {new Date(user.createdAt).toLocaleDateString("vi-VN")}</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 grid grid-cols-2 gap-3">
+              <div className="flex flex-col items-center justify-center bg-blue-50 rounded-xl p-3 text-center">
+                <Clock className="h-5 w-5 text-blue-500 mb-1" />
+                <p className="text-xs font-semibold text-slate-700">Tổng thời gian học</p>
+                <p className="text-lg font-extrabold text-blue-600">—</p>
+              </div>
+              <div className="flex flex-col items-center justify-center bg-blue-50 rounded-xl p-3 text-center">
+                <BookOpen className="h-5 w-5 text-blue-500 mb-1" />
+                <p className="text-xs font-semibold text-slate-700">Bài hoàn thành</p>
+                <p className="text-lg font-extrabold text-blue-600">—</p>
+              </div>
+              <div className="flex flex-col items-center justify-center bg-orange-50 rounded-xl p-3 text-center">
+                <Flame className="h-5 w-5 text-orange-500 mb-1" />
+                <p className="text-xs font-semibold text-slate-700">Streak hiện tại</p>
+                <p className="text-lg font-extrabold text-orange-500">—</p>
+              </div>
+              <div className="flex flex-col items-center justify-center bg-red-50 rounded-xl p-3 text-center">
+                <AlertTriangle className="h-5 w-5 text-red-500 mb-1" />
+                <p className="text-xs font-semibold text-slate-700">Risk Score</p>
+                <p className="text-lg font-extrabold text-red-500">—</p>
               </div>
             </div>
 
@@ -318,7 +342,7 @@ function ProfileContent() {
                 onClick={() => handleTabChange("info")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left cursor-pointer ${
                   activeTab === "info"
-                    ? "bg-teal-50 text-teal-700"
+                    ? "bg-blue-50 text-blue-700"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
@@ -329,7 +353,7 @@ function ProfileContent() {
                 onClick={() => handleTabChange("password")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left cursor-pointer ${
                   activeTab === "password"
-                    ? "bg-teal-50 text-teal-700"
+                    ? "bg-blue-50 text-blue-700"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
@@ -345,8 +369,8 @@ function ProfileContent() {
               // Tab 1: Profile Info Form
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-6 pb-3 border-b border-slate-100 flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-teal-600" />
-                  Thông Tin Chi Tiết
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                  Thông Tin Cá Nhân
                 </h3>
 
                 {error && <Alert type="error" message={error} className="mb-6" />}
@@ -376,7 +400,7 @@ function ProfileContent() {
                         id="gender"
                         value={gender}
                         onChange={(e) => setGender(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
                       >
                         <option value="Nam">Nam</option>
                         <option value="Nữ">Nữ</option>
@@ -400,7 +424,7 @@ function ProfileContent() {
 
                     <div>
                       <label htmlFor="emailDisplay" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                        Địa chỉ Email (Không thể sửa)
+                        Địa chỉ Email (Không thể chỉnh sửa)
                       </label>
                       <Input
                         id="emailDisplay"
@@ -422,15 +446,15 @@ function ProfileContent() {
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       rows={3}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
                     />
                   </div>
 
-                  {user.role === "USER" && (
+                  {user.role === "STUDENT" && (
                     <div className="mt-8 pt-6 border-t border-slate-100 space-y-6">
                       <h4 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <Activity className="h-5 w-5 text-teal-650" />
-                        Hồ Sơ Sức Khỏe Ban Đầu
+                        <TrendingUp className="h-5 w-5 text-blue-600" />
+                        Mục Tiêu Học Tập
                       </h4>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -455,12 +479,12 @@ function ProfileContent() {
 
                         <div>
                           <label htmlFor="allergies" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                            Tiền sử dị ứng
+                            Mục Tiêu Học Tập
                           </label>
                           <Input
                             id="allergies"
                             type="text"
-                            placeholder="Dị ứng thuốc, thức ăn..."
+                            placeholder="Ví dụ: Đạt chứng chỉ AWS, Lập trình web..."
                             value={allergies}
                             onChange={(e) => setAllergies(e.target.value)}
                           />
@@ -470,12 +494,12 @@ function ProfileContent() {
                       <div className="grid grid-cols-1 gap-6">
                         <div>
                           <label htmlFor="chronicDiseases" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                            Bệnh lý nền / Mãn tính
+                            Lĩnh Vực Quan Tâm
                           </label>
                           <Input
                             id="chronicDiseases"
                             type="text"
-                            placeholder="Tiểu đường, cao huyết áp, hen suyễn..."
+                            placeholder="Ví dụ: Web Development, Data Science, AI..."
                             value={chronicDiseases}
                             onChange={(e) => setChronicDiseases(e.target.value)}
                           />
@@ -485,29 +509,29 @@ function ProfileContent() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                           <label htmlFor="personalHistory" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                            Tiền sử phẫu thuật / Chấn thương
+                            Kinh Nghiệm Học Tập Trước Đây
                           </label>
                           <textarea
                             id="personalHistory"
-                            placeholder="Lịch sử phẫu thuật, tai nạn lớn..."
+                            placeholder="Các khóa học, chứng chỉ đã hoàn thành..."
                             value={personalHistory}
                             onChange={(e) => setPersonalHistory(e.target.value)}
                             rows={3}
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
                           />
                         </div>
 
                         <div>
                           <label htmlFor="familyHistory" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                            Tiền sử bệnh gia đình
+                            Ghi Chú / Kỳ Vọng
                           </label>
                           <textarea
                             id="familyHistory"
-                            placeholder="Các bệnh lý di truyền trong gia đình..."
+                            placeholder="Ghi chú thêm về mục tiêu hoặc kỳ vọng học tập..."
                             value={familyHistory}
                             onChange={(e) => setFamilyHistory(e.target.value)}
                             rows={3}
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -515,8 +539,8 @@ function ProfileContent() {
                   )}
 
                   <div className="pt-4 flex justify-end border-t border-slate-100">
-                    <Button type="submit" variant="teal" className="py-2.5 px-6 font-semibold rounded-xl" isLoading={loading}>
-                      Lưu Thay Đổi
+                    <Button type="submit" variant="teal" className="py-2.5 px-6 font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 border-blue-500" isLoading={loading}>
+                      Chỉnh sửa thông tin
                     </Button>
                   </div>
                 </form>
@@ -525,8 +549,8 @@ function ProfileContent() {
               // Tab 2: Change Password Form
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-6 pb-3 border-b border-slate-100 flex items-center gap-2">
-                  <Lock className="h-5 w-5 text-teal-600" />
-                  Thiết Lập Mật Khẩu
+                  <Lock className="h-5 w-5 text-blue-600" />
+                  Đổi Mật Khẩu
                 </h3>
 
                 {error && <Alert type="error" message={error} className="mb-6" />}
@@ -588,8 +612,8 @@ function ProfileContent() {
                   </div>
 
                   <div className="pt-4 flex justify-end border-t border-slate-100">
-                    <Button type="submit" variant="teal" className="py-2.5 px-6 font-semibold rounded-xl flex items-center gap-2" isLoading={loading}>
-                      <Sparkles className="h-4 w-4" /> Đổi Mật Khẩu
+                    <Button type="submit" variant="teal" className="py-2.5 px-6 font-semibold rounded-xl flex items-center gap-2 bg-blue-600 hover:bg-blue-500 border-blue-500" isLoading={loading}>
+                      <Sparkles className="h-4 w-4" /> Cập nhật mật khẩu
                     </Button>
                   </div>
                 </form>
