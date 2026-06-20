@@ -1,0 +1,201 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  googleId  String?  @unique
+  fullName  String
+  avatarUrl String?
+  role      String   @default("STUDENT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  student   Student?
+  mentor    Mentor?
+}
+
+model Student {
+  id                  String            @id @default(uuid())
+  userId              String            @unique
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  learningGoal        String?
+  totalFocusTime      Float             @default(0)
+  currentRiskScore    Int               @default(0)
+  onboardingCompleted Boolean           @default(false)
+  skillMasteries      SkillMastery[]
+  mentorStudents      MentorStudent[]
+  quizAttempts        QuizAttempt[]
+  riskHistories       RiskHistory[]
+  pomodoroSessions    PomodoroSession[]
+  tasks               Task[]
+  alerts              Alert[]
+}
+
+model Mentor {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentorStudents MentorStudent[]
+  knowledgeUnits KnowledgeUnit[]
+  quizQuestions  QuizQuestion[]
+}
+
+model MentorStudent {
+  id        String  @id @default(uuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  String
+  mentor    Mentor  @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, mentorId])
+}
+
+model OTP {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Skill {
+  id             String          @id @default(uuid())
+  name           String
+  slug           String          @unique
+  parentId       String?
+  parent         Skill?          @relation("SkillToSkill", fields: [parentId], references: [id], onDelete: SetNull)
+  children       Skill[]         @relation("SkillToSkill")
+  skillMasteries SkillMastery[]
+  tasks          Task[]
+  quizQuestions  QuizQuestion[]
+  knowledgeUnits KnowledgeUnit[]
+}
+
+model SkillMastery {
+  id           String        @id @default(uuid())
+  studentId    String
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId      String
+  skill        Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  masteryLevel Float         @default(0.3)
+  pLearn       Float         @default(0.4)
+  pForget      Float         @default(0.1)
+  pGuess       Float         @default(0.2)
+  pSlip        Float         @default(0.1)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bktHistories BKTHistory[]
+
+  @@unique([studentId, skillId])
+}
+
+model BKTHistory {
+  id            String       @id @default(uuid())
+  masteryId     String
+  skillMastery  SkillMastery @relation(fields: [masteryId], references: [id], onDelete: Cascade)
+  masteryBefore Float
+  masteryAfter  Float
+  wasCorrect    Boolean
+  createdAt     DateTime     @default(now())
+}
+
+model RiskHistory {
+  id                 String   @id @default(uuid())
+  studentId          String
+  student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  riskScore          Int
+  taskCompletionRate Float
+  avgQuizScore       Float
+  totalTimeSpent     Float
+  createdAt          DateTime @default(now())
+}
+
+model PomodoroSession {
+  id          String    @id @default(uuid())
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  taskId      String?
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  durationMin Int
+  completed   Boolean   @default(false)
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Task {
+  id               String            @id @default(uuid())
+  studentId        String
+  student          Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  skillId          String
+  skill            Skill             @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  difficulty       String
+  deadline         DateTime?
+  estimatedMinutes Int               @default(25)
+  status           String            @default("TODO")
+  completedAt      DateTime?
+  isAIGenerated    Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  pomodoroSessions PomodoroSession[]
+}
+
+model KnowledgeUnit {
+  id         String     @id @default(uuid())
+  mentorId   String
+  mentor     Mentor     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  skillId    String
+  skill      Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  difficulty String
+  isPublic   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model QuizQuestion {
+  id           String        @id @default(uuid())
+  mentorId     String?
+  mentor       Mentor?       @relation(fields: [mentorId], references: [id], onDelete: SetNull)
+  skillId      String
+  skill        Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  question     String
+  type         String        @default("SINGLE_CHOICE")
+  options      String
+  explanation  String?
+  difficulty   String        @default("EASY")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  quizAttempts QuizAttempt[]
+}
+
+model QuizAttempt {
+  id             String       @id @default(uuid())
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption Int
+  isCorrect      Boolean
+  timeSpentSec   Int
+  createdAt      DateTime     @default(now())
+}
+
+model Alert {
+  id        String    @id @default(uuid())
+  studentId String
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type      String    @default("RED_FLAG")
+  message   String
+  timestamp DateTime  @default(now())
+}
