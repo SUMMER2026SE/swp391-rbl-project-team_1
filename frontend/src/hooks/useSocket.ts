@@ -29,7 +29,7 @@ export function useSocket() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('Connected to WebSocket server:', socket.id);
+      
       setIsConnected(true);
 
       // Join appropriate room
@@ -43,7 +43,7 @@ export function useSocket() {
     });
 
     socket.on('disconnect', () => {
-      console.log('Disconnected from WebSocket server');
+      
       setIsConnected(false);
     });
 

@@ -4,16 +4,22 @@ import { verifyRole } from '../middleware/role.middleware';
 import { Role } from '../types/enums';
 import {
   getRoadmapTasks,
-  generateAIRoadmap
+  generateAIRoadmap,
+  getRoadmapTemplates,
+  getRoadmapTemplateDetail
 } from '../controllers/roadmap.controller';
 
 const router = Router();
 
-// Ensure student role for all roadmap endpoints
+// Ensure authenticated for all roadmap endpoints
 router.use(verifyToken);
-router.use(verifyRole(Role.STUDENT));
 
-router.get('/', getRoadmapTasks);
-router.post('/generate', generateAIRoadmap);
+// Ensure student role for roadmap tasks and generation
+router.get('/', verifyRole(Role.STUDENT), getRoadmapTasks);
+router.post('/generate', verifyRole(Role.STUDENT), generateAIRoadmap);
+
+// Templates can be viewed by STUDENT, MENTOR, ADMIN
+router.get('/templates', verifyRole(Role.STUDENT, Role.MENTOR, Role.ADMIN), getRoadmapTemplates);
+router.get('/templates/:id', verifyRole(Role.STUDENT, Role.MENTOR, Role.ADMIN), getRoadmapTemplateDetail);
 
 export default router;

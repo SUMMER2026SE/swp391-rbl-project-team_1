@@ -9,6 +9,7 @@ import {
   Save, X, Sparkles, Check, HelpCircle, Loader2 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface QuizQuestion {
   id: string;
@@ -68,7 +69,7 @@ export default function MentorQuizBank() {
         setQuestions(response.data.questions);
       }
     } catch (_) {
-      toast.error('Không thể tải ngân hàng câu hỏi.');
+      handleError('Không thể tải ngân hàng câu hỏi.');
     } finally {
       setIsLoading(false);
     }
@@ -145,26 +146,26 @@ export default function MentorQuizBank() {
         }
       }
     } catch (_) {
-      toast.error('Xóa câu hỏi thất bại.');
+      handleError('Xóa câu hỏi thất bại.');
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!questionText.trim()) {
-      toast.error('Nội dung câu hỏi không được trống.');
+      handleError('Nội dung câu hỏi không được trống.');
       return;
     }
 
     // Validate options
     const filteredOptions = options.map(o => o.trim()).filter(o => o !== '');
     if (filteredOptions.length < 2) {
-      toast.error('Bạn phải điền ít nhất 2 đáp án lựa chọn.');
+      handleError('Bạn phải điền ít nhất 2 đáp án lựa chọn.');
       return;
     }
 
     if (correctOptionIdx >= filteredOptions.length) {
-      toast.error('Đáp án đúng được chỉ định không hợp lệ.');
+      handleError('Đáp án đúng được chỉ định không hợp lệ.');
       return;
     }
 
@@ -206,8 +207,7 @@ export default function MentorQuizBank() {
         }
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Không thể lưu câu hỏi.';
-      toast.error(msg);
+      handleError(error, 'Không thể lưu câu hỏi.');
     } finally {
       setIsSaving(false);
     }
@@ -216,7 +216,7 @@ export default function MentorQuizBank() {
   const handleGenerateAIQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiKnowledgeUnitId) {
-      toast.error('Vui lòng chọn tài liệu học tập để làm ngữ cảnh.');
+      handleError('Vui lòng chọn tài liệu học tập để làm ngữ cảnh.');
       return;
     }
 
@@ -233,8 +233,7 @@ export default function MentorQuizBank() {
         fetchQuestions();
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gemini AI biên soạn câu hỏi thất bại.';
-      toast.error(msg, { id: loadingToast });
+      handleError(error, 'Gemini AI biên soạn câu hỏi thất bại.', { id: loadingToast });
     } finally {
       setIsAiGenerating(false);
     }

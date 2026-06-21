@@ -13,5 +13,5 @@ initSocket(server);
 
 // Start Server
 server.listen(PORT, () => {
-  console.log(`[SERVER] EduPath server is running on http://localhost:${PORT}`);
+  
 });

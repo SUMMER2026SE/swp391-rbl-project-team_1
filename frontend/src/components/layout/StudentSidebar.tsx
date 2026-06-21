@@ -83,6 +83,11 @@ export function StudentSidebar() {
       label: 'Thành tích'
     },
     {
+      href: '/student/profile',
+      icon: <User className="w-5 h-5" />,
+      label: 'Hồ sơ cá nhân'
+    },
+    {
       href: '/student/achievements/leaderboard',
       icon: <Trophy className="w-5 h-5" />,
       label: 'Bảng xếp hạng'

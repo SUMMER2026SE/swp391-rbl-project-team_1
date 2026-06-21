@@ -8,6 +8,7 @@ import api from '../../../services/api';
 import { Skill, Mentor } from '../../../types';
 import { Check, ShieldAlert, ArrowRight, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 export default function OnboardingPage() {
   const { completeOnboarding, user } = useAuth();
@@ -46,7 +47,7 @@ export default function OnboardingPage() {
         }
       } catch (error) {
         console.error('Error fetching onboarding metadata:', error);
-        toast.error('Lỗi khi tải thông tin cấu hình. Sử dụng dữ liệu dự phòng.');
+        handleError('Lỗi khi tải thông tin cấu hình. Sử dụng dữ liệu dự phòng.');
         
         // Fallbacks
         setParentSkills([
@@ -82,13 +83,13 @@ export default function OnboardingPage() {
   const handleNextStep = () => {
     if (step === 1) {
       if (selectedSkillIds.length === 0) {
-        toast.error('Vui lòng chọn ít nhất 1 kỹ năng để tiếp tục.');
+        handleError('Vui lòng chọn ít nhất 1 kỹ năng để tiếp tục.');
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (!learningGoal.trim()) {
-        toast.error('Vui lòng điền mục tiêu học tập của bạn.');
+        handleError('Vui lòng điền mục tiêu học tập của bạn.');
         return;
       }
       setStep(3);

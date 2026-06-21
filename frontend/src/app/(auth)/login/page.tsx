@@ -8,6 +8,7 @@ import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
@@ -19,15 +20,17 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!email || !password) {
-      toast.error('Vui lòng điền đầy đủ thông tin đăng nhập.');
+      handleError('Vui lòng điền đầy đủ thông tin đăng nhập.');
       return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error('Định dạng email không hợp lệ.');
+      handleError('Định dạng email không hợp lệ.');
       return;
     }
 
@@ -139,7 +142,7 @@ export default function LoginPage() {
                 }
               }}
               onError={() => {
-                toast.error('Đăng nhập Google thất bại');
+                handleError('Đăng nhập Google thất bại');
               }}
               useOneTap
               theme="outline"

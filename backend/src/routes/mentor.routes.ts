@@ -16,7 +16,10 @@ import {
   deleteQuizQuestion,
   getQuizQuestions,
   aiGenerateQuizQuestions,
-  sendManualAlert
+  sendManualAlert,
+  createRoadmapTemplate,
+  updateRoadmapTemplate,
+  deleteRoadmapTemplate
 } from '../controllers/mentor.controller';
 
 const router = Router();
@@ -45,5 +48,10 @@ router.post('/quiz-questions/ai-generate', aiGenerateQuizQuestions);
 
 // Alerts
 router.post('/alerts', sendManualAlert);
+
+// Roadmap Templates
+router.post('/roadmap-templates', createRoadmapTemplate);
+router.put('/roadmap-templates/:id', updateRoadmapTemplate);
+router.delete('/roadmap-templates/:id', deleteRoadmapTemplate);
 
 export default router;

@@ -668,3 +668,185 @@ export async function sendManualAlert(req: AuthRequest, res: Response, next: Nex
     next(error);
   }
 }
+
+
+// ==========================================
+// ROADMAP TEMPLATES (MENTOR/ADMIN)
+// ==========================================
+
+async function checkTemplateOwnership(templateId: string, user: any) {
+  if (user.role === 'ADMIN') return true;
+
+  const template = await prisma.roadmapTemplate.findUnique({
+    where: { id: templateId }
+  });
+
+  if (!template) {
+    throw new ApiError(404, 'Không tìm thấy mẫu lộ trình.');
+  }
+
+  if (template.createdById && template.createdById !== user.id) {
+    throw new ApiError(403, 'Bạn không có quyền chỉnh sửa lộ trình mẫu này.');
+  }
+
+  return true;
+}
+
+export async function createRoadmapTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new ApiError(401, 'Không có thông tin xác thực.');
+    }
+
+    const { title, description, difficulty, durationWeeks, totalSkills, bannerGradient, phases } = req.body;
+
+    // Validation
+    if (!title || title.trim() === '') {
+      throw new ApiError(400, 'Tiêu đề không được để trống.');
+    }
+    if (!phases || !Array.isArray(phases) || phases.length === 0) {
+      throw new ApiError(400, 'Lộ trình phải có ít nhất 1 Phase.');
+    }
+
+    for (let i = 0; i < phases.length; i++) {
+      const phase = phases[i];
+      if (!phase.tasks || !Array.isArray(phase.tasks) || phase.tasks.length === 0) {
+        throw new ApiError(400, `Phase "${phase.title || `Số ${i + 1}`}" phải có ít nhất 1 Task.`);
+      }
+    }
+
+    const newTemplate = await prisma.roadmapTemplate.create({
+      data: {
+        title,
+        description,
+        difficulty: difficulty || 'BEGINNER',
+        durationWeeks: durationWeeks || 4,
+        totalSkills: totalSkills || 10,
+        bannerGradient: bannerGradient || 'from-emerald-500 to-teal-500',
+        createdById: userId,
+        phases: {
+          create: phases.map((phase: any, pIndex: number) => ({
+            title: phase.title,
+            description: phase.description,
+            orderIndex: pIndex,
+            tasks: {
+              create: phase.tasks.map((task: any, tIndex: number) => ({
+                title: task.title,
+                description: task.description,
+                skillSlug: task.skillSlug || 'general',
+                difficulty: task.difficulty || 'MEDIUM',
+                estimatedMinutes: task.estimatedMinutes || 60,
+                orderIndex: tIndex
+              }))
+            }
+          }))
+        }
+      },
+      include: {
+        phases: {
+          include: { tasks: true }
+        }
+      }
+    });
+
+    res.status(201).json({ success: true, template: newTemplate });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateRoadmapTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user) throw new ApiError(401, 'Chưa đăng nhập.');
+
+    // 1. Check ownership
+    await checkTemplateOwnership(id, user);
+
+    const { title, description, difficulty, durationWeeks, totalSkills, bannerGradient, phases } = req.body;
+
+    // Validation
+    if (!title || title.trim() === '') throw new ApiError(400, 'Tiêu đề không được để trống.');
+    if (!phases || !Array.isArray(phases) || phases.length === 0) {
+      throw new ApiError(400, 'Lộ trình phải có ít nhất 1 Phase.');
+    }
+    for (let i = 0; i < phases.length; i++) {
+      const phase = phases[i];
+      if (!phase.tasks || !Array.isArray(phase.tasks) || phase.tasks.length === 0) {
+        throw new ApiError(400, `Phase "${phase.title || `Số ${i + 1}`}" phải có ít nhất 1 Task.`);
+      }
+    }
+
+    // 2. Transaction: Replace all phases/tasks
+    const updatedTemplate = await prisma.$transaction(async (tx) => {
+      // Xóa sạch Phase cũ (cascade sẽ xóa Task)
+      await tx.roadmapPhase.deleteMany({
+        where: { templateId: id }
+      });
+
+      // Cập nhật Template và tạo lại Phase/Task mới
+      return tx.roadmapTemplate.update({
+        where: { id },
+        data: {
+          title,
+          description,
+          difficulty: difficulty || 'BEGINNER',
+          durationWeeks: durationWeeks || 4,
+          totalSkills: totalSkills || 10,
+          bannerGradient: bannerGradient || 'from-emerald-500 to-teal-500',
+          phases: {
+            create: phases.map((phase: any, pIndex: number) => ({
+              title: phase.title,
+              description: phase.description,
+              orderIndex: pIndex,
+              tasks: {
+                create: phase.tasks.map((task: any, tIndex: number) => ({
+                  title: task.title,
+                  description: task.description,
+                  skillSlug: task.skillSlug || 'general',
+                  difficulty: task.difficulty || 'MEDIUM',
+                  estimatedMinutes: task.estimatedMinutes || 60,
+                  orderIndex: tIndex
+                }))
+              }
+            }))
+          }
+        },
+        include: {
+          phases: {
+            include: { tasks: true },
+            orderBy: { orderIndex: 'asc' }
+          }
+        }
+      });
+    });
+
+    res.status(200).json({ success: true, template: updatedTemplate });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteRoadmapTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user) throw new ApiError(401, 'Chưa đăng nhập.');
+
+    // 1. Check ownership
+    await checkTemplateOwnership(id, user);
+
+    // 2. Delete template (Cascade takes care of Phase/Task)
+    await prisma.roadmapTemplate.delete({
+      where: { id }
+    });
+
+    res.status(200).json({ success: true, message: 'Đã xóa lộ trình mẫu thành công.' });
+  } catch (error) {
+    next(error);
+  }
+}

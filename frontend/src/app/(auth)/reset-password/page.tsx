@@ -8,6 +8,7 @@ import Input from '../../../components/common/Input';
 import { KeyRound, Lock, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
+import { handleError } from '../../../utils/errorHandler';
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -18,58 +19,88 @@ function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [step, setStep] = useState<number>(1);
 
   useEffect(() => {
     if (!emailParam) {
-      toast.error('Không tìm thấy email. Vui lòng bắt đầu lại từ trang quên mật khẩu.');
+      handleError('Không tìm thấy email. Vui lòng bắt đầu lại từ trang quên mật khẩu.');
       router.push('/forgot-password');
     }
   }, [emailParam, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp.');
-      return;
-    }
-
+    if (isSubmitting) return;
     if (code.length !== 6) {
-      toast.error('Mã OTP phải bao gồm 6 chữ số.');
+      handleError('Mã OTP phải bao gồm 6 chữ số.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const res = await api.post('/auth/reset-password', {
-        email: emailParam,
-        code,
-        newPassword
-      });
-
+      const res = await api.post('/auth/verify-reset-otp', { email: emailParam, code });
       if (res.data.success) {
-        toast.success('Khôi phục mật khẩu thành công!');
-        router.push('/login');
-      } else {
-        toast.error(res.data.message || 'Khôi phục thất bại.');
+        toast.success('Mã OTP hợp lệ!');
+        setStep(2);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+      handleError(error, 'Mã OTP không hợp lệ.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    if (newPassword !== confirmPassword) {
+      handleError('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/auth/reset-password', { email: emailParam, code, newPassword });
+      if (res.data.success) {
+        toast.success('Khôi phục mật khẩu thành công!');
+        router.push('/login');
+      }
+    } catch (error: any) {
+      handleError(error, 'Có lỗi xảy ra, vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (step === 1) {
+    return (
+      <form onSubmit={handleVerifyOtp} className="space-y-5">
+        <Input
+          label="Mã OTP"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Nhập 6 chữ số"
+          type="text"
+          icon={<KeyRound className="w-4 h-4" />}
+          required
+        />
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Đang xác thực...' : 'Xác nhận mã OTP'}
+        </Button>
+
+        <Link
+          href="/login"
+          className="flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-slate-300 font-medium transition-colors mt-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Quay lại đăng nhập
+        </Link>
+      </form>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <Input
-        label="Mã OTP"
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder="Nhập 6 chữ số"
-        type="text"
-        icon={<KeyRound className="w-4 h-4" />}
-        required
-      />
+    <form onSubmit={handleResetPassword} className="space-y-5">
       <Input
         label="Mật khẩu mới"
         value={newPassword}

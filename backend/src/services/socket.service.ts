@@ -16,18 +16,18 @@ export function initSocket(server: any): Server {
   });
 
   io.on('connection', (socket) => {
-    console.log('Client connected to Socket.IO:', socket.id);
+    
 
     // Join room event (e.g. 'join' with room: 'student:xxxx' or 'mentor:yyyy')
     socket.on('join', (data: { room: string }) => {
       if (data && data.room) {
         socket.join(data.room);
-        console.log(`Socket ${socket.id} joined room: ${data.room}`);
+        
       }
     });
 
     socket.on('disconnect', () => {
-      console.log('Client disconnected from Socket.IO:', socket.id);
+      
     });
   });
 
@@ -61,7 +61,7 @@ export async function emitRedFlag(studentId: string, riskScore: number): Promise
 
     const studentName = alert.student.user.fullName;
 
-    console.log(`[SOCKET SERVICE] Broadcasting RED_FLAG for ${studentName} (${riskScore}%)`);
+    `);
 
     if (!ioInstance) {
       console.warn('[SOCKET SERVICE] Socket.IO instance is not initialized. Skipping real-time broadcast.');

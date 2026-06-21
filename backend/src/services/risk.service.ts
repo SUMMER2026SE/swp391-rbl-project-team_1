@@ -59,7 +59,7 @@ export async function recalculate(studentId: string): Promise<number> {
     }
   });
 
-  console.log(`[RISK SERVICE] Recalculated risk for student ${studentId}: Score = ${riskScore}% (Task completion rate: ${taskCompletionRate.toFixed(2)}, Quiz average: ${avgQuizScore.toFixed(2)}, Study time normalized: ${timeSpentNormalized.toFixed(2)})`);
+  }, Quiz average: ${avgQuizScore.toFixed(2)}, Study time normalized: ${timeSpentNormalized.toFixed(2)})`);
 
   return riskScore;
 }

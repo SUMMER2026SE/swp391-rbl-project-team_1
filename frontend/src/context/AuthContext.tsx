@@ -5,6 +5,7 @@ import api from '../services/api';
 import { User, Role } from '../types';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { handleError } from '../utils/errorHandler';
 
 interface AuthContextType {
   user: User | null;
@@ -28,20 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // On mount, verify current token
   useEffect(() => {
     async function loadUser() {
-      // Use user object in localStorage as a hint that a session might exist
-      const hasUserHint = localStorage.getItem('user') || sessionStorage.getItem('user');
-      if (!hasUserHint) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const response = await api.get('/auth/me');
         if (response.data.success) {
           setUser(response.data.user);
         }
       } catch (error) {
-        console.error('Error loading user session:', error);
+        // If 401, it means no valid cookie, user is not logged in.
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -56,13 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('/auth/login', { email, password });
       if (response.data.success) {
         const { user: loggedUser } = response.data;
-        
-        if (rememberMe) {
-          localStorage.setItem('user', JSON.stringify(loggedUser));
-        } else {
-          sessionStorage.setItem('user', JSON.stringify(loggedUser));
-        }
-
         setUser(loggedUser);
         toast.success('Đăng nhập thành công! 👋');
 
@@ -76,8 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
-      toast.error(msg);
+      handleError(error, 'Đăng nhập thất bại. Vui lòng kiểm tra lại.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -90,9 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('/auth/google', { credential });
       if (response.data.success) {
         const { user: loggedUser } = response.data;
-        
-        sessionStorage.setItem('user', JSON.stringify(loggedUser));
-
         setUser(loggedUser);
         toast.success('Đăng nhập bằng Google thành công! 👋');
 
@@ -106,8 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Đăng nhập Google thất bại.';
-      toast.error(msg);
+      handleError(error, 'Đăng nhập Google thất bại.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -122,8 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.success('Gửi mã OTP thành công! Vui lòng kiểm tra email.');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Đăng ký thất bại. Email có thể đã được sử dụng.';
-      toast.error(msg);
+      handleError(error, 'Đăng ký thất bại. Email có thể đã được sử dụng.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -136,17 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post('/auth/verify-otp', { email, code });
       if (response.data.success) {
         const { user: loggedUser } = response.data;
-        
-        // Default register behavior uses sessionStorage
-        sessionStorage.setItem('user', JSON.stringify(loggedUser));
-
         setUser(loggedUser);
         toast.success('Xác thực tài khoản thành công!');
         router.push('/onboarding');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Xác thực mã OTP thất bại.';
-      toast.error(msg);
+      handleError(error, 'Xác thực mã OTP thất bại.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -162,14 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user) {
           const updatedUser = { ...user, onboardingCompleted: true };
           setUser(updatedUser);
-          localStorage.setItem('user', JSON.stringify(updatedUser));
         }
         toast.success('Hoàn thành khảo sát! Bắt đầu học tập.');
         router.push('/student/dashboard');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gửi khảo sát thất bại.';
-      toast.error(msg);
+      handleError(error, 'Gửi khảo sát thất bại.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -182,8 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error('Logout failed:', e);
     }
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('user');
     setUser(null);
     toast.success('Đăng xuất thành công.');
     router.push('/login');

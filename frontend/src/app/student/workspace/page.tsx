@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/core';
 import { Search, Filter, Plus, Sparkles, AlertCircle, Calendar, Clock, Trash } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 import { useRouter } from 'next/navigation';
 
@@ -142,7 +143,7 @@ export default function WorkspacePage() {
       }
     } catch (error) {
       // Revert state on failure
-      toast.error('Không thể cập nhật trạng thái Task.');
+      handleError('Không thể cập nhật trạng thái Task.');
       loadData();
     }
   };
@@ -150,7 +151,7 @@ export default function WorkspacePage() {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle || !formSkillId) {
-      toast.error('Vui lòng điền tiêu đề và kỹ năng.');
+      handleError('Vui lòng điền tiêu đề và kỹ năng.');
       return;
     }
 
@@ -172,7 +173,7 @@ export default function WorkspacePage() {
         loadData();
       }
     } catch (error) {
-      toast.error('Lỗi khi tạo task.');
+      handleError('Lỗi khi tạo task.');
     }
   };
 
@@ -209,7 +210,7 @@ export default function WorkspacePage() {
         loadData();
       }
     } catch (error) {
-      toast.error('Lỗi khi cập nhật task.');
+      handleError('Lỗi khi cập nhật task.');
     }
   };
 
@@ -222,7 +223,7 @@ export default function WorkspacePage() {
         loadData();
       }
     } catch (error) {
-      toast.error('Lỗi khi xóa task.');
+      handleError('Lỗi khi xóa task.');
     }
   };
 
@@ -241,7 +242,7 @@ export default function WorkspacePage() {
         }
       }
     } catch (error) {
-      toast.error('AI đề xuất task thất bại.', { id: 'ai-gen' });
+      handleError(error, 'AI đề xuất task thất bại.', { id: 'ai-gen' });
     } finally {
       setIsAIGenerating(false);
     }

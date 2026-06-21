@@ -18,7 +18,9 @@ import {
   ChevronDown,
   TrendingUp
 } from 'lucide-react';
+import { BadgeListSkeleton } from '../../../components/common/Skeleton';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Badge {
@@ -38,6 +40,7 @@ export default function AchievementsPage() {
   const [masteries, setMasteries] = useState<SkillMastery[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
   const [bktHistoryData, setBktHistoryData] = useState<any[]>([]);
+  const [badges, setBadges] = useState<Badge[]>([]);
 
   // Stats
   const [streakDays, setStreakDays] = useState<number>(0);
@@ -96,23 +99,27 @@ export default function AchievementsPage() {
         setAccuracyRate(attempts.length > 0 ? Math.round((correct / attempts.length) * 100) : 0);
       }
 
-      // 5. Fetch Pomodoro sessions for focus hours and calendar grids
+      // 5. Fetch Pomodoro sessions for focus hours
       const pomodoroRes = await api.get('/pomodoro/history');
       if (pomodoroRes.data.success) {
         const sessions: PomodoroSession[] = pomodoroRes.data.sessions;
         const totalMin = sessions.filter(s => s.completed).reduce((sum, s) => sum + s.durationMin, 0);
         setTotalFocusHours(parseFloat((totalMin / 60).toFixed(1)));
+      }
 
-        // Compile activity counts per date (last 60 days)
-        const datesMap: { [key: string]: number } = {};
-        sessions.forEach(s => {
-          const dStr = s.createdAt.split('T')[0];
-          datesMap[dStr] = (datesMap[dStr] || 0) + 1;
-        });
-        setActivityDates(datesMap);
+      // 5. Calculate activity heatmap (now from API)
+      const heatmapRes = await api.get('/activities/heatmap');
+      if (heatmapRes.data.success) {
+        setActivityDates(heatmapRes.data.heatmap);
+      }
+
+      // 6. Fetch Badges
+      const badgesRes = await api.get('/badges');
+      if (badgesRes.data.success) {
+        setBadges(badgesRes.data.badges);
       }
     } catch (_) {
-      toast.error('Lỗi khi tải thông tin thành tích.');
+      handleError('Lỗi khi tải thông tin thành tích.');
     } finally {
       setIsLoading(false);
     }
@@ -131,58 +138,7 @@ export default function AchievementsPage() {
     } catch (_) {}
   };
 
-  // Gamified Achievement Badges list
-  const badges: Badge[] = [
-    {
-      id: 'first_quiz',
-      emoji: '🎯',
-      name: 'First Quiz',
-      description: 'Làm bài trắc nghiệm BKT lần đầu tiên',
-      unlocked: quizzesTaken > 0
-    },
-    {
-      id: 'week_warrior',
-      emoji: '🔥',
-      name: 'Week Warrior',
-      description: 'Duy trì chuỗi học tập liên tiếp 7 ngày',
-      unlocked: streakDays >= 7
-    },
-    {
-      id: 'month_master',
-      emoji: '🏆',
-      name: 'Month Master',
-      description: 'Duy trì chuỗi học tập liên tiếp 30 ngày',
-      unlocked: streakDays >= 30
-    },
-    {
-      id: 'skill_mastered',
-      emoji: '⭐',
-      name: 'Skill Mastered',
-      description: 'Đạt tỉ lệ thành thạo >= 80% cho một kỹ năng',
-      unlocked: masteries.some(m => m.masteryLevel >= 0.8)
-    },
-    {
-      id: 'speed_learner',
-      emoji: '🚀',
-      name: 'Speed Learner',
-      description: 'Đạt tốc độ hoàn thành công việc cao (Velocity > 0)',
-      unlocked: streakDays > 0 // simple representation
-    },
-    {
-      id: 'focus_champion',
-      emoji: '🍅',
-      name: 'Focus Champion',
-      description: 'Hoàn thành 10 phiên Pomodoro tập trung',
-      unlocked: totalFocusHours >= 4.1 // ~10 sessions
-    },
-    {
-      id: 'knowledge_seeker',
-      emoji: '📚',
-      name: 'Knowledge Seeker',
-      description: 'Tham gia học tập và giải phóng 3 kỹ năng mới',
-      unlocked: masteries.length >= 3
-    }
-  ];
+  // Badges are now fetched from the backend API.
 
   // GitHub contribution grid calculations (last 6 weeks = 42 days)
   const getContributionGrid = () => {
@@ -212,8 +168,8 @@ export default function AchievementsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+      <div className="max-w-4xl mx-auto mt-6">
+        <BadgeListSkeleton />
       </div>
     );
   }

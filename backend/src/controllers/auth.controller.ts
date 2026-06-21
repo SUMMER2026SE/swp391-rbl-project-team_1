@@ -582,6 +582,31 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
 }
 
 /**
+ * Verify Reset OTP
+ */
+export async function verifyResetOtp(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { email, code } = verifyOtpSchema.parse(req.body); // Reusing verifyOtpSchema
+
+    const otpRecord = await prisma.oTP.findFirst({
+      where: { email, code, verified: false, expiresAt: { gt: new Date() } }
+    });
+
+    if (!otpRecord) throw new ApiError(400, 'Mã OTP không hợp lệ hoặc đã hết hạn.');
+
+    // Mark as verified but do NOT delete yet, wait for password reset
+    await prisma.oTP.update({
+      where: { id: otpRecord.id },
+      data: { verified: true }
+    });
+
+    res.status(200).json({ success: true, message: 'Mã OTP chính xác. Vui lòng đặt mật khẩu mới.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Reset password
  */
 const resetPasswordSchema = z.object({
@@ -594,21 +619,22 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
   try {
     const { email, code, newPassword } = resetPasswordSchema.parse(req.body);
 
+    // Look for a verified OTP that matches the code and email
     const otpRecord = await prisma.oTP.findFirst({
-      where: { email, code, verified: false, expiresAt: { gt: new Date() } }
+      where: { email, code, verified: true, expiresAt: { gt: new Date() } }
     });
 
-    if (!otpRecord) throw new ApiError(400, 'Mã OTP không hợp lệ hoặc đã hết hạn.');
-
-    await prisma.oTP.update({
-      where: { id: otpRecord.id },
-      data: { verified: true }
-    });
+    if (!otpRecord) throw new ApiError(400, 'Mã OTP không hợp lệ, chưa được xác thực hoặc đã hết hạn.');
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { email },
       data: { password: hashedPassword }
+    });
+
+    // Delete the OTP to prevent Replay Attacks
+    await prisma.oTP.delete({
+      where: { id: otpRecord.id }
     });
 
     res.status(200).json({ success: true, message: 'Khôi phục mật khẩu thành công. Vui lòng đăng nhập lại.' });

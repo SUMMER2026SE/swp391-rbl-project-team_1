@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface StudentRow {
   id: string;
@@ -126,7 +127,7 @@ export default function MentorDashboard() {
         setAlerts(loadedAlerts);
       }
     } catch (_) {
-      toast.error('Không thể kết xuất dữ liệu quản lý.');
+      handleError('Không thể kết xuất dữ liệu quản lý.');
     } finally {
       setIsLoading(false);
     }

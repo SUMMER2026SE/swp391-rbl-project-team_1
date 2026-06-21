@@ -7,6 +7,7 @@ import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import { Mail, Lock, User as UserIcon, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 export default function RegisterPage() {
   const { registerUser, verifyOtpCode } = useAuth();
@@ -70,24 +71,26 @@ export default function RegisterPage() {
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!email || !password || !fullName) {
-      toast.error('Vui lòng điền đầy đủ thông tin đăng ký.');
+      handleError('Vui lòng điền đầy đủ thông tin đăng ký.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error('Định dạng email không hợp lệ.');
+      handleError('Định dạng email không hợp lệ.');
       return;
     }
 
     if (password.length < 8) {
-      toast.error('Mật khẩu phải dài ít nhất 8 ký tự.');
+      handleError('Mật khẩu phải dài ít nhất 8 ký tự.');
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error('Mật khẩu nhập lại không khớp.');
+      handleError('Mật khẩu nhập lại không khớp.');
       return;
     }
 
@@ -125,9 +128,11 @@ export default function RegisterPage() {
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const codeStr = otpCodes.join('');
     if (codeStr.length < 6) {
-      toast.error('Vui lòng điền đầy đủ 6 số OTP.');
+      handleError('Vui lòng điền đầy đủ 6 số OTP.');
       return;
     }
 

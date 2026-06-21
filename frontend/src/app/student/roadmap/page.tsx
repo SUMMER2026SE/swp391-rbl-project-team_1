@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import useAuth from '../../../hooks/useAuth';
 import api from '../../../services/api';
+import { RoadmapSkeleton } from '../../../components/common/Skeleton';
 import { Task } from '../../../types';
 import Button from '../../../components/common/Button';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
@@ -18,6 +19,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 import { useRouter } from 'next/navigation';
 
@@ -54,7 +56,7 @@ export default function RoadmapPage() {
         setProgress(response.data.progress || { completed: 0, total: 0, percent: 0 });
       }
     } catch (_) {
-      toast.error('Lỗi khi tải thông tin lộ trình.');
+      handleError('Lỗi khi tải thông tin lộ trình.');
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +74,8 @@ export default function RoadmapPage() {
         toast.success('Đã làm mới lộ trình học tập thành công! 🎉', { id: 'regenerate' });
         loadRoadmap();
       }
-    } catch (_) {
-      toast.error('AI thiết lập lộ trình học tập thất bại.', { id: 'regenerate' });
+    } catch (error: any) {
+      handleError(error, 'AI thiết lập lộ trình học tập thất bại.', { id: 'regenerate' });
     } finally {
       setIsRegenerating(false);
     }
@@ -120,8 +122,8 @@ export default function RoadmapPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+      <div className="max-w-4xl mx-auto mt-6">
+        <RoadmapSkeleton />
       </div>
     );
   }

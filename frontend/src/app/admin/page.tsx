@@ -12,6 +12,7 @@ import {
   AreaChart, Area
 } from 'recharts';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface SystemStats {
   totalUsers: number;
@@ -44,7 +45,7 @@ export default function AdminDashboard() {
         setStats(response.data.stats);
       }
     } catch (_) {
-      toast.error('Không thể tải thống kê hệ thống.');
+      handleError('Không thể tải thống kê hệ thống.');
     } finally {
       setIsLoading(false);
     }

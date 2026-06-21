@@ -5,6 +5,7 @@ import api from '@/services/api';
 import { Button } from '@/components/common/Button';
 import { Search, Filter, ShieldAlert, Edit, Trash2, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface UserRow {
   id: string;
@@ -45,7 +46,7 @@ export default function AdminUsersManagement() {
         setTotalPages(Math.ceil(response.data.total / 8) || 1);
       }
     } catch (_) {
-      toast.error('Không thể tải danh sách người dùng.');
+      handleError('Không thể tải danh sách người dùng.');
     } finally {
       setIsLoading(false);
     }
@@ -70,8 +71,7 @@ export default function AdminUsersManagement() {
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Cập nhật quyền thất bại.';
-      toast.error(msg);
+      handleError(error, 'Cập nhật quyền thất bại.');
     } finally {
       setIsUpdating(null);
     }
@@ -86,7 +86,7 @@ export default function AdminUsersManagement() {
         fetchUsers();
       }
     } catch (_) {
-      toast.error('Xóa người dùng thất bại.');
+      handleError('Xóa người dùng thất bại.');
     }
   };
 

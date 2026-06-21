@@ -13,6 +13,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface StudentDetails {
   student: {
@@ -87,7 +88,7 @@ export default function StudentDetailAnalytics() {
         setData(response.data.data);
       }
     } catch (_) {
-      toast.error('Không thể tải chi tiết học viên.');
+      handleError('Không thể tải chi tiết học viên.');
       router.push('/mentor/dashboard');
     } finally {
       setIsLoading(false);
@@ -97,7 +98,7 @@ export default function StudentDetailAnalytics() {
   const handleSendManualAlert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!alertMessage.trim()) {
-      toast.error('Vui lòng nhập nội dung cảnh báo.');
+      handleError('Vui lòng nhập nội dung cảnh báo.');
       return;
     }
 
@@ -113,8 +114,7 @@ export default function StudentDetailAnalytics() {
         setAlertMessage('');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gửi cảnh báo thất bại.';
-      toast.error(msg);
+      handleError(error, 'Gửi cảnh báo thất bại.');
     } finally {
       setIsSendingAlert(false);
     }

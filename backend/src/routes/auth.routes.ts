@@ -1,10 +1,17 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { register, verifyOtp, login, logout, googleLogin, completeOnboarding, getMe, updateProfile, uploadAvatar, changePassword, forgotPassword, resetPassword } from '../controllers/auth.controller';
+import { register, verifyOtp, login, logout, googleLogin, completeOnboarding, getMe, updateProfile, uploadAvatar, changePassword, forgotPassword, verifyResetOtp, resetPassword } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { verifyRole } from '../middleware/role.middleware';
 import { Role } from '../types/enums';
+import { rateLimit } from 'express-rate-limit';
+
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: { success: false, message: 'Bạn đã yêu cầu gửi mã quá nhiều lần. Vui lòng thử lại sau 15 phút.' }
+});
 
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
@@ -44,7 +51,8 @@ router.put('/profile', verifyToken as any, updateProfile as any);
 
 router.post('/upload-avatar', verifyToken as any, upload.single('avatar'), uploadAvatar as any);
 router.post('/change-password', verifyToken as any, changePassword as any);
-router.post('/forgot-password', forgotPassword as any);
+router.post('/forgot-password', otpLimiter, forgotPassword as any);
+router.post('/verify-reset-otp', verifyResetOtp as any);
 router.post('/reset-password', resetPassword as any);
 
 // Public route to fetch skills for onboarding list

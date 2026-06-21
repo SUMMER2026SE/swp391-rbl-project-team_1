@@ -19,6 +19,7 @@ import {
   Compass
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Option {
@@ -46,6 +47,7 @@ export default function QuizPage() {
   // Timer states
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubmittingRef = useRef<boolean>(false);
 
   // Attempt states
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -105,7 +107,7 @@ export default function QuizPage() {
         setAttemptsLog([]);
       }
     } catch (error) {
-      toast.error('Lỗi khi tải câu hỏi trắc nghiệm.');
+      handleError('Lỗi khi tải câu hỏi trắc nghiệm.');
     } finally {
       setIsLoading(false);
     }
@@ -119,6 +121,7 @@ export default function QuizPage() {
     setIsCorrect(false);
     setCorrectOptionIndex(-1);
     setExplanation('');
+    isSubmittingRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
@@ -127,6 +130,8 @@ export default function QuizPage() {
     setIsSubmitted(true);
     setIsCorrect(false);
     setSelectedOption(-1); // Timer ran out
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
 
     // Submit request to server as incorrect
     try {
@@ -147,7 +152,9 @@ export default function QuizPage() {
         setAttemptsLog(prev => [...prev, { correct: false, before: res.data.masteryBefore, after: res.data.masteryAfter }]);
       }
     } catch (_) {
-      toast.error('Mất kết nối với máy chủ khi chấm bài.');
+      handleError('Mất kết nối với máy chủ khi chấm bài.');
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -157,6 +164,8 @@ export default function QuizPage() {
     
     setSelectedOption(optionIdx);
     setIsSubmitted(true);
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
 
     try {
       const currentQuestion = questions[currentIndex];
@@ -182,7 +191,9 @@ export default function QuizPage() {
         setAttemptsLog(prev => [...prev, { correct, before: res.data.masteryBefore, after: res.data.masteryAfter }]);
       }
     } catch (_) {
-      toast.error('Lỗi khi lưu kết quả câu hỏi.');
+      handleError('Lỗi khi lưu kết quả câu hỏi.');
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 

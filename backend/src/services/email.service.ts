@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
  * Sends a 6-digit OTP verification code to the target email.
  */
 export async function sendOTP(email: string, code: string): Promise<boolean> {
-  console.log(`[EMAIL SERVICE] Sending OTP ${code} to ${email}`);
+  
   
   const mailOptions = {
     from: '"EduPath Adaptive Learning" <noreply@edupath.edu>',
@@ -38,12 +38,12 @@ export async function sendOTP(email: string, code: string): Promise<boolean> {
   try {
     // If mock settings are used, we just skip real sending and return true
     if (process.env.SMTP_USER === 'mock_user' || !process.env.SMTP_HOST) {
-      console.log(`[EMAIL SERVICE] [DEV MODE] Email verification logged. Code: ${code}`);
+      
       return true;
     }
     
     await transporter.sendMail(mailOptions);
-    console.log(`[EMAIL SERVICE] Email successfully sent to ${email}`);
+    
     return true;
   } catch (error) {
     console.error(`[EMAIL SERVICE] Failed to send email to ${email}:`, error);

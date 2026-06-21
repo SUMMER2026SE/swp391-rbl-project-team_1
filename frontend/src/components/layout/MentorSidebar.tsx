@@ -68,6 +68,11 @@ export function MentorSidebar() {
       href: '/mentor/quiz-bank',
       icon: <FileQuestion className="w-5 h-5" />,
       label: 'Ngân hàng câu hỏi'
+    },
+    {
+      href: '/mentor/roadmap-templates',
+      icon: <BookOpen className="w-5 h-5" />,
+      label: 'Lộ trình mẫu'
     }
   ];
 

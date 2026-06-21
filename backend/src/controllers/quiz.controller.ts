@@ -3,6 +3,8 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma/client';
 import { z } from 'zod';
 import { ApiError } from '../utils/apiError';
+import { evaluateQuizBadges, evaluateStreakBadges, evaluateMasteryBadges } from '../services/badge.service';
+import { logActivity } from '../services/activity.service';
 import { Difficulty } from '../types/enums';
 import { updateMastery } from '../utils/bktAlgorithm';
 import { recalculate } from '../services/risk.service';
@@ -36,7 +38,7 @@ export async function getQuestions(req: AuthRequest, res: Response, next: NextFu
     });
 
     if (totalCount < limitNum) {
-      console.log(`Need dynamic questions for skillId ${skillId}. Insufficient quantity.`);
+      
       
       const skill = await prisma.skill.findUnique({ where: { id: skillId } });
       const unit = await prisma.knowledgeUnit.findFirst({ where: { skillId } });
@@ -44,7 +46,7 @@ export async function getQuestions(req: AuthRequest, res: Response, next: NextFu
 
       if (skill) {
         const countToGenerate = Math.max(limitNum * 2, 10);
-        console.log(`Calling Gemini API to generate ${countToGenerate} questions for ${skill.name}...`);
+        
         
         try {
           const generatedQs = await generateQuiz(unit?.content || '', skill.name, countToGenerate);
@@ -210,6 +212,14 @@ export async function submitAnswer(req: AuthRequest, res: Response, next: NextFu
     if (newRiskScore > 70) {
       await emitRedFlag(studentId, newRiskScore);
     }
+
+    // 9. Asynchronously check and award badges (fire-and-forget, wrapped in try-catch in service)
+    Promise.all([
+      evaluateQuizBadges(studentId),
+      evaluateStreakBadges(studentId),
+      evaluateMasteryBadges(studentId),
+      logActivity(studentId, 'QUIZ_ATTEMPT', questionId, `Question: ${questionId}`)
+    ]).catch(err => console.error('[BadgeService/ActivityLog] Background evaluation failed:', err));
 
     res.status(200).json({
       success: true,

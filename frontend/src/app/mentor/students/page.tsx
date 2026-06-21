@@ -6,6 +6,7 @@ import { Search, ChevronRight, Mail, Clock, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface StudentRow {
   id: string;
@@ -33,7 +34,7 @@ export default function SupervisedStudents() {
         setStudents(response.data.students);
       }
     } catch (_) {
-      toast.error('Không thể kết xuất danh sách học viên.');
+      handleError('Không thể kết xuất danh sách học viên.');
     } finally {
       setIsLoading(false);
     }

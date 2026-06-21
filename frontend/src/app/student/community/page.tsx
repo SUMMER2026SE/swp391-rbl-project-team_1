@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '@/services/api';
 import { Button } from '@/components/common/Button';
 import { Compass, BookOpen, Clock, BarChart, ChevronRight, X, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
+import { CommunityListSkeleton } from '../../../components/common/Skeleton';
 
 interface RoadmapTaskTemplate {
   title: string;
@@ -29,106 +31,34 @@ interface RoadmapTemplate {
   }[];
 }
 
-const ROADMAP_TEMPLATES: RoadmapTemplate[] = [
-  {
-    id: 'web-fullstack',
-    title: 'Fullstack Web Developer',
-    description: 'Trở thành kỹ sư phát triển Web toàn diện từ Frontend đến Backend. Lộ trình được thiết kế chuẩn đầu ra của FPT University.',
-    difficulty: 'Trung bình',
-    durationWeeks: 12,
-    totalSkills: 6,
-    bannerGradient: 'from-blue-600 via-indigo-600 to-purple-600',
-    phases: [
-      {
-        title: 'Giai đoạn 1: Frontend Basics',
-        description: 'Làm quen với HTML5, CSS3 và Javascript ES6 căn bản.',
-        tasks: [
-          { title: 'Xây dựng giao diện Landing Page với HTML/CSS', description: 'Tạo website đáp ứng (responsive) sử dụng Flexbox và Grid.', skillSlug: 'html-css', difficulty: 'EASY', estimatedMinutes: 120 },
-          { title: 'Lập trình logic tương tác với Javascript', description: 'Tìm hiểu DOM manipulation, events, và async/await fetching API.', skillSlug: 'javascript', difficulty: 'EASY', estimatedMinutes: 180 }
-        ]
-      },
-      {
-        title: 'Giai đoạn 2: Modern Frontend Framework',
-        description: 'Học React.js và Next.js để phát triển các Single Page Apps tối ưu.',
-        tasks: [
-          { title: 'Xây dựng Component & State Management', description: 'Sử dụng React Hooks (useState, useEffect, useContext) xây dựng giỏ hàng.', skillSlug: 'react', difficulty: 'MEDIUM', estimatedMinutes: 240 },
-          { title: 'Định tuyến & Render phía máy chủ (SSR) với Next.js App Router', description: 'Thiết kế cấu trúc routes, dynamic layouts và SEO tags.', skillSlug: 'react', difficulty: 'MEDIUM', estimatedMinutes: 300 }
-        ]
-      },
-      {
-        title: 'Giai đoạn 3: Backend & Database Integration',
-        description: 'Lập trình máy chủ Express.js, quản lý PostgreSQL qua Prisma ORM.',
-        tasks: [
-          { title: 'Thiết kế RESTful API với Express.js', description: 'Viết routing, controllers, và error handler middleware.', skillSlug: 'node-express', difficulty: 'MEDIUM', estimatedMinutes: 240 },
-          { title: 'Thiết kế cơ sở dữ liệu với Prisma & PostgreSQL', description: 'Định nghĩa schema, thiết lập relationships và thực hiện migrations.', skillSlug: 'database', difficulty: 'HARD', estimatedMinutes: 300 }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'data-science',
-    title: 'Data Science & Machine Learning',
-    description: 'Chinh phục khoa học dữ liệu, phân tích thống kê và các mô hình dự báo học máy sử dụng Python.',
-    difficulty: 'Khó',
-    durationWeeks: 16,
-    totalSkills: 5,
-    bannerGradient: 'from-emerald-600 via-teal-600 to-cyan-600',
-    phases: [
-      {
-        title: 'Giai đoạn 1: Data Analytics Foundations',
-        description: 'Sử dụng Python và thư viện để xử lý, làm sạch và phân tích trực quan hóa dữ liệu.',
-        tasks: [
-          { title: 'Làm sạch và phân tích dữ liệu với Pandas', description: 'Xử lý dữ liệu bị khuyết, lọc và gộp các DataFrames.', skillSlug: 'python', difficulty: 'EASY', estimatedMinutes: 180 },
-          { title: 'Trực quan hóa dữ liệu với Matplotlib & Seaborn', description: 'Vẽ biểu đồ phân bố, tương quan để phát hiện xu hướng dữ liệu.', skillSlug: 'python', difficulty: 'EASY', estimatedMinutes: 120 }
-        ]
-      },
-      {
-        title: 'Giai đoạn 2: Machine Learning Models',
-        description: 'Xây dựng và đánh giá các thuật toán học có giám sát và không giám sát.',
-        tasks: [
-          { title: 'Huấn luyện mô hình hồi quy tuyến tính & Logistic', description: 'Giải thích hệ số tương quan và đánh giá ma trận nhầm lẫn (Confusion Matrix).', skillSlug: 'machine-learning', difficulty: 'MEDIUM', estimatedMinutes: 240 },
-          { title: 'Phân cụm khách hàng với thuật toán K-Means', description: 'Xác định số lượng cụm tối ưu qua phương pháp Elbow.', skillSlug: 'machine-learning', difficulty: 'HARD', estimatedMinutes: 200 }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'mobile-native',
-    title: 'Mobile App Development (React Native)',
-    description: 'Xây dựng ứng dụng di động đa nền tảng iOS & Android cực kỳ mượt mà sử dụng React Native.',
-    difficulty: 'Trung bình',
-    durationWeeks: 10,
-    totalSkills: 4,
-    bannerGradient: 'from-orange-600 via-rose-600 to-red-600',
-    phases: [
-      {
-        title: 'Giai đoạn 1: Native Components & Navigation',
-        description: 'Làm quen với các thẻ UI gốc của di động và chuyển đổi màn hình.',
-        tasks: [
-          { title: 'Thiết kế giao diện Custom Button & Card', description: 'Sử dụng StyleSheet và Flexbox trong React Native để render giao diện đẹp mắt.', skillSlug: 'react-native', difficulty: 'EASY', estimatedMinutes: 150 },
-          { title: 'Cài đặt React Navigation (Stack & Tab)', description: 'Tạo luồng chuyển tiếp màn hình trong ứng dụng di động.', skillSlug: 'react-native', difficulty: 'MEDIUM', estimatedMinutes: 180 }
-        ]
-      },
-      {
-        title: 'Giai đoạn 2: Mobile Features Integration',
-        description: 'Tương tác với phần cứng thiết bị (Camera, Storage, Push Notifications).',
-        tasks: [
-          { title: 'Lưu trữ cục bộ với AsyncStorage', description: 'Lưu session đăng nhập và trạng thái offline của người dùng.', skillSlug: 'react-native', difficulty: 'MEDIUM', estimatedMinutes: 180 },
-          { title: 'Tích hợp chụp ảnh bằng Expo Camera', description: 'Yêu cầu quyền truy cập camera và chụp hình hiển thị avatar.', skillSlug: 'react-native', difficulty: 'HARD', estimatedMinutes: 240 }
-        ]
-      }
-    ]
-  }
-];
+// ROADMAP_TEMPLATES are now fetched from the backend API
 
 export default function CommunityRoadmaps() {
+
+  const [roadmapTemplates, setRoadmapTemplates] = useState<RoadmapTemplate[]>([]);
+  const isCloningRef = useRef<boolean>(false);
   const [selectedTemplate, setSelectedTemplate] = useState<RoadmapTemplate | null>(null);
   const [skillsList, setSkillsList] = useState<any[]>([]);
   const [isCloning, setIsCloning] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     fetchSkills();
+    fetchRoadmapTemplates();
   }, []);
+
+  const fetchRoadmapTemplates = async () => {
+    try {
+      const response = await api.get('/roadmap/templates');
+      if (response.data.success) {
+        setRoadmapTemplates(response.data.templates);
+      }
+    } catch (_) {
+      handleError('Không thể tải danh sách lộ trình.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchSkills = async () => {
     try {
@@ -145,7 +75,7 @@ export default function CommunityRoadmaps() {
         setSkillsList(flat);
       }
     } catch (_) {
-      toast.error('Không thể tải danh sách kỹ năng hệ thống.');
+      handleError('Không thể tải danh sách kỹ năng hệ thống.');
     }
   };
 
@@ -157,6 +87,8 @@ export default function CommunityRoadmaps() {
   };
 
   const handleCloneRoadmap = async (template: RoadmapTemplate) => {
+    if (isCloningRef.current) return;
+    isCloningRef.current = true;
     setIsCloning(true);
     const loadingToast = toast.loading(`Đang khởi tạo lộ trình "${template.title}" vào bảng học tập của bạn...`);
     
@@ -188,10 +120,10 @@ export default function CommunityRoadmaps() {
       toast.success(`Đã thêm thành công ${createdCount} nhiệm vụ vào Bảng học tập! 🎉`, { id: loadingToast });
       setSelectedTemplate(null);
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Có lỗi xảy ra khi sao chép lộ trình.';
-      toast.error(msg, { id: loadingToast });
+      handleError(error, 'Có lỗi xảy ra khi sao chép lộ trình.', { id: loadingToast });
     } finally {
       setIsCloning(false);
+      isCloningRef.current = false;
     }
   };
 
@@ -210,10 +142,13 @@ export default function CommunityRoadmaps() {
       </div>
 
       {/* Grid of Templates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {ROADMAP_TEMPLATES.map((tpl) => (
-          <div
-            key={tpl.id}
+      {isLoading ? (
+        <CommunityListSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {roadmapTemplates.map((tpl) => (
+            <div
+              key={tpl.id}
             className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 flex flex-col justify-between group"
           >
             <div>
@@ -267,9 +202,10 @@ export default function CommunityRoadmaps() {
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </div>
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Side Slide Drawer for Detailed Roadmap Preview */}
       {selectedTemplate && (

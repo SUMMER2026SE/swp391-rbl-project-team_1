@@ -9,6 +9,7 @@ import {
   Folder, FolderOpen, FileCode, Save, Sparkles 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface Skill {
   id: string;
@@ -50,7 +51,7 @@ export default function AdminSkillsTree() {
         buildTree(flatSkills);
       }
     } catch (_) {
-      toast.error('Không thể tải cấu trúc cây kỹ năng.');
+      handleError('Không thể tải cấu trúc cây kỹ năng.');
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +95,7 @@ export default function AdminSkillsTree() {
   const handleCreateSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !slug.trim()) {
-      toast.error('Vui lòng nhập đầy đủ tên và slug kỹ năng.');
+      handleError('Vui lòng nhập đầy đủ tên và slug kỹ năng.');
       return;
     }
 
@@ -113,8 +114,7 @@ export default function AdminSkillsTree() {
         fetchSkills();
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Thêm kỹ năng thất bại.';
-      toast.error(msg);
+      handleError(error, 'Thêm kỹ năng thất bại.');
     } finally {
       setIsSaving(false);
     }
@@ -129,7 +129,7 @@ export default function AdminSkillsTree() {
         fetchSkills();
       }
     } catch (_) {
-      toast.error('Xóa kỹ năng thất bại.');
+      handleError('Xóa kỹ năng thất bại.');
     }
   };
 

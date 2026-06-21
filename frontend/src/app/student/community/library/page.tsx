@@ -5,6 +5,7 @@ import api from '../../../../services/api';
 import { Button } from '../../../../components/common/Button';
 import { BookOpen, Search, Filter, Calendar, User, Clock, FileText, CheckCircle2, BookmarkPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface KnowledgeUnit {
   id: string;
@@ -83,7 +84,7 @@ export default function KnowledgeLibrary() {
         }
       }
     } catch (_) {
-      toast.error('Không thể tải tài liệu thư viện học tập.');
+      handleError('Không thể tải tài liệu thư viện học tập.');
     } finally {
       setIsLoading(false);
     }
@@ -107,8 +108,7 @@ export default function KnowledgeLibrary() {
 
       toast.success('Đã lưu tài liệu thành nhiệm vụ học tập thành công! 📑');
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Không thể tạo nhiệm vụ học tập.';
-      toast.error(msg);
+      handleError(error, 'Không thể tạo nhiệm vụ học tập.');
     } finally {
       setIsSaving(false);
     }

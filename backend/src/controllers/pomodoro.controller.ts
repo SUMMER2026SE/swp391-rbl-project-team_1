@@ -4,6 +4,8 @@ import prisma from '../prisma/client';
 import { z } from 'zod';
 import { ApiError } from '../utils/apiError';
 import { recalculate } from '../services/risk.service';
+import { evaluatePomodoroBadges, evaluateStreakBadges } from '../services/badge.service';
+import { logActivity } from '../services/activity.service';
 
 const startSessionSchema = z.object({
   taskId: z.string().optional(),
@@ -94,6 +96,13 @@ export async function completeSession(req: AuthRequest, res: Response, next: Nex
 
     // Recalculate risk since study time changes the normalized timeSpent
     const newRiskScore = await recalculate(studentId);
+
+    // Asynchronously evaluate badges (fire-and-forget)
+    Promise.all([
+      evaluatePomodoroBadges(studentId),
+      evaluateStreakBadges(studentId),
+      logActivity(studentId, 'POMODORO_COMPLETED', id, `Session: ${id}`)
+    ]).catch(err => console.error('[BadgeService/ActivityLog] Background evaluation failed:', err));
 
     res.status(200).json({
       success: true,

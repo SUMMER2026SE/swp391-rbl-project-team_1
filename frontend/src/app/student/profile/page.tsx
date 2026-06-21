@@ -7,6 +7,7 @@ import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import { User, Mail, Award, Flame, Timer, GraduationCap, ClipboardList, Send, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 export default function StudentProfile() {
   const { user, refreshUser } = useAuth();
@@ -101,7 +102,7 @@ export default function StudentProfile() {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) {
-      toast.error('Họ và tên không được để trống.');
+      handleError('Họ và tên không được để trống.');
       return;
     }
 
@@ -116,8 +117,7 @@ export default function StudentProfile() {
         toast.success('Cập nhật thông tin tài khoản thành công! ✨');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Không thể cập nhật hồ sơ.';
-      toast.error(msg);
+      handleError(error, 'Không thể cập nhật hồ sơ.');
     } finally {
       setIsUpdating(false);
     }
@@ -139,7 +139,7 @@ export default function StudentProfile() {
         toast.success('Cập nhật ảnh đại diện thành công!');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Không thể upload ảnh đại diện.');
+      handleError(error, 'Không thể upload ảnh đại diện.');
     } finally {
       setIsUploadingAvatar(false);
     }

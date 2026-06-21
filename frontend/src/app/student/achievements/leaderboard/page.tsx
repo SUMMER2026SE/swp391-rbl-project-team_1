@@ -7,6 +7,7 @@ import Avatar from '../../../../components/common/Avatar';
 import LoadingSpinner from '../../../../components/common/LoadingSpinner';
 import { Trophy, TrendingUp, Flame, Star, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface LeaderboardUser {
   studentId: string;
@@ -44,7 +45,7 @@ export default function LeaderboardPage() {
         setMyRank(response.data.myRank || { rank: -1, details: null });
       }
     } catch (_) {
-      toast.error('Lỗi khi tải bảng xếp hạng.');
+      handleError('Lỗi khi tải bảng xếp hạng.');
     } finally {
       setIsLoading(false);
     }

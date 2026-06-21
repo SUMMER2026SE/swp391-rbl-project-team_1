@@ -26,9 +26,6 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('user');
-        sessionStorage.removeItem('user');
-        
         // Avoid infinite loop if already on login page
         if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && window.location.pathname !== '/') {
           window.location.href = '/login';

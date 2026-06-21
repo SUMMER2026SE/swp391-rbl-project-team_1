@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { ApiError } from '../utils/apiError';
 import { TaskStatus, Difficulty } from '../types/enums';
 import { recalculate } from '../services/risk.service';
+import { logActivity } from '../services/activity.service';
 import { emitRedFlag } from '../services/socket.service';
 import { generateTasks } from '../services/gemini.service';
 import { sortByPriority } from '../utils/priorityScheduler';
@@ -223,6 +224,11 @@ export async function updateStatus(req: AuthRequest, res: Response, next: NextFu
       // Get current risk
       const student = await prisma.student.findUnique({ where: { id: studentId } });
       newRiskScore = student?.currentRiskScore || 0;
+    }
+
+    // Only log if transitioning from not DONE to DONE
+    if (task.status !== TaskStatus.DONE && status === TaskStatus.DONE) {
+      logActivity(studentId, 'TASK_COMPLETED', task.id, `Task: ${task.id}`).catch(err => console.error(err));
     }
 
     res.status(200).json({

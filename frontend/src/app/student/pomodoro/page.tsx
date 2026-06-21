@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import usePomodoro, { PomodoroMode } from '../../../hooks/usePomodoro';
 import useAuth from '../../../hooks/useAuth';
 import api from '../../../services/api';
@@ -9,6 +9,7 @@ import Button from '../../../components/common/Button';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import { Play, Pause, RotateCcw, SkipForward, Timer, Clock, BarChart2, Calendar, Clipboard } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function PomodoroPage() {
@@ -32,6 +33,7 @@ export default function PomodoroPage() {
   const [history, setHistory] = useState<PomodoroSession[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isCompletingRef = useRef<boolean>(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,7 +97,8 @@ export default function PomodoroPage() {
   };
 
   const completeDBSession = async () => {
-    if (!currentSessionId) return;
+    if (!currentSessionId || isCompletingRef.current) return;
+    isCompletingRef.current = true;
     try {
       const response = await api.put(`/pomodoro/${currentSessionId}/complete`);
       if (response.data.success) {
@@ -104,7 +107,9 @@ export default function PomodoroPage() {
         loadSessionHistory();
       }
     } catch (_) {
-      toast.error('Lỗi lưu kết quả Pomodoro.');
+      handleError('Lỗi lưu kết quả Pomodoro.');
+    } finally {
+      isCompletingRef.current = false;
     }
   };
 

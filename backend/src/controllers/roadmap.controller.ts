@@ -138,3 +138,65 @@ export async function generateAIRoadmap(req: AuthRequest, res: Response, next: N
     next(error);
   }
 }
+
+/**
+ * Fetch all available roadmap templates with phases and tasks
+ */
+export async function getRoadmapTemplates(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const templates = await prisma.roadmapTemplate.findMany({
+      include: {
+        phases: {
+          orderBy: { orderIndex: 'asc' },
+          include: {
+            tasks: {
+              orderBy: { orderIndex: 'asc' }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.status(200).json({
+      success: true,
+      templates
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Get detail of a specific roadmap template including phases and tasks.
+ */
+export async function getRoadmapTemplateDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    const template = await prisma.roadmapTemplate.findUnique({
+      where: { id },
+      include: {
+        phases: {
+          orderBy: { orderIndex: 'asc' },
+          include: {
+            tasks: {
+              orderBy: { orderIndex: 'asc' }
+            }
+          }
+        }
+      }
+    });
+
+    if (!template) {
+      throw new ApiError(404, 'Không tìm thấy mẫu lộ trình.');
+    }
+
+    res.status(200).json({
+      success: true,
+      template
+    });
+  } catch (error) {
+    next(error);
+  }
+}

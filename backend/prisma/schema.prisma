@@ -36,6 +36,8 @@ model Student {
   pomodoroSessions    PomodoroSession[]
   tasks               Task[]
   alerts              Alert[]
+  badges              StudentBadge[]
+  activityLogs        ActivityLog[]
 }
 
 model Mentor {
@@ -198,4 +200,82 @@ model Alert {
   type      String    @default("RED_FLAG")
   message   String
   timestamp DateTime  @default(now())
+}
+
+model RoadmapTemplate {
+  id             String         @id @default(uuid())
+  title          String
+  description    String
+  difficulty     String
+  durationWeeks  Int
+  totalSkills    Int
+  bannerGradient String
+  phases         RoadmapPhase[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  createdById    String?
+}
+
+model RoadmapPhase {
+  id          String        @id @default(uuid())
+  templateId  String
+  template    RoadmapTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  tasks       RoadmapTask[]
+  orderIndex  Int           @default(0)
+}
+
+model RoadmapTask {
+  id               String       @id @default(uuid())
+  phaseId          String
+  phase            RoadmapPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  title            String
+  description      String
+  skillSlug        String
+  difficulty       String       @default("MEDIUM")
+  estimatedMinutes Int          @default(60)
+  orderIndex       Int          @default(0)
+}
+
+model Badge {
+  id          String         @id @default(uuid())
+  name        String
+  description String
+  imageUrl    String
+  condition   String         // e.g. "COMPLETE_10_TASKS", "7_DAY_STREAK", "FIRST_QUIZ"
+  points      Int            @default(10)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  students    StudentBadge[]
+}
+
+model StudentBadge {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt  DateTime @default(now())
+
+  @@unique([studentId, badgeId])
+}
+
+enum ActivityActionType {
+  QUIZ_ATTEMPT
+  POMODORO_COMPLETED
+  TASK_COMPLETED
+}
+
+model ActivityLog {
+  id           String             @id @default(uuid())
+  studentId    String
+  student      Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  actionType   ActivityActionType
+  referenceId  String
+  activityDate String             // e.g. "2026-06-20" for timezone-adjusted date
+  description  String?
+  createdAt    DateTime           @default(now())
+
+  @@unique([studentId, actionType, referenceId, activityDate])
 }

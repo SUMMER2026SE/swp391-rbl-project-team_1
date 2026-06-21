@@ -9,6 +9,7 @@ import {
   Eye, Save, X, Sparkles, BookOpenCheck, Globe 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { handleError } from '@/utils/errorHandler';
 
 interface KnowledgeUnit {
   id: string;
@@ -77,7 +78,7 @@ export default function MentorKnowledgeBank() {
         setUnits(response.data.units);
       }
     } catch (_) {
-      toast.error('Không thể tải danh sách tài liệu.');
+      handleError('Không thể tải danh sách tài liệu.');
     } finally {
       setIsLoading(false);
     }
@@ -136,14 +137,14 @@ export default function MentorKnowledgeBank() {
         }
       }
     } catch (_) {
-      toast.error('Xóa bài viết thất bại.');
+      handleError('Xóa bài viết thất bại.');
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
-      toast.error('Tiêu đề và nội dung bài viết không được trống.');
+      handleError('Tiêu đề và nội dung bài viết không được trống.');
       return;
     }
 
@@ -180,8 +181,7 @@ export default function MentorKnowledgeBank() {
         }
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Không thể lưu bài viết.';
-      toast.error(msg);
+      handleError(error, 'Không thể lưu bài viết.');
     } finally {
       setIsSaving(false);
     }

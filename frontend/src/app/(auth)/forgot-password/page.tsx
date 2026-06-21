@@ -8,6 +8,7 @@ import { Mail, ArrowLeft, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
 import { useRouter } from 'next/navigation';
+import { handleError } from '../../../utils/errorHandler';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState<string>('');
@@ -17,14 +18,16 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!email) {
-      toast.error('Vui lòng nhập địa chỉ email.');
+      handleError('Vui lòng nhập địa chỉ email.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error('Định dạng email không hợp lệ.');
+      handleError('Định dạng email không hợp lệ.');
       return;
     }
 
@@ -35,10 +38,10 @@ export default function ForgotPasswordPage() {
         setIsSuccess(true);
         toast.success('Mã OTP khôi phục đã được gửi!');
       } else {
-        toast.error(res.data.message || 'Có lỗi xảy ra.');
+        handleError(res.data.message || 'Có lỗi xảy ra.');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Không thể gửi yêu cầu lúc này.');
+      handleError(error, 'Không thể gửi yêu cầu lúc này.');
     } finally {
       setIsSubmitting(false);
     }
