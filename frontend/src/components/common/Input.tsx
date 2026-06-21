@@ -1,34 +1,49 @@
-import React, { InputHTMLAttributes } from "react";
+import React from 'react';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  helperText?: string;
+  icon?: React.ReactNode;
 }
 
-export default function Input({
-  label,
-  error,
-  id,
-  className = "",
-  type = "text",
-  ...props
-}: InputProps) {
-  return (
-    <div className="w-full">
-      {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1.5">
-          {label}
-        </label>
-      )}
-      <input
-        id={id}
-        type={type}
-        className={`w-full px-4 py-2.5 rounded-xl border bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm ${
-          error ? "border-red-300 focus:ring-red-500/20 focus:border-red-500" : "border-slate-200"
-        } ${className}`}
-        {...props}
-      />
-      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ label, error, helperText, icon, className = '', ...props }, ref) => {
+    return (
+      <div className="w-full flex flex-col gap-1.5">
+        {label && (
+          <label className="text-slate-300 font-semibold text-xs uppercase tracking-wider">
+            {label}
+          </label>
+        )}
+        
+        <div className="relative flex items-center">
+          {icon && (
+            <div className="absolute left-4 text-slate-500 pointer-events-none">
+              {icon}
+            </div>
+          )}
+          
+          <input
+            ref={ref}
+            className={`w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-300 outline-none placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+              icon ? 'pl-11' : ''
+            } ${error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500' : ''} ${className}`}
+            {...props}
+          />
+        </div>
+
+        {error && (
+          <span className="text-rose-500 text-xs font-medium mt-0.5">{error}</span>
+        )}
+        {!error && helperText && (
+          <span className="text-slate-500 text-xs mt-0.5">{helperText}</span>
+        )}
+      </div>
+    );
+  }
+);
+
+Input.displayName = 'Input';
+
+export default Input;

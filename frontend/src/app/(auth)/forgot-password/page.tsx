@@ -1,323 +1,130 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import authService from "@/services/auth.service";
-import Input from "@/components/common/Input";
-import Button from "@/components/common/Button";
-import Alert from "@/components/common/Alert";
-import { Mail, Lock, KeyRound, Clock, Activity } from "lucide-react";
-
-type ForgotPasswordStep = "email" | "otp" | "password";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import Button from '../../../components/common/Button';
+import Input from '../../../components/common/Input';
+import { Mail, ArrowLeft, KeyRound } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '../../../services/api';
+import { useRouter } from 'next/navigation';
 
 export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const router = useRouter();
 
-  const [step, setStep] = useState<ForgotPasswordStep>("email");
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [resendCountdown, setResendCountdown] = useState(0);
-
-  // Handle email submission to send OTP
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
     if (!email) {
-      setError("Email là bắt buộc");
+      toast.error('Vui lòng nhập địa chỉ email.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError("Email không hợp lệ");
+      toast.error('Định dạng email không hợp lệ.');
       return;
     }
 
-    setLoading(true);
+    setIsSubmitting(true);
     try {
-      await authService.forgotPassword(email);
-      setSuccess("Mã OTP khôi phục mật khẩu đã được gửi đến email của bạn");
-      setStep("otp");
-      startCountdown();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Không thể gửi OTP. Email có thể không tồn tại.";
-      setError(message);
+      const res = await api.post('/auth/forgot-password', { email });
+      if (res.data.success) {
+        setIsSuccess(true);
+        toast.success('Mã OTP khôi phục đã được gửi!');
+      } else {
+        toast.error(res.data.message || 'Có lỗi xảy ra.');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Không thể gửi yêu cầu lúc này.');
     } finally {
-      setLoading(false);
-    }
-  };
-
-  // Start 60s countdown for OTP resend
-  const startCountdown = () => {
-    setResendCountdown(60);
-    const interval = setInterval(() => {
-      setResendCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  // Handle OTP verification
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    if (!otp) {
-      setError("Mã OTP là bắt buộc");
-      return;
-    }
-
-    if (otp.length !== 6) {
-      setError("Mã OTP phải có 6 chữ số");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await authService.verifyResetOtp(email, otp);
-      setSuccess("Mã OTP hợp lệ! Vui lòng nhập mật khẩu mới");
-      setStep("password");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Mã OTP không hợp lệ hoặc đã hết hạn";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle password submission (reset password)
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    if (!password) {
-      setError("Mật khẩu mới là bắt buộc");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Mật khẩu mới phải chứa ít nhất 6 ký tự");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không trùng khớp");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await authService.resetPassword(email, otp, password);
-      setSuccess("Đặt lại mật khẩu thành công! Đang chuyển hướng về trang đăng nhập...");
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Không thể hoàn tất khôi phục mật khẩu";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (resendCountdown > 0) return;
-
-    setError(null);
-    setSuccess(null);
-    setLoading(true);
-    try {
-      await authService.forgotPassword(email);
-      setSuccess("Mã OTP mới đã được gửi");
-      startCountdown();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Không thể gửi lại OTP";
-      setError(message);
-    } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50 relative overflow-hidden">
-      {/* Decorative background shapes */}
-      <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-teal-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl border border-slate-100 shadow-xl relative z-10">
-        {/* Step indicator */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all bg-teal-600 text-white">
-            1
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+      
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-slate-950/70 z-10">
+        
+        {/* Brand Header */}
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-orange-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
+            <ShieldCheckIcon />
           </div>
-          <div className={`h-1 w-8 transition-all ${step !== "email" ? "bg-teal-600" : "bg-slate-200"}`} />
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all ${
-              step === "otp" || step === "password" ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"
-            }`}
-          >
-            2
-          </div>
-          <div className={`h-1 w-8 transition-all ${step === "password" ? "bg-teal-600" : "bg-slate-200"}`} />
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all ${
-              step === "password" ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"
-            }`}
-          >
-            3
-          </div>
-        </div>
-
-        <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-xl bg-teal-50 text-teal-600 mb-4">
-            <Activity className="h-6 w-6 animate-pulse" />
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            {step === "email" && "Quên Mật Khẩu"}
-            {step === "otp" && "Xác Nhận OTP"}
-            {step === "password" && "Đặt Lại Mật Khẩu"}
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            {step === "email" && "Nhập email đã đăng ký để nhận mã OTP khôi phục mật khẩu"}
-            {step === "otp" && `Nhập mã OTP 6 số đã được gửi tới email ${email}`}
-            {step === "password" && "Nhập mật khẩu mới cho tài khoản của bạn"}
+          <h2 className="text-2xl font-bold text-slate-100 mt-2">Khôi phục mật khẩu</h2>
+          <p className="text-slate-500 text-sm font-medium text-center mt-2 px-4">
+            Nhập email của bạn và chúng tôi sẽ gửi liên kết để đặt lại mật khẩu.
           </p>
         </div>
 
-        {error && <Alert type="error" message={error} />}
-        {success && <Alert type="success" message={success} />}
-
-        {/* Email step */}
-        {step === "email" && (
-          <form className="mt-8 space-y-5" onSubmit={handleEmailSubmit}>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-9.5 h-4 w-4 text-slate-400 z-10" />
-              <Input
-                id="email"
-                type="email"
-                label="Email"
-                placeholder="Nhập email của bạn"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                required
-              />
+        {isSuccess ? (
+          <div className="space-y-6 text-center">
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6">
+              <h3 className="text-emerald-400 font-semibold mb-2">Đã gửi email thành công</h3>
+              <p className="text-slate-400 text-sm">
+                Vui lòng kiểm tra hộp thư đến của <strong>{email}</strong> để nhận hướng dẫn đặt lại mật khẩu.
+              </p>
             </div>
-
-            <div className="pt-2">
-              <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-                Gửi Mã Xác Nhận OTP
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {/* OTP step */}
-        {step === "otp" && (
-          <form className="mt-8 space-y-5" onSubmit={handleOtpSubmit}>
-            <div className="relative">
-              <KeyRound className="absolute left-3.5 top-9.5 h-4 w-4 text-slate-400 z-10" />
-              <Input
-                id="otp"
-                type="text"
-                label="Mã OTP"
-                placeholder="Nhập 6 chữ số OTP"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="pl-10 text-center text-2xl tracking-widest"
-                maxLength={6}
-                required
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-sm text-slate-500">
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                Hết hạn trong 5 phút
-              </span>
-            </div>
-
-            <div className="pt-2">
-              <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-                Xác Nhận OTP
-              </Button>
-            </div>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={resendCountdown > 0 || loading}
-                className="text-sm text-teal-600 hover:text-teal-700 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors font-semibold"
-              >
-                {resendCountdown > 0 ? `Gửi lại trong ${resendCountdown}s` : "Gửi lại mã OTP"}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Password step */}
-        {step === "password" && (
-          <form className="mt-8 space-y-5" onSubmit={handlePasswordSubmit}>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-9.5 h-4 w-4 text-slate-400 z-10" />
-              <Input
-                id="password"
-                type="password"
-                label="Mật khẩu mới"
-                placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
-
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-9.5 h-4 w-4 text-slate-400 z-10" />
-              <Input
-                id="confirmPassword"
-                type="password"
-                label="Nhập lại mật khẩu mới"
-                placeholder="Xác nhận lại mật khẩu mới"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
-
-            <div className="pt-2">
-              <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-                Đặt Lại Mật Khẩu
-              </Button>
-            </div>
-          </form>
-        )}
-
-        <div className="text-center pt-2">
-          <p className="text-sm text-slate-600">
-            Quay lại{" "}
-            <Link href="/login" className="font-semibold text-teal-600 hover:text-teal-700 transition-colors">
-              Đăng nhập
+            <Button
+              variant="primary"
+              onClick={() => router.push(`/reset-password?email=${encodeURIComponent(email)}`)}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+            >
+              <KeyRound className="w-5 h-5 mr-2 inline" />
+              Nhập mã OTP đặt lại mật khẩu
+            </Button>
+            <Link
+              href="/login"
+              className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl py-3 font-semibold transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Quay lại đăng nhập
             </Link>
-          </p>
-        </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <Input
+              label="Địa chỉ Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@student.fpt.edu.vn"
+              icon={<Mail className="w-5 h-5 text-slate-600" />}
+              required
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full mt-4 bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 shadow-rose-500/25"
+              isLoading={isSubmitting}
+            >
+              Gửi liên kết khôi phục
+            </Button>
+
+            <Link
+              href="/login"
+              className="flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-slate-300 font-medium transition-colors mt-6"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Quay lại đăng nhập
+            </Link>
+          </form>
+        )}
       </div>
     </div>
+  );
+}
+
+function ShieldCheckIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      <path d="m9 12 2 2 4-4"></path>
+    </svg>
   );
 }

@@ -1,24 +1,18 @@
-import axios from "axios";
+import axios from 'axios';
 
-// Standard Backend Base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json'
   },
+  withCredentials: true
 });
 
-// Request Interceptor to add JWT token
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
     return config;
   },
   (error) => {
@@ -26,32 +20,23 @@ api.interceptors.request.use(
   }
 );
 
-// Response Interceptor to handle errors globally
+// Response interceptor to handle unauthorized requests
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Standard error response from backend
-    const message = error.response?.data?.message || "Đã xảy ra lỗi hệ thống!";
-    const status = error.response?.status;
-
-    if (status === 401 && typeof window !== "undefined") {
-      // Clear storage on unauthorized token
-      localStorage.removeItem("token");
-      localStorage.removeItem("STUDENT");
-      // Optional: redirect to login if necessary
+    if (error.response && error.response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
+        
+        // Avoid infinite loop if already on login page
+        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && window.location.pathname !== '/') {
+          window.location.href = '/login';
+        }
+      }
     }
-
-    return Promise.reject({
-      message,
-      status,
-      originalError: error,
-    });
+    return Promise.reject(error);
   }
 );
 
 export default api;
-export interface ApiError {
-  message: string;
-  status?: number;
-  originalError: unknown;
-}

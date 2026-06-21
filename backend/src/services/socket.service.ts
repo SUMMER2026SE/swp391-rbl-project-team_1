@@ -1,63 +1,122 @@
-import { Server, Socket } from "socket.io";
+import { Server } from 'socket.io';
+import prisma from '../prisma/client';
+import { AlertType } from '../types/enums';
 
-export function initSocket(httpServer: any, allowedOrigins: string[]) {
-    const io = new Server(httpServer, {
-        cors: {
-            origin: allowedOrigins,
-            methods: ["GET", "POST"],
-            credentials: true
+let ioInstance: Server | null = null;
+
+/**
+ * Initializes the Socket.IO server and registers connection handlers.
+ */
+export function initSocket(server: any): Server {
+  const io = new Server(server, {
+    cors: {
+      origin: '*', // Allow all origins for testing
+      methods: ['GET', 'POST', 'PUT', 'DELETE']
+    }
+  });
+
+  io.on('connection', (socket) => {
+    console.log('Client connected to Socket.IO:', socket.id);
+
+    // Join room event (e.g. 'join' with room: 'student:xxxx' or 'mentor:yyyy')
+    socket.on('join', (data: { room: string }) => {
+      if (data && data.room) {
+        socket.join(data.room);
+        console.log(`Socket ${socket.id} joined room: ${data.room}`);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Client disconnected from Socket.IO:', socket.id);
+    });
+  });
+
+  ioInstance = io;
+  return io;
+}
+
+/**
+ * Emits a Red Flag alert to the student and their assigned mentors.
+ * Saves the alert to the database.
+ */
+export async function emitRedFlag(studentId: string, riskScore: number): Promise<void> {
+  const message = `Cảnh báo: Điểm rủi ro học tập hiện tại của bạn đã vượt quá giới hạn an toàn (${riskScore}%). Vui lòng hoàn thành công việc hoặc trao đổi với Mentor.`;
+  
+  try {
+    const studentInfo = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { user: { include: { notificationSettings: true } } }
+    });
+
+    if (!studentInfo) return;
+
+    if (studentInfo.user.notificationSettings && studentInfo.user.notificationSettings.riskAlert === false) {
+      console.log(`[SOCKET SERVICE] Skipping RED_FLAG for ${studentInfo.user.fullName} because riskAlert is turned off.`);
+      return;
+    }
+
+    // 1. Create Alert record in DB
+    const alert = await prisma.alert.create({
+      data: {
+        studentId,
+        type: AlertType.RED_FLAG,
+        message
+      },
+      include: {
+        student: {
+          include: {
+            user: true
+          }
         }
+      }
     });
 
-    io.on("connection", (socket: Socket) => {
-        console.log(`Socket connected: ${socket.id}`);
+    const studentName = alert.student.user.fullName;
 
-        // Join room for a specific appointment
-        socket.on("join-room", ({ appointmentId, role, name, avatar }) => {
-            socket.join(appointmentId);
-            console.log(`User ${name} (${role}) joined room ${appointmentId}`);
+    console.log(`[SOCKET SERVICE] Broadcasting RED_FLAG for ${studentName} (${riskScore}%)`);
 
-            // Broadcast to other users in room that a user has connected
-            socket.to(appointmentId).emit("user-connected", {
-                socketId: socket.id,
-                role,
-                name,
-                avatar
-            });
-        });
+    if (!ioInstance) {
+      console.warn('[SOCKET SERVICE] Socket.IO instance is not initialized. Skipping real-time broadcast.');
+      return;
+    }
 
-        // Forward WebRTC signals (SDP offer/answer, ICE candidates)
-        socket.on("signal", ({ appointmentId, signalData }) => {
-            socket.to(appointmentId).emit("signal", {
-                socketId: socket.id,
-                signalData
-            });
-        });
-
-        // Chat messages during the call
-        socket.on("send-message", ({ appointmentId, message }) => {
-            socket.to(appointmentId).emit("receive-message", message);
-        });
-
-        // End call signal
-        socket.on("end-call", ({ appointmentId }) => {
-            socket.to(appointmentId).emit("call-ended");
-        });
-
-        socket.on("disconnecting", () => {
-            // Find all rooms this socket is in
-            const rooms = Array.from(socket.rooms);
-            rooms.forEach((room) => {
-                if (room !== socket.id) {
-                    socket.to(room).emit("user-disconnected", { socketId: socket.id });
-                }
-            });
-        });
-
-        socket.on("disconnect", () => {
-            console.log(`Socket disconnected: ${socket.id}`);
-        });
+    // 2. Emit 'notification' to the student's room
+    ioInstance.to(`student:${studentId}`).emit('notification', {
+      type: AlertType.RED_FLAG,
+      message: message,
+      alertId: alert.id,
+      timestamp: alert.timestamp
     });
 
-    return io;
+    // 3. Find all mentors assigned to this student
+    const assignments = await prisma.mentorStudent.findMany({
+      where: { studentId },
+      include: { mentor: { include: { user: true } } }
+    });
+
+    // 4. Emit 'red-flag-alert' to each mentor's room
+    assignments.forEach((assign) => {
+      if (ioInstance) {
+        ioInstance.to(`mentor:${assign.mentorId}`).emit('red-flag-alert', {
+          studentId,
+          studentName,
+          riskScore,
+          message: `⚠️ [Cảnh báo đỏ] Sinh viên ${studentName} có nguy cơ học tập cao (${riskScore}%)`,
+          timestamp: alert.timestamp.toISOString()
+        });
+      }
+    });
+    
+    // Also emit to global admin room
+    ioInstance.to('admin').emit('red-flag-alert', {
+      studentId,
+      studentName,
+      riskScore,
+      message: `⚠️ [Admin Alert] Sinh viên ${studentName} có nguy cơ học tập cao (${riskScore}%)`,
+      timestamp: alert.timestamp.toISOString()
+    });
+
+  } catch (error) {
+    console.error('[SOCKET SERVICE] Error processing red flag alert:', error);
+  }
 }

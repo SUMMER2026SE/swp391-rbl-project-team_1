@@ -1,15 +1,17 @@
-import dotenv from "dotenv";
-import { createServer } from "http";
-import app, { allowedOrigins } from "./app";
-import { initSocket } from "./services/socket.service";
-
-dotenv.config();
+import * as http from 'http';
+import app from './app';
+import { initSocket } from './services/socket.service';
+import 'dotenv/config';
 
 const PORT = process.env.PORT || 5000;
 
-const httpServer = createServer(app);
-initSocket(httpServer, allowedOrigins);
+// Create HTTP Server
+const server = http.createServer(app);
 
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Initialize Socket.IO Server
+initSocket(server);
+
+// Start Server
+server.listen(PORT, () => {
+  console.log(`[SERVER] EduPath server is running on http://localhost:${PORT}`);
 });

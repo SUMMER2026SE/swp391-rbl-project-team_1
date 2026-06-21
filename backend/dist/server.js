@@ -36,14 +36,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const dotenv_1 = __importDefault(require("dotenv"));
-const http_1 = require("http");
-const app_1 = __importStar(require("./app"));
+const http = __importStar(require("http"));
+const app_1 = __importDefault(require("./app"));
 const socket_service_1 = require("./services/socket.service");
-dotenv_1.default.config();
+require("dotenv/config");
 const PORT = process.env.PORT || 5000;
-const httpServer = (0, http_1.createServer)(app_1.default);
-(0, socket_service_1.initSocket)(httpServer, app_1.allowedOrigins);
-httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Create HTTP Server
+const server = http.createServer(app_1.default);
+// Initialize Socket.IO Server
+(0, socket_service_1.initSocket)(server);
+// Start Server
+server.listen(PORT, () => {
+    console.log(`[SERVER] EduPath server is running on http://localhost:${PORT}`);
 });

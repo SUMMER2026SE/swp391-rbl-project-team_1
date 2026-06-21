@@ -1,66 +1,130 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  DOCTOR
-  ADMIN
+generator client {
+  provider = "prisma-client-js"
 }
 
-enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  COMPLETED
-  CANCELLED
+enum SkillDomain {
+  WEB_DEV
+  DATA_SCIENCE
+  MOBILE_DEV
+  ENGLISH
+  JAPANESE
 }
 
-enum DoctorStatus {
+enum PostType {
+  QUESTION
+  EXPERIENCE
+  ROADMAP_FEEDBACK
+}
+
+enum PostStatus {
   PENDING
-  APPROVED
+  PUBLISHED
   REJECTED
 }
 
-enum ComplaintStatus {
-  PENDING
-  RESOLVED
+enum TransactionType {
+  DEPOSIT
+  PURCHASE
+}
+
+enum FileType {
+  PDF
+  DOCX
+  PPTX
+  LINK
+}
+
+enum AccessType {
+  FREE
+  PREMIUM
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  password     String?
-  fullName     String?
-  avatar       String?
-  gender       String?
-  address      String?
-  dateOfBirth  DateTime?
-  role         Role          @default(USER)
-  doctorId     String?       @unique  // Link to Doctor record when role = DOCTOR
-  
-  // Medical Background Fields
-  bloodType       String?
-  allergies       String?
-  chronicDiseases String?
-  personalHistory String?
-  familyHistory   String?
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  googleId  String?  @unique
+  fullName  String
+  avatarUrl String?
+  role      String   @default("STUDENT")
+  createdAt DateTime @default(now())
+  updatedAt             DateTime              @updatedAt
+  student               Student?
+  mentor                Mentor?
+  notificationSettings  NotificationSettings?
+}
 
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  appointments Appointment[]
-  doctor       Doctor?       @relation(fields: [doctorId], references: [id])
-  complaints   Complaint[]
-  medicalRecords MedicalRecord[]
-  reviews      Review[]
+model NotificationSettings {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskAlert         Boolean  @default(true)
+  deadlineReminder  Boolean  @default(true)
+  communityUpdates  Boolean  @default(true)
+  achievementAlerts Boolean  @default(true)
+  dailyReminder     Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Student {
+  id                  String            @id @default(uuid())
+  userId              String            @unique
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  learningGoal        String?
+  preferredStudyTime  String?
+  learningStyle       String?
+  totalFocusTime      Float             @default(0)
+  currentRiskScore    Int               @default(0)
+  onboardingCompleted Boolean           @default(false)
+  skillMasteries      SkillMastery[]
+  mentorStudents      MentorStudent[]
+  quizAttempts        QuizAttempt[]
+  riskHistories       RiskHistory[]
+  pomodoroSessions    PomodoroSession[]
+  tasks               Task[]
+  alerts              Alert[]
+  communityPosts      CommunityPost[]
+  postComments        PostComment[]
+  upvotedPosts        CommunityPost[]   @relation("PostUpvotes")
+  purchasedRoadmaps   PurchasedRoadmap[]
+  purchasedDocuments  PurchasedDocument[]
+  wallet              Wallet?
+  savedDocuments      SavedDocument[]
+  chatConversations   ChatConversation[]
+}
+
+model Mentor {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentorStudents MentorStudent[]
+  knowledgeUnits KnowledgeUnit[]
+  quizQuestions  QuizQuestion[]
+}
+
+model MentorStudent {
+  id        String  @id @default(uuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  String
+  mentor    Mentor  @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, mentorId])
 }
 
 model OTP {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(uuid())
   email     String
   code      String
   verified  Boolean  @default(false)
@@ -68,157 +132,264 @@ model OTP {
   createdAt DateTime @default(now())
 }
 
-model Specialty {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
-  description String?
-  icon        String?
-  doctors     Doctor[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Skill {
+  id             String          @id @default(uuid())
+  name           String
+  slug           String          @unique
+  domain         SkillDomain?
+  parentId       String?
+  parent         Skill?          @relation("SkillToSkill", fields: [parentId], references: [id], onDelete: SetNull)
+  children       Skill[]         @relation("SkillToSkill")
+  skillMasteries SkillMastery[]
+  tasks          Task[]
+  quizQuestions  QuizQuestion[]
+  knowledgeUnits KnowledgeUnit[]
+  communityPosts CommunityPost[] @relation("PostToSkill")
+  documents      Document[]      @relation("DocumentToSkill")
 }
 
-model Doctor {
-  id              String           @id @default(uuid())
-  name            String
-  experience      Int
-  hospital        String
-  avatar          String
-  createdAt       DateTime         @default(now())
-  appointments    Appointment[]
-  doctorSchedules DoctorSchedule[]
-  userAccount     User?            // Reverse relation: the User account linked to this Doctor
-  specialtyId     String
-  specialty       Specialty        @relation(fields: [specialtyId], references: [id])
-  
-  // Moderation & Control
-  status          DoctorStatus     @default(PENDING)
-  isLocked        Boolean          @default(false)
-  rejectedReason  String?
-  
-  // Clinic Relation
-  clinicId        String?
-  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
-  // Extra info
-  price           Int?
-  phone           String?
-  description     String?
-  medicalRecords  MedicalRecord[]
-  certificates    DoctorCertificate[]
-  reviews         Review[]
+model SkillMastery {
+  id           String        @id @default(uuid())
+  studentId    String
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId      String
+  skill        Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  masteryLevel Float         @default(0.3)
+  pLearn       Float         @default(0.4)
+  pForget      Float         @default(0.1)
+  pGuess       Float         @default(0.2)
+  pSlip        Float         @default(0.1)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bktHistories BKTHistory[]
+
+  @@unique([studentId, skillId])
 }
 
-model Clinic {
-  id          String   @id @default(cuid())
-  name        String
-  address     String
-  image       String?
-  doctors     Doctor[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model BKTHistory {
+  id            String       @id @default(uuid())
+  masteryId     String
+  skillMastery  SkillMastery @relation(fields: [masteryId], references: [id], onDelete: Cascade)
+  masteryBefore Float
+  masteryAfter  Float
+  wasCorrect    Boolean
+  createdAt     DateTime     @default(now())
 }
 
-model Article {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  thumbnail   String?
-  published   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model RiskHistory {
+  id                 String   @id @default(uuid())
+  studentId          String
+  student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  riskScore          Int
+  taskCompletionRate Float
+  avgQuizScore       Float
+  totalTimeSpent     Float
+  createdAt          DateTime @default(now())
 }
 
-model Complaint {
-  id        String          @id @default(cuid())
+model PomodoroSession {
+  id          String    @id @default(uuid())
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  taskId      String?
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  durationMin Int
+  completed   Boolean   @default(false)
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Task {
+  id               String            @id @default(uuid())
+  studentId        String
+  student          Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  skillId          String
+  skill            Skill             @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  difficulty       String
+  deadline         DateTime?
+  estimatedMinutes Int               @default(25)
+  status           String            @default("TODO")
+  completedAt      DateTime?
+  isAIGenerated    Boolean           @default(false)
+  isManualOverride Boolean           @default(false)
+  manualOrder      Int?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  pomodoroSessions PomodoroSession[]
+}
+
+model KnowledgeUnit {
+  id         String     @id @default(uuid())
+  mentorId   String
+  mentor     Mentor     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  skillId    String
+  skill      Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  difficulty String
+  isPublic   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model QuizQuestion {
+  id           String        @id @default(uuid())
+  mentorId     String?
+  mentor       Mentor?       @relation(fields: [mentorId], references: [id], onDelete: SetNull)
+  skillId      String
+  skill        Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  question     String
+  type         String        @default("SINGLE_CHOICE")
+  options      String
+  explanation  String?
+  difficulty   String        @default("EASY")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  quizAttempts QuizAttempt[]
+}
+
+model QuizAttempt {
+  id             String       @id @default(uuid())
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption Int
+  isCorrect      Boolean
+  timeSpentSec   Int
+  createdAt      DateTime     @default(now())
+}
+
+model Alert {
+  id        String    @id @default(uuid())
+  studentId String
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type      String    @default("RED_FLAG")
   message   String
-  status    ComplaintStatus @default(PENDING)
-  userId    String
-  user      User            @relation(fields: [userId], references: [id])
-  createdAt DateTime        @default(now())
+  timestamp DateTime  @default(now())
 }
 
-model DoctorSchedule {
+model CommunityPost {
+  id                String          @id @default(uuid())
+  authorId          String
+  author            Student         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title             String
+  content           String
+  type              PostType        @default(QUESTION)
+  status            PostStatus      @default(PENDING)
+  rejectReason      String?
+  attachedRoadmapId String?
+  upvoteCount       Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  skillTags         Skill[]         @relation("PostToSkill")
+  comments          PostComment[]
+  upvotedBy         Student[]       @relation("PostUpvotes")
+}
+
+model PostComment {
+  id          String        @id @default(uuid())
+  postId      String
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      Student       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content     String
+  reportCount Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model PurchasedRoadmap {
   id          String   @id @default(uuid())
-  doctor      Doctor   @relation(fields: [doctorId], references: [id])
-  doctorId    String
-  dayOfWeek   Int      // 0 = Sunday, 1 = Monday, ... 6 = Saturday
-  startTime   String   // format HH:MM (24h)
-  endTime     String   // format HH:MM (24h)
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  roadmapId   String
+  pricePaid   Int
+  purchasedAt DateTime @default(now())
+
+  @@unique([studentId, roadmapId])
 }
 
-model Appointment {
-  id              String            @id @default(uuid())
-  user            User              @relation(fields: [userId], references: [id])
-  userId          String
-  doctor          Doctor            @relation(fields: [doctorId], references: [id])
-  doctorId        String
-  appointmentDate DateTime
-  status          AppointmentStatus @default(PENDING)
-  notes           String?
-  cancellationReason String?
-  createdAt       DateTime          @default(now())
-  medicalRecord   MedicalRecord?
-  review          Review?
+model Wallet {
+  id           String              @id @default(uuid())
+  studentId    String              @unique
+  student      Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  balance      Int                 @default(0)
+  transactions WalletTransaction[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
 }
 
-model MedicalRecord {
-  id            String         @id @default(uuid())
-  appointmentId String         @unique
-  appointment   Appointment    @relation(fields: [appointmentId], references: [id])
-  doctorId      String
-  doctor        Doctor         @relation(fields: [doctorId], references: [id])
-  userId        String
-  user          User           @relation(fields: [userId], references: [id])
-  diagnosis     String
-  notes         String?
-  prescriptions Prescription[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+model WalletTransaction {
+  id          String          @id @default(uuid())
+  walletId    String
+  wallet      Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  amount      Int
+  description String
+  createdAt   DateTime        @default(now())
 }
 
-model Prescription {
-  id              String        @id @default(uuid())
-  medicalRecordId String
-  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
-  medicationName  String
-  dosage          String
-  frequency       String
-  duration        String
-  createdAt       DateTime      @default(now())
+model Document {
+  id            String          @id @default(uuid())
+  title         String
+  description   String?
+  fileType      FileType        @default(LINK)
+  fileUrl       String
+  accessType    AccessType      @default(FREE)
+  price         Int             @default(0)
+  downloadCount Int             @default(0)
+  createdAt     DateTime        @default(now())
+  skillTags     Skill[]             @relation("DocumentToSkill")
+  savedBy       SavedDocument[]
+  purchasedBy   PurchasedDocument[]
 }
 
-model DoctorCertificate {
-  id          String   @id @default(cuid())
+model SavedDocument {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  savedAt    DateTime @default(now())
 
-  doctorId    String
-
-  title       String
-  issuer      String?
-  issuedYear  Int?
-  description String?
-
-  imageUrl    String?
-  fileUrl     String?
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  @@unique([studentId, documentId])
 }
 
-model Review {
-  id            String      @id @default(uuid())
-  appointmentId String      @unique
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  doctorId      String
-  doctor        Doctor      @relation(fields: [doctorId], references: [id])
-  userId        String
-  user          User        @relation(fields: [userId], references: [id])
-  rating        Int
-  comment       String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+model PurchasedDocument {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  pricePaid   Int
+  purchasedAt DateTime @default(now())
+
+  @@unique([studentId, documentId])
+}
+
+model ChatConversation {
+  id        String        @id @default(uuid())
+  studentId String
+  student   Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title     String        @default("Cuộc trò chuyện mới")
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ChatRole
+  content        String
+  functionCalled String?
+  createdAt      DateTime         @default(now())
 }

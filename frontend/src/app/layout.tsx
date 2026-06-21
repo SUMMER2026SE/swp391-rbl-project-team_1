@@ -1,49 +1,55 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/context/AuthContext";
-import { BookingProvider } from "@/context/BookingContext";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import AIChatbot from "@/components/common/AIChatbot";
+import { AuthProvider } from "../context/AuthContext";
 import { Toaster } from "react-hot-toast";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["vietnamese", "latin"],
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "EduPath - Học tập thông minh hơn",
-  description: "Nền tảng học tập thích ứng — tự động phân tích năng lực và cá nhân hóa lộ trình học tập theo từng người.",
+  title: "EduPath — Hệ Thống Cá Nhân Hóa Lộ Trình Học Tập Thích Ứng",
+  description: "Hệ thống điều phối học tập thích ứng sử dụng BKT, Priority Scheduler và dự đoán rủi ro trì trệ lộ trình cho người học.",
 };
+
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+  const hasGoogleClientId = clientId !== '' && clientId !== 'your-google-client-id-here.apps.googleusercontent.com';
+
   return (
     <html
       lang="vi"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full bg-slate-950 text-slate-100 antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50 via-slate-50 to-white text-slate-900 selection:bg-teal-200">
-        <AuthProvider>
-          <BookingProvider>
-            <Navbar />
-            <main className="flex-grow flex flex-col relative">
-              {/* Optional ambient background blobs for extra aesthetics */}
-              <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-teal-200/20 rounded-full blur-3xl pointer-events-none -z-10" />
-              <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-200/10 rounded-full blur-3xl pointer-events-none -z-10" />
-              
-              {children}
-            </main>
-            <Footer />
-            <AIChatbot />
-            <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
-          </BookingProvider>
-        </AuthProvider>
+      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
+        <GoogleOAuthProvider clientId={hasGoogleClientId ? clientId : 'placeholder'}>
+          <AuthProvider>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: '#0f172a',
+                  color: '#f8fafc',
+                  border: '1px solid #1e293b',
+                },
+              }}
+            />
+            {children}
+          </AuthProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );

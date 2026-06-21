@@ -1,264 +1,223 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { adminService } from "@/services/admin.service";
-import { AdminUser, AdminAppointment } from "@/types/admin";
-import LoadingSpinner from "@/components/common/LoadingSpinner";
-import Alert from "@/components/common/Alert";
-import { Users, UserCog, CalendarRange, Clock, CheckCircle2, TrendingUp } from "lucide-react";
-import Link from "next/link";
-import Button from "@/components/common/Button";
+import React, { useState, useEffect } from 'react';
+import api from '@/services/api';
+import { 
+  Users, Activity, FileCheck2, ShieldAlert,
+  Server, Cpu, ShieldCheck, PieChart as PieIcon,
+  HardDrive, Database, ShieldAlert as WarningIcon
+} from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area
+} from 'recharts';
+import toast from 'react-hot-toast';
 
-export default function AdminDashboardPage() {
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface SystemStats {
+  totalUsers: number;
+  activeToday: number;
+  totalQuizAttempts: number;
+  avgRiskScore: number;
+}
 
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Fetch all data in parallel
-        const [usersRes, appointmentsRes] = await Promise.all([
-          adminService.getUsers(),
-          adminService.getAppointments(),
-        ]);
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<SystemStats | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-        setUsers(usersRes.data);
-        setAppointments(appointmentsRes.data);
-      } catch (err: unknown) {
-        const errorMsg =
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message: unknown }).message)
-            : "Không thể đồng bộ dữ liệu quản trị. Vui lòng kiểm tra kết nối Server.";
-        setError(errorMsg);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadStats();
-  }, []);
-
-  // Stats Calculations
-  const totalUsers = users.length;
-  const totalDoctors = users.filter((u) => u.role === "MENTOR").length;
-  const totalAdmins = users.filter((u) => u.role === "ADMIN").length;
-  const totalAppointments = appointments.length;
-  const pendingAppointments = appointments.filter((a) => a.status === "PENDING").length;
-  const confirmedAppointments = appointments.filter((a) => a.status === "CONFIRMED").length;
-  const completedAppointments = appointments.filter((a) => a.status === "COMPLETED").length;
-  const cancelledAppointments = appointments.filter((a) => a.status === "CANCELLED").length;
-
-  const statsCards = [
-    {
-      title: "Tổng Thành Viên",
-      value: totalUsers,
-      sub: `${totalAdmins} Quản trị viên`,
-      icon: <Users className="h-6 w-6 text-teal-400" />,
-      color: "border-teal-500/20 bg-teal-500/5",
-    },
-    {
-      title: "Bác Sĩ Hệ Thống",
-      value: totalDoctors,
-      sub: "Đang liên kết tài khoản",
-      icon: <UserCog className="h-6 w-6 text-indigo-400" />,
-      color: "border-indigo-500/20 bg-indigo-500/5",
-    },
-    {
-      title: "Tổng Lịch Hẹn",
-      value: totalAppointments,
-      sub: "Tất cả các thời điểm",
-      icon: <CalendarRange className="h-6 w-6 text-blue-400" />,
-      color: "border-blue-500/20 bg-blue-500/5",
-    },
-    {
-      title: "Chờ Xác Nhận",
-      value: pendingAppointments,
-      sub: "Yêu cầu cần duyệt gấp",
-      icon: <Clock className="h-6 w-6 text-amber-400" />,
-      color: "border-amber-500/20 bg-amber-500/5",
-    },
-    {
-      title: "Đã Hoàn Thành",
-      value: completedAppointments,
-      sub: "Cuộc hẹn đã khám xong",
-      icon: <CheckCircle2 className="h-6 w-6 text-emerald-400" />,
-      color: "border-emerald-500/20 bg-emerald-500/5",
-    },
-  ];
-
-  // Visual percentages for the custom CSS bar chart
-  const getPercentage = (value: number) => {
-    if (totalAppointments === 0) return 0;
-    return Math.round((value / totalAppointments) * 100);
+  // System Health state mock values
+  const systemHealth = {
+    cpu: 18,
+    memory: 42,
+    disk: 55,
+    dbConnections: 12
   };
 
-  const recentAppointments = appointments.slice(0, 5);
+  useEffect(() => {
+    fetchSystemStats();
+  }, []);
 
-  if (loading) {
+  const fetchSystemStats = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.get('/admin/stats');
+      if (response.data.success) {
+        setStats(response.data.stats);
+      }
+    } catch (_) {
+      toast.error('Không thể tải thống kê hệ thống.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Activity Mock Data for charts
+  const activityData = [
+    { hour: '08:00', 'Tải hệ thống': 10, 'Yêu cầu API': 120 },
+    { hour: '10:00', 'Tải hệ thống': 35, 'Yêu cầu API': 350 },
+    { hour: '12:00', 'Tải hệ thống': 25, 'Yêu cầu API': 280 },
+    { hour: '14:00', 'Tải hệ thống': 55, 'Yêu cầu API': 610 },
+    { hour: '16:00', 'Tải hệ thống': 80, 'Yêu cầu API': 980 },
+    { hour: '18:00', 'Tải hệ thống': 45, 'Yêu cầu API': 410 },
+    { hour: '20:00', 'Tải hệ thống': 70, 'Yêu cầu API': 830 },
+  ];
+
+  if (isLoading || !stats) {
     return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner className="mx-auto h-12 w-12 text-teal-400" />
-          <p className="mt-4 text-sm text-slate-400">Đang khởi tạo số liệu phân tích...</p>
-        </div>
+      <div className="h-screen w-full flex items-center justify-center bg-slate-950">
+        <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Welcome header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-black text-white">Tổng quan Hoạt động</h1>
-        <p className="text-sm text-slate-400">Chào mừng bạn quay lại. Dưới đây là báo cáo trực quan về hệ thống y tế.</p>
+    <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen text-slate-100">
+      {/* Header */}
+      <div className="border-b border-slate-900 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-purple-400 via-indigo-400 to-blue-400 bg-clip-text text-transparent">
+            Giám sát Hệ thống Admin
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Quản trị hoạt động, theo dõi hiệu năng hệ thống EduPath.
+          </p>
+        </div>
+
+        {/* Global status badge */}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/20 text-emerald-400 border border-emerald-900/50">
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>Hệ thống hoạt động bình thường</span>
+        </div>
       </div>
 
-      {error && <Alert type="error" message={error} className="bg-red-950/40 border-red-900/50 text-red-300" />}
-
-      {/* Stats Cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-        {statsCards.map((card) => (
-          <div key={card.title} className={`border rounded-2xl p-5 space-y-4 shadow-sm ${card.color}`}>
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{card.title}</span>
-              {card.icon}
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-black text-white">{card.value}</p>
-              <p className="text-[10px] text-slate-500 font-medium">{card.sub}</p>
-            </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 text-left">
+          <div className="w-12 h-12 rounded-xl bg-purple-950/40 text-purple-500 flex items-center justify-center border border-purple-900/30">
+            <Users className="w-6 h-6" />
           </div>
-        ))}
-      </div>
-
-      {/* Analytics & Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Custom SVG & CSS Bar Chart Breakdown */}
-        <div className="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="h-5 w-5 text-teal-400" />
-            <h3 className="font-bold text-white text-base">Phân tích Lịch hẹn</h3>
-          </div>
-
-          <div className="space-y-5">
-            {/* Pending Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-semibold">
-                <span className="text-slate-400">Chờ xác nhận (PENDING)</span>
-                <span className="text-amber-400 font-bold">{pendingAppointments} ({getPercentage(pendingAppointments)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${getPercentage(pendingAppointments)}%` }}
-                  className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                />
-              </div>
-            </div>
-
-            {/* Confirmed Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-semibold">
-                <span className="text-slate-400">Đã xác nhận (CONFIRMED)</span>
-                <span className="text-blue-400 font-bold">{confirmedAppointments} ({getPercentage(confirmedAppointments)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${getPercentage(confirmedAppointments)}%` }}
-                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                />
-              </div>
-            </div>
-
-            {/* Completed Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-semibold">
-                <span className="text-slate-400">Đã hoàn thành (COMPLETED)</span>
-                <span className="text-emerald-400 font-bold">{completedAppointments} ({getPercentage(completedAppointments)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${getPercentage(completedAppointments)}%` }}
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                />
-              </div>
-            </div>
-
-            {/* Cancelled Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-semibold">
-                <span className="text-slate-400">Đã hủy (CANCELLED)</span>
-                <span className="text-red-400 font-bold">{cancelledAppointments} ({getPercentage(cancelledAppointments)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${getPercentage(cancelledAppointments)}%` }}
-                  className="h-full bg-red-500 rounded-full transition-all duration-500"
-                />
-              </div>
-            </div>
+          <div>
+            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Tổng người dùng</span>
+            <h3 className="text-xl font-extrabold text-slate-200 mt-0.5">{stats.totalUsers}</h3>
           </div>
         </div>
 
-        {/* Right: Recent Appointments List Table */}
-        <div className="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-white text-base">Lịch đặt khám gần đây</h3>
-            <Link href="/admin/appointments">
-              <span className="text-xs text-teal-400 hover:underline font-semibold cursor-pointer">Xem tất cả</span>
-            </Link>
+        <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 text-left">
+          <div className="w-12 h-12 rounded-xl bg-blue-950/40 text-blue-500 flex items-center justify-center border border-blue-900/30">
+            <Activity className="w-6 h-6" />
           </div>
+          <div>
+            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Hoạt động hôm nay</span>
+            <h3 className="text-xl font-extrabold text-slate-200 mt-0.5">{stats.activeToday}</h3>
+          </div>
+        </div>
 
-          <div className="flex-grow overflow-x-auto">
-            {recentAppointments.length === 0 ? (
-              <div className="text-center py-10 text-slate-500 text-xs font-medium">Chưa ghi nhận lịch hẹn nào.</div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-wider font-bold">
-                    <th className="pb-3 font-semibold">Người bệnh</th>
-                    <th className="pb-3 font-semibold">Bác sĩ</th>
-                    <th className="pb-3 font-semibold">Ngày khám</th>
-                    <th className="pb-3 font-semibold text-right">Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody className="text-xs divide-y divide-slate-900">
-                  {recentAppointments.map((app) => {
-                    const statusColors = {
-                      PENDING: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-                      CONFIRMED: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-                      COMPLETED: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-                      CANCELLED: "text-red-400 bg-red-500/10 border-red-500/20",
-                    };
+        <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 text-left">
+          <div className="w-12 h-12 rounded-xl bg-emerald-950/40 text-emerald-500 flex items-center justify-center border border-emerald-900/30">
+            <FileCheck2 className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Lượt làm Quiz</span>
+            <h3 className="text-xl font-extrabold text-slate-200 mt-0.5">{stats.totalQuizAttempts}</h3>
+          </div>
+        </div>
 
-                    const appDate = new Date(app.appointmentDate);
+        <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 text-left">
+          <div className="w-12 h-12 rounded-xl bg-rose-950/40 text-rose-500 flex items-center justify-center border border-rose-900/30">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Rủi ro trung bình</span>
+            <h3 className="text-xl font-extrabold text-slate-200 mt-0.5">{stats.avgRiskScore}%</h3>
+          </div>
+        </div>
+      </div>
 
-                    return (
-                      <tr key={app.id} className="hover:bg-slate-900/50 transition-colors">
-                        <td className="py-3.5 pr-2 font-medium text-slate-200">{app.user?.email || "Khách"}</td>
-                        <td className="py-3.5 pr-2 text-slate-400">{app.doctor?.name || "Bác sĩ"}</td>
-                        <td className="py-3.5 pr-2 text-slate-500">
-                          {appDate.toLocaleDateString("vi-VN")}
-                        </td>
-                        <td className="py-3.5 text-right">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
-                              statusColors[app.status] || "text-slate-400"
-                            }`}
-                          >
-                            {app.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+      {/* Grid: Health indicators & System charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* API load chart */}
+        <div className="lg:col-span-8 bg-slate-900/30 border border-slate-850 p-6 rounded-3xl space-y-4">
+          <h2 className="text-sm font-bold text-slate-300 flex items-center gap-2 uppercase tracking-wider text-left">
+            <Activity className="w-4 h-4 text-purple-500" />
+            <span>Phân tích tải API mạng</span>
+          </h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={activityData}>
+                <defs>
+                  <linearGradient id="colorApi" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                <XAxis dataKey="hour" stroke="#64748B" fontSize={11} />
+                <YAxis stroke="#64748B" fontSize={11} />
+                <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderColor: '#1E293B', borderRadius: '12px' }} />
+                <Area type="monotone" dataKey="Yêu cầu API" stroke="#8B5CF6" strokeWidth={2} fillOpacity={1} fill="url(#colorApi)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* System Health Monitor */}
+        <div className="lg:col-span-4 bg-slate-900/30 border border-slate-850 p-6 rounded-3xl space-y-5 text-left">
+          <h2 className="text-sm font-bold text-slate-350 flex items-center gap-2 uppercase tracking-wider">
+            <Server className="w-4 h-4 text-blue-500" />
+            <span>Tài nguyên Máy chủ (VPS)</span>
+          </h2>
+
+          <div className="space-y-4">
+            {/* CPU */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-slate-500" /> CPU Load
+                </span>
+                <span className="text-slate-200">{systemHealth.cpu}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${systemHealth.cpu}%` }} />
+              </div>
+            </div>
+
+            {/* Memory */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-slate-500" /> RAM Memory
+                </span>
+                <span className="text-slate-200">{systemHealth.memory}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                <div className="h-full bg-purple-500 rounded-full" style={{ width: `${systemHealth.memory}%` }} />
+              </div>
+            </div>
+
+            {/* Disk */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-slate-500" /> Ổ đĩa SSD
+                </span>
+                <span className="text-slate-200">{systemHealth.disk}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${systemHealth.disk}%` }} />
+              </div>
+            </div>
+
+            {/* Database Connections */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-slate-500" /> DB Pool Active
+                </span>
+                <span className="text-slate-200">{systemHealth.dbConnections} / 50</span>
+              </div>
+              <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(systemHealth.dbConnections / 50) * 100}%` }} />
+              </div>
+            </div>
           </div>
         </div>
       </div>

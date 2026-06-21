@@ -32,59 +32,53 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyToken = verifyToken;
-const jsonwebtoken_1 = __importStar(require("jsonwebtoken"));
-const apiError_1 = require("../utils/apiError");
-const getJwtSecret = () => {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-        throw new Error("JWT_SECRET environment variable is required");
-    }
-    return secret;
-};
-/**
- * Middleware: Verifies Bearer JWT token and attaches payload to req.user.
- * Returns 401 for missing/invalid tokens, 401 for expired tokens.
- */
-function verifyToken(req, _res, next) {
-    const authorizationHeader = req.headers.authorization;
-    if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
-        next(new apiError_1.ApiError("Authorization header is missing or malformed", 401));
-        return;
-    }
-    const token = authorizationHeader.slice(7).trim();
+const jwt = __importStar(require("jsonwebtoken"));
+const client_1 = __importDefault(require("../prisma/client"));
+const JWT_SECRET = process.env.JWT_SECRET || 'edupath_super_secret_key_change_me_in_production';
+async function verifyToken(req, res, next) {
+    let token = req.cookies?.token;
     if (!token) {
-        next(new apiError_1.ApiError("Token is empty", 401));
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        }
+    }
+    if (!token) {
+        res.status(401).json({ success: false, message: 'No token provided' });
         return;
     }
     try {
-        const decoded = jsonwebtoken_1.default.verify(token, getJwtSecret());
-        if (typeof decoded !== "object" || decoded === null) {
-            throw new apiError_1.ApiError("Invalid token payload", 401);
-        }
-        const payload = decoded;
-        const { userId, role } = payload;
-        if (typeof userId !== "string" || typeof role !== "string") {
-            throw new apiError_1.ApiError("Invalid token payload structure", 401);
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = await client_1.default.user.findUnique({
+            where: { id: decoded.userId },
+            include: {
+                student: true,
+                mentor: true
+            }
+        });
+        if (!user) {
+            res.status(401).json({ success: false, message: 'User not found' });
+            return;
         }
         req.user = {
-            userId,
-            role: role,
-            iat: payload.iat,
-            exp: payload.exp,
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            studentId: user.student?.id || undefined,
+            mentorId: user.mentor?.id || undefined
         };
         next();
     }
     catch (error) {
-        if (error instanceof jsonwebtoken_1.TokenExpiredError) {
-            next(new apiError_1.ApiError("Token has expired", 401));
+        if (error instanceof jwt.TokenExpiredError) {
+            res.status(401).json({ success: false, message: 'Token expired' });
             return;
         }
-        if (error instanceof jsonwebtoken_1.JsonWebTokenError) {
-            next(new apiError_1.ApiError("Invalid token", 401));
-            return;
-        }
-        next(new apiError_1.ApiError("Unauthorized access", 401, error));
+        res.status(401).json({ success: false, message: 'Invalid token' });
     }
 }
