@@ -46,6 +46,7 @@ enum ComplaintStatus {
 }
 
 model User {
+<<<<<<< Updated upstream
   id           String        @id @default(uuid())
   email        String        @unique
   password     String?
@@ -63,6 +64,23 @@ model User {
   chronicDiseases String?
   personalHistory String?
   familyHistory   String?
+=======
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  googleId  String?  @unique
+  fullName  String
+  avatarUrl String?
+  role      String   @default("STUDENT")
+  createdAt DateTime @default(now())
+  updatedAt             DateTime              @updatedAt
+  student               Student?
+  mentor                Mentor?
+  notificationSettings  NotificationSettings?
+  notifications         Notification[]
+  userAchievements      UserAchievement[]
+}
+>>>>>>> Stashed changes
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -259,3 +277,48 @@ model Payment {
   updatedAt       DateTime      @updatedAt
 }
 
+<<<<<<< Updated upstream
+=======
+model ChatMessage {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ChatRole
+  content        String
+  functionCalled String?
+  createdAt      DateTime         @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Achievement {
+  id               String            @id @default(uuid())
+  code             String            @unique
+  name             String
+  description      String
+  icon             String
+  criteria         String
+  createdAt        DateTime          @default(now())
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+>>>>>>> Stashed changes
