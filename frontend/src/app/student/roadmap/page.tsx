@@ -70,6 +70,7 @@ export default function RoadmapPage() {
   const [formDifficulty, setFormDifficulty] = useState<Difficulty>('EASY');
   const [formDeadline, setFormDeadline] = useState<string>('');
   const [formEstimatedMinutes, setFormEstimatedMinutes] = useState<number>(25);
+  const [formInsertAfter, setFormInsertAfter] = useState<string>('END');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -80,15 +81,15 @@ export default function RoadmapPage() {
   );
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [user]);
 
-  const loadData = async () => {
+  const loadData = async (showLoading: boolean = true) => {
     try {
-      setIsLoading(true);
-      const [roadmapRes, skillsRes] = await Promise.all([
+      if (showLoading) setIsLoading(true);
+      const [roadmapRes, masteryRes] = await Promise.all([
         api.get('/roadmap'),
-        api.get('/auth/skills')
+        api.get('/bkt/mastery')
       ]);
 
       if (roadmapRes.data.success) {
@@ -96,21 +97,14 @@ export default function RoadmapPage() {
         setProgress(roadmapRes.data.progress || { completed: 0, total: 0, percent: 0 });
       }
 
-      if (skillsRes.data.success) {
-        const flatList: Skill[] = [];
-        skillsRes.data.skills.forEach((parent: Skill) => {
-          if (parent.children) {
-            flatList.push(...parent.children);
-          } else {
-            flatList.push(parent);
-          }
-        });
-        setSkills(flatList);
+      if (masteryRes.data.success) {
+        const studentSkills = masteryRes.data.masteries.map((m: any) => m.skill);
+        setSkills(studentSkills);
       }
     } catch (_) {
       toast.error('Lỗi khi tải thông tin lộ trình.');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   };
 
@@ -129,7 +123,7 @@ export default function RoadmapPage() {
       const response = await api.post('/roadmap/generate');
       if (response.data.success) {
         toast.success('Đã làm mới lộ trình học tập thành công! 🎉', { id: 'regenerate' });
-        loadData();
+        loadData(false);
       }
     } catch (_) {
       toast.error('AI thiết lập lộ trình học tập thất bại.', { id: 'regenerate' });
@@ -159,7 +153,7 @@ export default function RoadmapPage() {
       toast.success('Đã cập nhật thứ tự lộ trình.');
     } catch (error) {
       toast.error('Lỗi khi cập nhật thứ tự.');
-      loadData(); // revert
+      loadData(false); // revert
     }
   };
 
@@ -170,6 +164,7 @@ export default function RoadmapPage() {
     setFormDifficulty('EASY');
     setFormDeadline('');
     setFormEstimatedMinutes(25);
+    setFormInsertAfter('END');
     setCurrentTask(null);
   };
 
@@ -192,10 +187,45 @@ export default function RoadmapPage() {
 
       const response = await api.post('/workspace/tasks', payload);
       if (response.data.success) {
+        const newTask = response.data.task;
+        
+        // Tính toán thứ tự mới để reorder
+        let newTaskIds = tasks.map(t => t.id);
+        if (formInsertAfter === 'END') {
+          newTaskIds.push(newTask.id);
+        } else {
+          const insertIdx = newTaskIds.indexOf(formInsertAfter);
+          if (insertIdx !== -1) {
+            newTaskIds.splice(insertIdx + 1, 0, newTask.id);
+          } else {
+            newTaskIds.push(newTask.id);
+          }
+        }
+
+        // Gọi API reorder để cập nhật manualOrder cho tất cả task
+        await api.put('/roadmap/reorder', { taskIds: newTaskIds });
+
         toast.success('Đã thêm bước mới thành công!');
         setIsCreateModalOpen(false);
         resetForm();
-        loadData();
+        
+        // Optimistic update
+        if (formInsertAfter === 'END') {
+            setTasks(prev => [...prev, newTask]);
+        } else {
+            setTasks(prev => {
+                const newT = [...prev];
+                const insertIdx = newT.findIndex(t => t.id === formInsertAfter);
+                if (insertIdx !== -1) {
+                    newT.splice(insertIdx + 1, 0, newTask);
+                } else {
+                    newT.push(newTask);
+                }
+                return newT;
+            });
+        }
+        
+        loadData(false);
       }
     } catch (error) {
       toast.error('Lỗi khi thêm bước.');
@@ -232,7 +262,7 @@ export default function RoadmapPage() {
         toast.success('Đã cập nhật thành công!');
         setIsEditModalOpen(false);
         resetForm();
-        loadData();
+        loadData(false);
       }
     } catch (error) {
       toast.error('Lỗi khi cập nhật bước.');
@@ -245,7 +275,7 @@ export default function RoadmapPage() {
       const response = await api.delete(`/workspace/tasks/${id}`);
       if (response.data.success) {
         toast.success('Đã xóa thành công.');
-        loadData();
+        loadData(false);
       }
     } catch (error) {
       toast.error('Lỗi khi xóa bước.');
@@ -492,6 +522,28 @@ export default function RoadmapPage() {
               required
             />
           </div>
+
+          {/* Position field (Create Only) */}
+          {!isEditModalOpen && (
+            <div className="flex flex-col gap-1.5 border-t border-slate-800 pt-4 mt-2">
+              <label className="text-slate-300 font-semibold text-xs uppercase tracking-wider">Vị trí trong lộ trình</label>
+              <select
+                value={formInsertAfter}
+                onChange={(e) => setFormInsertAfter(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm focus:border-blue-500 transition-all outline-none font-semibold"
+              >
+                <option value="END">Cuối lộ trình hiện tại (Mặc định)</option>
+                {tasks.map((t, idx) => (
+                  <option key={t.id} value={t.id}>
+                    Sau bước {idx + 1}: {t.title}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500 font-medium italic mt-1">
+                * Bước do bạn tự thêm sẽ được giữ nguyên vị trí khi dùng AI tạo lại lộ trình.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
             <Button type="button" variant="secondary" onClick={() => { setIsCreateModalOpen(false); setIsEditModalOpen(false); }}>Hủy</Button>

@@ -12,7 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   registerUser: (email: string, password: string, fullName: string) => Promise<void>;
   verifyOtpCode: (email: string, code: string) => Promise<void>;
-  completeOnboarding: (skillIds: string[], goal: string, studyHours: number, durationMonths: number, mentorId?: string) => Promise<void>;
+  completeOnboarding: (skillIds: string[], goal: string, studyHours: number, durationMonths: number, mentorId?: string, skillLevels?: Record<string, number>, preferredStudyTime?: string, learningStyle?: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -163,7 +163,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     goal: string,
     studyHours: number,
     durationMonths: number,
-    mentorId?: string
+    mentorId?: string,
+    skillLevels?: Record<string, number>,
+    preferredStudyTime?: string,
+    learningStyle?: string
   ) => {
     const toastId = toast.loading('AI đang tạo lộ trình học tập cá nhân cho bạn... ⏳');
     try {
@@ -172,7 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         goal,
         studyHours,
         durationMonths,
-        mentorId
+        mentorId,
+        skillLevels: skillLevels || {},
+        preferredStudyTime,
+        learningStyle
       });
       if (response.data.success) {
         // Update user state locally

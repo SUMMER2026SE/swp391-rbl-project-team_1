@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, FileType, AccessType } from '@prisma/client';
 import { Role, Difficulty, TaskStatus, QuizType, AlertType } from '../src/types/enums';
 import * as bcrypt from 'bcrypt';
 
@@ -6,6 +6,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('Clearing database...');
+  await prisma.savedDocument.deleteMany();
+  await prisma.document.deleteMany();
   await prisma.alert.deleteMany();
   await prisma.quizAttempt.deleteMany();
   await prisma.quizQuestion.deleteMany();
@@ -323,6 +325,46 @@ async function main() {
           : `🚨 Đỏ: Điểm trung bình Quiz của Student ${i % students.length + 1} sụt giảm mạnh, rủi ro học tập vượt mức 70%.`
       }
     });
+  }
+
+  // 14. Documents (Library)
+  console.log('Seeding Documents library...');
+  const documents = [];
+  const fileTypes = [FileType.PDF, FileType.DOCX, FileType.PPTX, FileType.LINK];
+  const accessTypes = [AccessType.FREE, AccessType.PREMIUM];
+  
+  const sampleDocs = [
+    { title: 'Sổ tay React Hooks toàn tập', desc: 'Tài liệu hướng dẫn sử dụng useState, useEffect, và custom hooks hiệu quả.', type: FileType.PDF },
+    { title: 'Python for Data Science Cheat Sheet', desc: 'Tóm tắt các hàm quan trọng nhất của Pandas và NumPy.', type: FileType.LINK },
+    { title: 'Slide bài giảng IELTS Writing Task 2', desc: 'Bài giảng chi tiết cách lập dàn ý và phát triển ý cho Writing Task 2.', type: FileType.PPTX },
+    { title: 'Tổng hợp 1000 từ vựng JLPT N5', desc: 'Danh sách 1000 từ vựng thường gặp nhất trong đề thi N5.', type: FileType.DOCX },
+    { title: 'Hướng dẫn Docker từ A đến Z', desc: 'Sổ tay docker hóa ứng dụng Node.js và Python.', type: FileType.PDF },
+    { title: 'Kiến trúc Next.js App Router', desc: 'Deep dive vào Server Components và Client Components.', type: FileType.LINK },
+    { title: 'Mẫu CV chuẩn cho lập trình viên', desc: 'Template CV đẹp mắt giúp bạn pass vòng CV dễ dàng.', type: FileType.DOCX },
+    { title: 'Slide Data Visualization với Seaborn', desc: 'Trực quan hóa dữ liệu thống kê một cách sinh động.', type: FileType.PPTX }
+  ];
+
+  for (let i = 0; i < sampleDocs.length; i++) {
+    const docData = sampleDocs[i];
+    const skill = subSkills[i % subSkills.length];
+    
+    const isPremium = i % 3 === 0;
+    
+    const doc = await prisma.document.create({
+      data: {
+        title: docData.title,
+        description: docData.desc,
+        fileType: docData.type,
+        fileUrl: 'https://example.com/dummy-document-link',
+        accessType: isPremium ? AccessType.PREMIUM : AccessType.FREE,
+        price: isPremium ? (Math.floor(Math.random() * 5) + 1) * 10000 : 0,
+        downloadCount: Math.floor(Math.random() * 500) + 10,
+        skillTags: {
+          connect: [{ id: skill.id }]
+        }
+      }
+    });
+    documents.push(doc);
   }
 
   console.log('Database seeded successfully!');

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import StudentSidebar from '../../components/layout/StudentSidebar';
 import Header from '../../components/layout/Header';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import AIChatButton from '../../components/ui/AIChatButton';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -52,6 +53,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </div>
         </main>
       </div>
+
+      {/* AI Chat Floating Button — shown on all /student/* pages */}
+      <AIChatButton />
     </div>
   );
 }

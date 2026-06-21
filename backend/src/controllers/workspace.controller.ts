@@ -128,7 +128,9 @@ export async function createTask(req: AuthRequest, res: Response, next: NextFunc
         difficulty: data.difficulty,
         deadline: data.deadline,
         estimatedMinutes: data.estimatedMinutes,
-        status: TaskStatus.TODO
+        status: TaskStatus.TODO,
+        isAIGenerated: false,
+        isManualOverride: true
       },
       include: {
         skill: true

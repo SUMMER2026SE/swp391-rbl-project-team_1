@@ -5,7 +5,8 @@ import useAuth from '../../../hooks/useAuth';
 import api from '../../../services/api';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
-import { User, Mail, Award, Flame, Timer, GraduationCap, ClipboardList, Send, ShieldCheck, Activity, Bell, Lock, Key, CheckCircle, MessageSquare } from 'lucide-react';
+import Modal from '../../../components/common/Modal';
+import { User, Mail, Award, Flame, Timer, GraduationCap, ClipboardList, Send, ShieldCheck, Activity, Bell, Lock, Key, CheckCircle, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function StudentProfile() {
@@ -19,6 +20,27 @@ export default function StudentProfile() {
   const [mentorInfo, setMentorInfo] = useState<any>(null);
   const [masteries, setMasteries] = useState<any[]>([]);
   const [activityLog, setActivityLog] = useState<any[]>([]);
+
+  // Password Change States
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  // Notification Settings
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [notifSettings, setNotifSettings] = useState({
+    riskAlert: true,
+    deadlineReminder: true,
+    communityUpdates: true,
+    achievementAlerts: true,
+    dailyReminder: true
+  });
   
   // Dashboard statistics
   const [stats, setStats] = useState({
@@ -42,7 +64,11 @@ export default function StudentProfile() {
       // 1. Fetch user profile data to get current goal
       const profileRes = await api.get('/auth/me');
       if (profileRes.data.success && profileRes.data.user) {
-        setLearningGoal(profileRes.data.user.learningGoal || '');
+        // learningGoal lives under student, not at top-level user
+        const rawGoal = profileRes.data.user.student?.learningGoal || '';
+        // Strip the auto-appended metadata suffix so the textarea shows only the user-written description
+        const goalMatch = rawGoal.match(/^(.*)\s*\(Mục tiêu học tập:.*\)\s*$/);
+        setLearningGoal(goalMatch ? goalMatch[1].trim() : rawGoal);
       }
 
       // 2. Fetch Leaderboard stats for streak
@@ -109,6 +135,19 @@ export default function StudentProfile() {
         { id: 3, type: 'community', text: 'Đăng bài hỏi đáp Cộng đồng', time: '3 ngày trước', icon: MessageSquare, color: 'text-blue-400', bg: 'bg-blue-950/40' },
       ]);
 
+      // 8. Fetch notification settings
+      const notifRes = await api.get('/auth/notification-settings');
+      if (notifRes.data.success && notifRes.data.settings) {
+        const s = notifRes.data.settings;
+        setNotifSettings({
+          riskAlert: s.riskAlert,
+          deadlineReminder: s.deadlineReminder,
+          communityUpdates: s.communityUpdates,
+          achievementAlerts: s.achievementAlerts,
+          dailyReminder: s.dailyReminder
+        });
+      }
+
     } catch (_) {
       // Quiet fail if some metrics fail
     }
@@ -158,6 +197,66 @@ export default function StudentProfile() {
       toast.error(error.response?.data?.message || 'Không thể upload ảnh đại diện.');
     } finally {
       setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('Vui lòng điền đầy đủ các trường.');
+      return;
+    }
+
+    if (newPassword === currentPassword) {
+      setPasswordError('Mật khẩu mới phải khác mật khẩu hiện tại.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Xác nhận mật khẩu mới không khớp.');
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&^_-]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      setPasswordError('Mật khẩu mới phải dài ít nhất 8 ký tự, có ít nhất 1 chữ và 1 số.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const res = await api.post('/auth/change-password', {
+        oldPassword: currentPassword,
+        newPassword
+      });
+      if (res.data.success) {
+        toast.success('Đổi mật khẩu thành công!');
+        setIsPasswordModalOpen(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err: any) {
+      setPasswordError(err.response?.data?.message || 'Lỗi khi đổi mật khẩu.');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleToggleNotif = async (key: keyof typeof notifSettings) => {
+    const newValue = !notifSettings[key];
+    setNotifSettings(prev => ({ ...prev, [key]: newValue }));
+    
+    try {
+      const res = await api.put('/auth/notification-settings', { [key]: newValue });
+      if (res.data.success) {
+        toast.success('Đã cập nhật cài đặt thông báo');
+      }
+    } catch (err: any) {
+      setNotifSettings(prev => ({ ...prev, [key]: !newValue }));
+      toast.error('Lỗi khi cập nhật thông báo.');
     }
   };
 
@@ -457,14 +556,14 @@ export default function StudentProfile() {
           
           <div className="space-y-3 mt-auto pt-4">
             <button
-              onClick={() => toast('Tính năng đổi mật khẩu đang được cập nhật!')}
+              onClick={() => setIsPasswordModalOpen(true)}
               className="w-full bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-all py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold group"
             >
               <Key className="w-4 h-4 text-slate-500 group-hover:text-rose-400 transition-colors" />
               <span>Đổi Mật Khẩu</span>
             </button>
             <button
-              onClick={() => toast('Tính năng cài đặt thông báo đang được cập nhật!')}
+              onClick={() => setIsNotifModalOpen(true)}
               className="w-full bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-all py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold group"
             >
               <Bell className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
@@ -474,6 +573,188 @@ export default function StudentProfile() {
         </div>
 
       </div>
+
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        title="Đổi Mật Khẩu"
+      >
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          {passwordError && (
+            <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 px-4 py-3 rounded-xl text-sm">
+              {passwordError}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Mật khẩu hiện tại</label>
+            <div className="relative">
+              <Input
+                type={showCurrentPassword ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Nhập mật khẩu hiện tại"
+                className="w-full bg-slate-950 border-slate-800 text-slate-200 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300"
+              >
+                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Mật khẩu mới</label>
+            <div className="relative">
+              <Input
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Nhập mật khẩu mới"
+                className="w-full bg-slate-950 border-slate-800 text-slate-200 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300"
+              >
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">Tối thiểu 8 ký tự, gồm ít nhất 1 chữ và 1 số.</p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Xác nhận mật khẩu mới</label>
+            <div className="relative">
+              <Input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Xác nhận mật khẩu mới"
+                className="w-full bg-slate-950 border-slate-800 text-slate-200 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300"
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsPasswordModalOpen(false)}
+              className="px-6 border-slate-700 text-slate-300 hover:bg-slate-800"
+            >
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              disabled={isChangingPassword}
+              className="px-6 bg-indigo-600 hover:bg-indigo-500 text-white"
+            >
+              {isChangingPassword ? 'Đang xử lý...' : 'Xác nhận'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Notification Settings Modal */}
+      <Modal
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+        title="Cài đặt Thông báo"
+      >
+        <div className="space-y-6 pb-2">
+          {/* Cảnh báo rủi ro học tập */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-bold text-slate-200">Cảnh báo rủi ro học tập</h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">Nhận cảnh báo khi có nguy cơ tụt lại hoặc trượt môn.</p>
+            </div>
+            <button 
+              onClick={() => handleToggleNotif('riskAlert')}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${notifSettings.riskAlert ? 'bg-indigo-500' : 'bg-slate-700'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifSettings.riskAlert ? 'translate-x-2' : '-translate-x-2'}`} />
+            </button>
+          </div>
+
+          {/* Nhắc nhở deadline task */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-bold text-slate-200">Nhắc nhở deadline task</h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">Nhận thông báo khi task sắp đến hạn chót.</p>
+            </div>
+            <button 
+              onClick={() => handleToggleNotif('deadlineReminder')}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${notifSettings.deadlineReminder ? 'bg-indigo-500' : 'bg-slate-700'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifSettings.deadlineReminder ? 'translate-x-2' : '-translate-x-2'}`} />
+            </button>
+          </div>
+
+          {/* Cập nhật từ Cộng đồng */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-bold text-slate-200">Cập nhật từ Cộng đồng</h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">Thông báo khi có phản hồi bài viết hoặc bài đăng được duyệt.</p>
+            </div>
+            <button 
+              onClick={() => handleToggleNotif('communityUpdates')}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${notifSettings.communityUpdates ? 'bg-indigo-500' : 'bg-slate-700'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifSettings.communityUpdates ? 'translate-x-2' : '-translate-x-2'}`} />
+            </button>
+          </div>
+
+          {/* Thành tích & Huy hiệu mới */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-bold text-slate-200">Thành tích & Huy hiệu mới</h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">Thông báo khi đạt danh hiệu mới trên bảng xếp hạng.</p>
+            </div>
+            <button 
+              onClick={() => handleToggleNotif('achievementAlerts')}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${notifSettings.achievementAlerts ? 'bg-indigo-500' : 'bg-slate-700'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifSettings.achievementAlerts ? 'translate-x-2' : '-translate-x-2'}`} />
+            </button>
+          </div>
+
+          {/* Nhắc nhở học tập hàng ngày */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-bold text-slate-200">Nhắc nhở học tập hàng ngày</h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">Nhận lời nhắc nếu bạn chưa hoàn thành mục tiêu học trong ngày.</p>
+            </div>
+            <button 
+              onClick={() => handleToggleNotif('dailyReminder')}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${notifSettings.dailyReminder ? 'bg-indigo-500' : 'bg-slate-700'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifSettings.dailyReminder ? 'translate-x-2' : '-translate-x-2'}`} />
+            </button>
+          </div>
+        </div>
+        <div className="flex justify-end pt-4 mt-2 border-t border-slate-800">
+          <Button
+            type="button"
+            onClick={() => setIsNotifModalOpen(false)}
+            className="px-6 bg-slate-800 hover:bg-slate-700 text-white"
+          >
+            Đóng
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

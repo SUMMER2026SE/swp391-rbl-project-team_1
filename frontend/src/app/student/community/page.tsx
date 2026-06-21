@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/services/api';
 import { Button } from '@/components/common/Button';
-import { Compass, BookOpen, Clock, BarChart, ChevronRight, X, Sparkles, CheckCircle2, ArrowRight, Lock } from 'lucide-react';
+import { Compass, BookOpen, Clock, BarChart, ChevronRight, X, Sparkles, CheckCircle2, ArrowRight, Lock, FileText, Download, Bookmark, File as FileIcon, Link as LinkIcon, Eye, BookmarkCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface RoadmapTaskTemplate {
@@ -453,12 +453,56 @@ export default function CommunityRoadmaps() {
   const [isCloning, setIsCloning] = useState<boolean>(false);
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
   const [purchasedRoadmaps, setPurchasedRoadmaps] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'roadmaps' | 'documents'>('roadmaps');
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [savedDocumentIds, setSavedDocumentIds] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     fetchSkills();
     fetchPurchasedRoadmaps();
+    fetchDocuments();
   }, []);
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await api.get('/documents');
+      if (response.data.success) {
+        setDocuments(response.data.documents);
+        setSavedDocumentIds(response.data.savedDocumentIds || []);
+      }
+    } catch (_) {}
+  };
+
+  const handleSaveDocument = async (docId: string) => {
+    try {
+      const res = await api.post(`/documents/${docId}/save`);
+      if (res.data.success) {
+        toast.success(res.data.message);
+        if (res.data.isSaved) {
+          setSavedDocumentIds(prev => [...prev, docId]);
+        } else {
+          setSavedDocumentIds(prev => prev.filter(id => id !== docId));
+        }
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        toast.error('Vui lòng đăng nhập với tài khoản học viên để lưu tài liệu.');
+      } else {
+        toast.error(error.response?.data?.message || 'Có lỗi xảy ra.');
+      }
+    }
+  };
+
+  const getDocIcon = (type: string) => {
+    switch(type) {
+      case 'PDF': return <FileText className="w-6 h-6 text-red-400" />;
+      case 'DOCX': return <FileIcon className="w-6 h-6 text-blue-400" />;
+      case 'PPTX': return <FileIcon className="w-6 h-6 text-orange-400" />;
+      case 'LINK': return <LinkIcon className="w-6 h-6 text-emerald-400" />;
+      default: return <FileText className="w-6 h-6 text-slate-400" />;
+    }
+  };
 
   const fetchPurchasedRoadmaps = async () => {
     try {
@@ -580,19 +624,45 @@ export default function CommunityRoadmaps() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen text-slate-100">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-900 pb-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-900 pb-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            Thư viện Lộ trình & Mẫu học tập
+            Thư viện Chung
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Khám phá các lộ trình học tập tiêu chuẩn được hội đồng chuyên môn FPT phê duyệt và nhân bản về không gian cá nhân.
+            Khám phá các lộ trình mẫu và tài liệu chuyên môn từ cộng đồng EduPath.
           </p>
+        </div>
+        
+        {/* Tabs */}
+        <div className="flex bg-slate-900 p-1 rounded-xl">
+          <button
+            onClick={() => setActiveTab('roadmaps')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              activeTab === 'roadmaps' 
+                ? 'bg-slate-800 text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            Lộ trình mẫu
+          </button>
+          <button
+            onClick={() => setActiveTab('documents')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'documents' 
+                ? 'bg-slate-800 text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            Tài liệu <span className="bg-blue-500/20 text-blue-400 py-0.5 px-2 rounded-full text-[10px]">Mới</span>
+          </button>
         </div>
       </div>
 
-      {/* Grid of Templates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {activeTab === 'roadmaps' ? (
+        <>
+          {/* Grid of Templates */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {ROADMAP_TEMPLATES.map((tpl) => (
           <div
             key={tpl.id}
@@ -663,6 +733,102 @@ export default function CommunityRoadmaps() {
           </div>
         ))}
       </div>
+      </>
+      ) : (
+      <>
+      {/* Grid of Documents */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {documents.map((doc) => {
+          const isSaved = savedDocumentIds.includes(doc.id);
+          return (
+            <div key={doc.id} className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden hover:border-blue-500/50 hover:shadow-lg transition-all duration-300 flex flex-col group">
+              <div className="p-5 flex-1 flex flex-col gap-3 relative">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 bg-slate-800/50 rounded-2xl group-hover:scale-110 transition-transform duration-300">
+                    {getDocIcon(doc.fileType)}
+                  </div>
+                  {doc.accessType === 'PREMIUM' ? (
+                    <span className="text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 px-2 py-1 rounded-full text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      Premium
+                    </span>
+                  ) : (
+                    <span className="text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 px-2 py-1 rounded-full text-emerald-400 border border-emerald-500/30">
+                      Free
+                    </span>
+                  )}
+                </div>
+                
+                <div className="mt-2">
+                  <h3 className="text-slate-200 font-bold text-base line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors">
+                    {doc.title}
+                  </h3>
+                  <p className="text-slate-500 text-xs mt-2 line-clamp-2">
+                    {doc.description || 'Không có mô tả'}
+                  </p>
+                </div>
+
+                {doc.skillTags && doc.skillTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-auto pt-2">
+                    {doc.skillTags.slice(0, 2).map((tag: any) => (
+                      <span key={tag.id} className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md">
+                        {tag.name}
+                      </span>
+                    ))}
+                    {doc.skillTags.length > 2 && (
+                      <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md">
+                        +{doc.skillTags.length - 2}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-4 text-xs text-slate-500 mt-2 border-t border-slate-800/60 pt-3">
+                  <div className="flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{doc.downloadCount * 3 + 12}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{doc.downloadCount}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="px-5 pb-5 pt-0">
+                <Button 
+                  onClick={() => handleSaveDocument(doc.id)}
+                  className={`w-full py-2 rounded-xl text-sm flex items-center justify-center gap-2 transition-all ${
+                    isSaved 
+                      ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 border border-emerald-500/20' 
+                      : 'bg-slate-800 text-slate-300 hover:bg-blue-600 hover:text-white border border-slate-700'
+                  }`}
+                >
+                  {isSaved ? (
+                    <>
+                      <BookmarkCheck className="w-4 h-4" />
+                      <span>Đã lưu vào Tủ</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bookmark className="w-4 h-4" />
+                      <span>Lưu vào Tủ tài liệu</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {documents.length === 0 && (
+          <div className="col-span-full py-20 text-center text-slate-500">
+            <FileIcon className="w-12 h-12 mx-auto text-slate-700 mb-4" />
+            <p>Chưa có tài liệu nào trong thư viện.</p>
+          </div>
+        )}
+      </div>
+      </>
+      )}
 
       {/* Side Slide Drawer for Detailed Roadmap Preview */}
       {selectedTemplate && (

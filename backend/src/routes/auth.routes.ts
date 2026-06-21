@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { register, verifyOtp, login, logout, googleLogin, completeOnboarding, getMe, updateProfile, uploadAvatar, changePassword, forgotPassword, resetPassword } from '../controllers/auth.controller';
+import { register, verifyOtp, login, logout, googleLogin, completeOnboarding, getMe, updateProfile, uploadAvatar, changePassword, forgotPassword, resetPassword, getNotificationSettings, updateNotificationSettings } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { verifyRole } from '../middleware/role.middleware';
 import { Role } from '../types/enums';
@@ -44,6 +44,8 @@ router.put('/profile', verifyToken as any, updateProfile as any);
 
 router.post('/upload-avatar', verifyToken as any, upload.single('avatar'), uploadAvatar as any);
 router.post('/change-password', verifyToken as any, changePassword as any);
+router.get('/notification-settings', verifyToken as any, getNotificationSettings as any);
+router.put('/notification-settings', verifyToken as any, updateNotificationSettings as any);
 router.post('/forgot-password', forgotPassword as any);
 router.post('/reset-password', resetPassword as any);
 

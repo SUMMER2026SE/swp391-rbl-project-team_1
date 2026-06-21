@@ -65,12 +65,12 @@ export default function WorkspacePage() {
   );
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [sortBy, selectedSkillId, selectedDifficulty]);
 
-  const loadData = async () => {
+  const loadData = async (showLoading: boolean = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
 
       // 1. Fetch tasks
       let queryParams = `?sortBy=${sortBy}`;
@@ -82,23 +82,16 @@ export default function WorkspacePage() {
         setTasks(tasksRes.data.tasks);
       }
 
-      // 2. Fetch skills list for dropdown options
-      const skillsRes = await api.get('/auth/skills');
-      if (skillsRes.data.success) {
-        const flatList: Skill[] = [];
-        skillsRes.data.skills.forEach((parent: Skill) => {
-          if (parent.children) {
-            flatList.push(...parent.children);
-          } else {
-            flatList.push(parent);
-          }
-        });
-        setSkills(flatList);
+      // 2. Fetch skills list for dropdown options (only student's chosen skills)
+      const masteryRes = await api.get('/bkt/mastery');
+      if (masteryRes.data.success) {
+        const studentSkills = masteryRes.data.masteries.map((m: any) => m.skill);
+        setSkills(studentSkills);
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   };
 
@@ -143,7 +136,7 @@ export default function WorkspacePage() {
     } catch (error) {
       // Revert state on failure
       toast.error('Không thể cập nhật trạng thái Task.');
-      loadData();
+      loadData(false);
     }
   };
 
@@ -154,22 +147,38 @@ export default function WorkspacePage() {
       return;
     }
 
+    if (formDeadline) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(formDeadline);
+      if (selectedDate < today) {
+        toast.error('Hạn chót không được là ngày trong quá khứ.');
+        return;
+      }
+    }
+
+    let finalEstimatedMinutes = formEstimatedMinutes;
+    if (!finalEstimatedMinutes || finalEstimatedMinutes <= 0) {
+      finalEstimatedMinutes = 25;
+    }
+
     try {
       const payload: any = {
         title: formTitle,
         description: formDescription,
         skillId: formSkillId,
         difficulty: formDifficulty,
-        estimatedMinutes: formEstimatedMinutes
+        estimatedMinutes: finalEstimatedMinutes
       };
       if (formDeadline) payload.deadline = formDeadline;
 
       const response = await api.post('/workspace/tasks', payload);
       if (response.data.success) {
-        toast.success('Đã tạo task mới thành công!');
+        toast.success('Đã tạo nhiệm vụ thành công');
         setIsCreateModalOpen(false);
         resetForm();
-        loadData();
+        setTasks(prev => [response.data.task, ...prev]);
+        loadData(false);
       }
     } catch (error) {
       toast.error('Lỗi khi tạo task.');
@@ -206,7 +215,7 @@ export default function WorkspacePage() {
         toast.success('Đã cập nhật task thành công!');
         setIsEditModalOpen(false);
         resetForm();
-        loadData();
+        loadData(false);
       }
     } catch (error) {
       toast.error('Lỗi khi cập nhật task.');
@@ -219,7 +228,7 @@ export default function WorkspacePage() {
       const response = await api.delete(`/workspace/tasks/${id}`);
       if (response.data.success) {
         toast.success('Đã xóa task thành công.');
-        loadData();
+        loadData(false);
       }
     } catch (error) {
       toast.error('Lỗi khi xóa task.');
@@ -237,7 +246,7 @@ export default function WorkspacePage() {
           toast.success('Tất cả kỹ năng đều vững vàng, không cần đề xuất thêm!', { id: 'ai-gen' });
         } else {
           toast.success(`Đã tự động thêm ${response.data.tasks.length} task đề xuất cải thiện kỹ năng!`, { id: 'ai-gen' });
-          loadData();
+          loadData(false);
         }
       }
     } catch (error) {
@@ -364,7 +373,7 @@ export default function WorkspacePage() {
                   onDelete={handleDeleteTask}
                   onStatusChange={(id, stat) => {
                     setTasks(prev => prev.map(t => t.id === id ? { ...t, status: stat } : t));
-                    api.put(`/workspace/tasks/${id}/status`, { status: stat }).catch(() => loadData());
+                    api.put(`/workspace/tasks/${id}/status`, { status: stat }).catch(() => loadData(false));
                   }}
                   onTakeQuiz={(skillId) => router.push('/student/quiz/' + skillId)}
                 />
@@ -381,7 +390,7 @@ export default function WorkspacePage() {
                   onDelete={handleDeleteTask}
                   onStatusChange={(id, stat) => {
                     setTasks(prev => prev.map(t => t.id === id ? { ...t, status: stat } : t));
-                    api.put(`/workspace/tasks/${id}/status`, { status: stat }).catch(() => loadData());
+                    api.put(`/workspace/tasks/${id}/status`, { status: stat }).catch(() => loadData(false));
                   }}
                   onTakeQuiz={(skillId) => router.push('/student/quiz/' + skillId)}
                 />
@@ -398,7 +407,7 @@ export default function WorkspacePage() {
                   onDelete={handleDeleteTask}
                   onStatusChange={(id, stat) => {
                     setTasks(prev => prev.map(t => t.id === id ? { ...t, status: stat } : t));
-                    api.put(`/workspace/tasks/${id}/status`, { status: stat }).catch(() => loadData());
+                    api.put(`/workspace/tasks/${id}/status`, { status: stat }).catch(() => loadData(false));
                   }}
                   onTakeQuiz={(skillId) => router.push('/student/quiz/' + skillId)}
                 />

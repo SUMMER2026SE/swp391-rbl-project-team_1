@@ -5,7 +5,9 @@ import { Role } from '../types/enums';
 import {
   getMasteries,
   getMasteryBySkill,
-  getBKTHistory
+  getBKTHistory,
+  addSkillMasteries,
+  removeSkillMastery
 } from '../controllers/bkt.controller';
 
 const router = Router();
@@ -15,6 +17,8 @@ router.use(verifyToken);
 router.use(verifyRole(Role.STUDENT));
 
 router.get('/mastery', getMasteries);
+router.post('/mastery', addSkillMasteries);
+router.delete('/mastery/:skillId', removeSkillMastery);
 router.get('/mastery/:skillId', getMasteryBySkill);
 router.get('/history/:skillId', getBKTHistory);
 

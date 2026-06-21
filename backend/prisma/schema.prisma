@@ -32,6 +32,23 @@ enum TransactionType {
   PURCHASE
 }
 
+enum FileType {
+  PDF
+  DOCX
+  PPTX
+  LINK
+}
+
+enum AccessType {
+  FREE
+  PREMIUM
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -41,9 +58,23 @@ model User {
   avatarUrl String?
   role      String   @default("STUDENT")
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  student   Student?
-  mentor    Mentor?
+  updatedAt             DateTime              @updatedAt
+  student               Student?
+  mentor                Mentor?
+  notificationSettings  NotificationSettings?
+}
+
+model NotificationSettings {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskAlert         Boolean  @default(true)
+  deadlineReminder  Boolean  @default(true)
+  communityUpdates  Boolean  @default(true)
+  achievementAlerts Boolean  @default(true)
+  dailyReminder     Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Student {
@@ -51,6 +82,8 @@ model Student {
   userId              String            @unique
   user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   learningGoal        String?
+  preferredStudyTime  String?
+  learningStyle       String?
   totalFocusTime      Float             @default(0)
   currentRiskScore    Int               @default(0)
   onboardingCompleted Boolean           @default(false)
@@ -65,7 +98,10 @@ model Student {
   postComments        PostComment[]
   upvotedPosts        CommunityPost[]   @relation("PostUpvotes")
   purchasedRoadmaps   PurchasedRoadmap[]
+  purchasedDocuments  PurchasedDocument[]
   wallet              Wallet?
+  savedDocuments      SavedDocument[]
+  chatConversations   ChatConversation[]
 }
 
 model Mentor {
@@ -109,6 +145,7 @@ model Skill {
   quizQuestions  QuizQuestion[]
   knowledgeUnits KnowledgeUnit[]
   communityPosts CommunityPost[] @relation("PostToSkill")
+  documents      Document[]      @relation("DocumentToSkill")
 }
 
 model SkillMastery {
@@ -122,6 +159,7 @@ model SkillMastery {
   pForget      Float         @default(0.1)
   pGuess       Float         @default(0.2)
   pSlip        Float         @default(0.1)
+  isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   bktHistories BKTHistory[]
@@ -178,6 +216,7 @@ model Task {
   isAIGenerated    Boolean           @default(false)
   isManualOverride Boolean           @default(false)
   manualOrder      Int?
+  isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   pomodoroSessions PomodoroSession[]
@@ -295,4 +334,62 @@ model WalletTransaction {
   amount      Int
   description String
   createdAt   DateTime        @default(now())
+}
+
+model Document {
+  id            String          @id @default(uuid())
+  title         String
+  description   String?
+  fileType      FileType        @default(LINK)
+  fileUrl       String
+  accessType    AccessType      @default(FREE)
+  price         Int             @default(0)
+  downloadCount Int             @default(0)
+  createdAt     DateTime        @default(now())
+  skillTags     Skill[]             @relation("DocumentToSkill")
+  savedBy       SavedDocument[]
+  purchasedBy   PurchasedDocument[]
+}
+
+model SavedDocument {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  savedAt    DateTime @default(now())
+
+  @@unique([studentId, documentId])
+}
+
+model PurchasedDocument {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  pricePaid   Int
+  purchasedAt DateTime @default(now())
+
+  @@unique([studentId, documentId])
+}
+
+model ChatConversation {
+  id        String        @id @default(uuid())
+  studentId String
+  student   Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title     String        @default("Cuộc trò chuyện mới")
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ChatRole
+  content        String
+  functionCalled String?
+  createdAt      DateTime         @default(now())
 }

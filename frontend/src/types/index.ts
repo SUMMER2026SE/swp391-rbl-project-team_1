@@ -20,6 +20,8 @@ export interface User {
   student?: {
     id: string;
     learningGoal?: string | null;
+    preferredStudyTime?: string | null;
+    learningStyle?: string | null;
     totalFocusTime: number;
     currentRiskScore: number;
     onboardingCompleted: boolean;

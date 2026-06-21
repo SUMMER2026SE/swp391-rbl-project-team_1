@@ -16,7 +16,8 @@ import {
   Users,
   LogOut,
   ChevronRight,
-  Wallet
+  Wallet,
+  Target
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -68,6 +69,11 @@ export function StudentSidebar() {
       href: '/student/roadmap',
       icon: <Compass className="w-5 h-5" />,
       label: 'Lộ trình cá nhân'
+    },
+    {
+      href: '/student/skills',
+      icon: <Target className="w-5 h-5" />,
+      label: 'Quản lý kỹ năng'
     },
     {
       href: '/student/pomodoro',

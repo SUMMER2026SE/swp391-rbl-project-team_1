@@ -31,10 +31,15 @@ const loginSchema = z.object({
 
 const onboardingSchema = z.object({
   skillIds: z.array(z.string()).min(1, 'Bạn phải chọn ít nhất 1 kỹ năng'),
-  goal: z.string().min(1, 'Mục tiêu học tập không được bỏ trống'),
+  // .trim() ensures whitespace-only goals are rejected at schema level
+  goal: z.string().trim().min(1, 'Mục tiêu học tập không được bỏ trống'),
   studyHours: z.number().optional().default(2),
   durationMonths: z.number().optional().default(3),
-  mentorId: z.string().optional()
+  mentorId: z.string().optional(),
+  // Map of skillId -> BKT initial P(Known) value derived from self-assessment
+  skillLevels: z.record(z.string(), z.number().min(0).max(1)).optional().default({}),
+  preferredStudyTime: z.string().optional(),
+  learningStyle: z.string().optional()
 });
 
 /**
@@ -341,7 +346,7 @@ export async function googleLogin(req: Request, res: Response, next: NextFunctio
  */
 export async function completeOnboarding(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { skillIds, goal, studyHours, durationMonths, mentorId } = onboardingSchema.parse(req.body);
+    const { skillIds, goal, studyHours, durationMonths, mentorId, skillLevels, preferredStudyTime, learningStyle } = onboardingSchema.parse(req.body);
     const studentId = req.user?.studentId;
 
     if (!studentId) {
@@ -356,16 +361,20 @@ export async function completeOnboarding(req: AuthRequest, res: Response, next: 
       where: { studentId }
     });
 
-    // 1. Initialize SkillMastery for selected skills
-    const masteriesData = skillIds.map(skillId => ({
-      studentId,
-      skillId,
-      masteryLevel: 0.3, // default mastery level
-      pLearn: 0.4,
-      pForget: 0.1,
-      pGuess: 0.2,
-      pSlip: 0.1
-    }));
+    // 1. Initialize SkillMastery for selected skills using BKT P(Known) from self-assessment
+    const masteriesData = skillIds.map(skillId => {
+      // Use user-provided initial mastery or fall back to 0.3
+      const initialMastery = (skillLevels && skillLevels[skillId] != null) ? skillLevels[skillId] : 0.3;
+      return {
+        studentId,
+        skillId,
+        masteryLevel: initialMastery,
+        pLearn: 0.4,
+        pForget: 0.1,
+        pGuess: 0.2,
+        pSlip: 0.1
+      };
+    });
 
     await prisma.skillMastery.createMany({
       data: masteriesData
@@ -388,17 +397,37 @@ export async function completeOnboarding(req: AuthRequest, res: Response, next: 
       });
     }
 
-    // 3. Generate Initial AI Roadmap Tasks
+    // 3. Update student onboarding status, goals, and learning preferences
+    // goal is already trimmed by Zod schema, but guard here too for safety
+    const trimmedGoal = goal.trim();
+    if (!trimmedGoal) {
+      throw new ApiError(400, 'Vui lòng hoàn tất khảo sát đầy đủ (thiếu mục tiêu học tập).');
+    }
+
+    const formattedGoal = `${trimmedGoal} (Mục tiêu học tập: ${studyHours} giờ/ngày trong ${durationMonths} tháng)`;
+
+    const updatedStudent = await prisma.student.update({
+      where: { id: studentId },
+      data: {
+        learningGoal: formattedGoal,
+        onboardingCompleted: true,
+        preferredStudyTime: preferredStudyTime || null,
+        learningStyle: learningStyle || null
+      }
+    });
+
+    // 4. Generate Initial AI Roadmap Tasks
     const selectedSkills = await prisma.skill.findMany({
       where: { id: { in: skillIds } }
     });
 
-    const aiSkillsContext = selectedSkills.map(s => ({
-      name: s.name,
-      domain: s.domain
-    }));
-
-    const formattedGoal = `${goal} (Mục tiêu học tập: ${studyHours} giờ/ngày trong ${durationMonths} tháng)`;
+    const aiSkillsContext = selectedSkills.map(s => {
+      let levelDesc = 'Người mới bắt đầu';
+      const pKnown = (skillLevels && skillLevels[s.id] != null) ? skillLevels[s.id] : 0.3;
+      if (pKnown > 0.4) levelDesc = 'Đã có nền tảng cơ bản';
+      if (pKnown > 0.6) levelDesc = 'Khá thành thạo';
+      return `${s.name} (${levelDesc})`;
+    });
 
     if (aiSkillsContext.length > 0) {
       try {
@@ -406,12 +435,14 @@ export async function completeOnboarding(req: AuthRequest, res: Response, next: 
           aiSkillsContext,
           goal,
           studyHours,
-          durationMonths
+          durationMonths,
+          learningStyle || 'Thực hành'
         );
 
         const tasksToCreate = taskSuggestions.map((suggestion, index) => {
           let matchedSkillId = selectedSkills[0].id;
-          const matchedSkill = selectedSkills.find(s => s.name.toLowerCase() === suggestion.skillName.toLowerCase());
+          const aiName = suggestion.skillName.toLowerCase();
+          const matchedSkill = selectedSkills.find(s => s.name.toLowerCase() === aiName || aiName.includes(s.name.toLowerCase()));
           if (matchedSkill) matchedSkillId = matchedSkill.id;
 
           // Spread tasks across timeline
@@ -423,12 +454,13 @@ export async function completeOnboarding(req: AuthRequest, res: Response, next: 
             title: suggestion.title,
             description: suggestion.reason,
             skillId: matchedSkillId,
-            status: 'PENDING' as const,
+            status: 'TODO' as const,
             difficulty: (suggestion.difficulty as any) || 'MEDIUM',
             estimatedMinutes: suggestion.estimatedMinutes || 60,
             deadline: deadline,
             isManualOverride: false,
-            manualOrder: 0
+            isAIGenerated: true,
+            manualOrder: null
           };
         });
 
@@ -438,18 +470,10 @@ export async function completeOnboarding(req: AuthRequest, res: Response, next: 
           });
         }
       } catch (aiError) {
+        // Chỉ log lỗi, KHÔNG throw để đảm bảo transaction lưu Student không bị rollback.
         console.error('Failed to generate initial tasks:', aiError);
       }
     }
-
-    // 4. Update student onboarding status and goals
-    const updatedStudent = await prisma.student.update({
-      where: { id: studentId },
-      data: {
-        learningGoal: formattedGoal,
-        onboardingCompleted: true
-      }
-    });
 
     res.status(200).json({
       success: true,
@@ -693,6 +717,63 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
     });
 
     res.status(200).json({ success: true, message: 'Khôi phục mật khẩu thành công. Vui lòng đăng nhập lại.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Get Notification Settings
+ */
+export async function getNotificationSettings(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) throw new ApiError(401, 'Chưa xác thực người dùng.');
+
+    let settings = await prisma.notificationSettings.findUnique({
+      where: { userId }
+    });
+
+    if (!settings) {
+      settings = await prisma.notificationSettings.create({
+        data: { userId }
+      });
+    }
+
+    res.status(200).json({ success: true, settings });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Update Notification Settings
+ */
+const notificationSettingsSchema = z.object({
+  riskAlert: z.boolean().optional(),
+  deadlineReminder: z.boolean().optional(),
+  communityUpdates: z.boolean().optional(),
+  achievementAlerts: z.boolean().optional(),
+  dailyReminder: z.boolean().optional()
+});
+
+export async function updateNotificationSettings(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) throw new ApiError(401, 'Chưa xác thực người dùng.');
+
+    const data = notificationSettingsSchema.parse(req.body);
+
+    const settings = await prisma.notificationSettings.upsert({
+      where: { userId },
+      update: data,
+      create: {
+        userId,
+        ...data
+      }
+    });
+
+    res.status(200).json({ success: true, settings });
   } catch (error) {
     next(error);
   }

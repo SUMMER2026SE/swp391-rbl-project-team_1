@@ -18,6 +18,8 @@ import mentorRoutes from './routes/mentor.routes';
 import adminRoutes from './routes/admin.routes';
 import communityRoutes from './routes/community.routes';
 import walletRoutes from './routes/wallet.routes';
+import documentRoutes from './routes/document.routes';
+import chatRoutes from './routes/chat.routes';
 
 const app = express();
 
@@ -57,6 +59,8 @@ app.use('/api/mentor', mentorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Simple Healthcheck
 app.get('/health', (_req, res) => {

@@ -37,6 +37,45 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 }
 
+async function generateJsonWithRetry<T>(
+  model: any,
+  originalPrompt: string,
+  timeoutMs: number,
+  timeoutMessage: string
+): Promise<T> {
+  try {
+    const result = await withTimeout<any>(model.generateContent(originalPrompt), timeoutMs, timeoutMessage);
+    const response = await result.response;
+    let text = response.text().trim();
+    
+    try {
+      const startIndex = text.indexOf('[');
+      const endIndex = text.lastIndexOf(']');
+      if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+        text = text.substring(startIndex, endIndex + 1);
+      }
+      return JSON.parse(text) as T;
+    } catch (parseError) {
+      console.warn('Failed to parse Gemini JSON on first try, retrying...', text);
+      const retryPrompt = originalPrompt + '\n\nQUAN TRỌNG: Hãy trả về CHỈ JSON thuần, không markdown (không dùng ```json), không giải thích thêm.';
+      const retryResult = await withTimeout<any>(model.generateContent(retryPrompt), timeoutMs, timeoutMessage);
+      const retryResponse = await retryResult.response;
+      let retryText = retryResponse.text().trim();
+      
+      const retryStartIndex = retryText.indexOf('[');
+      const retryEndIndex = retryText.lastIndexOf(']');
+      if (retryStartIndex !== -1 && retryEndIndex !== -1 && retryEndIndex > retryStartIndex) {
+        retryText = retryText.substring(retryStartIndex, retryEndIndex + 1);
+      }
+      return JSON.parse(retryText) as T;
+    }
+  } catch (error) {
+    console.error('Error in generateJsonWithRetry:', error);
+    console.error('Prompt that caused error:', originalPrompt);
+    throw error;
+  }
+}
+
 /**
  * Generates tasks based on weak skills using Gemini AI.
  */
@@ -66,24 +105,12 @@ Mỗi object có cấu trúc:
   }
 ]`;
 
-    const result = await withTimeout<any>(model.generateContent(prompt), TIMEOUT_MS, 'AI Task generation timed out after 15 seconds');
-    const response = await result.response;
-    let text = response.text().trim();
-    
-    try {
-      // Find the first '[' and last ']' to extract just the JSON array
-      const startIndex = text.indexOf('[');
-      const endIndex = text.lastIndexOf(']');
-      
-      if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-        text = text.substring(startIndex, endIndex + 1);
-      }
-      
-      return JSON.parse(text) as TaskSuggestion[];
-    } catch (parseError) {
-      console.error('Failed to parse Gemini JSON for tasks. Raw text:', text);
-      throw new Error('AI returned invalid JSON format');
-    }
+    return await generateJsonWithRetry<TaskSuggestion[]>(
+      model,
+      prompt,
+      TIMEOUT_MS,
+      'AI Task generation timed out after 15 seconds'
+    );
   } catch (error) {
     console.error('Error generating tasks with Gemini:', error);
     throw error;
@@ -94,10 +121,11 @@ Mỗi object có cấu trúc:
  * Generates an initial full roadmap of tasks based on selected skills and study metrics.
  */
 export async function generateInitialRoadmapTasks(
-  skills: { name: string; domain?: string | null }[],
+  skills: { name: string; domain?: string | null; proficiency?: number }[],
   goal: string,
   studyHours: number,
-  durationMonths: number
+  durationMonths: number,
+  learningStyle: string = 'Thực hành'
 ): Promise<TaskSuggestion[]> {
   if (!aiClient) {
     throw new Error('Gemini AI not initialized.');
@@ -107,13 +135,18 @@ export async function generateInitialRoadmapTasks(
     const model = aiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const prompt = `Sinh viên vừa tạo hồ sơ với mục tiêu: "${goal}".
 Thời gian tự học dự kiến: ${studyHours} giờ/ngày trong vòng ${durationMonths} tháng.
-Các kỹ năng sinh viên chọn để học: ${skills.map(s => `${s.name} (Lĩnh vực: ${s.domain || 'Lập trình'})`).join(', ')}.
+Phong cách học tập ưa thích: ${learningStyle}.
+Các kỹ năng sinh viên chọn để học (kèm mức độ thành thạo từ 0 đến 1, 0 là chưa biết gì, 1 là xuất sắc):
+${skills.map(s => `- ${s.name} (Lĩnh vực: ${s.domain || 'Lập trình'}, Mức độ: ${s.proficiency ?? 0.3})`).join('\n')}
 
-Hãy tạo danh sách gồm 10 đến 15 task học tập chi tiết để phủ đều các kỹ năng này và phân bổ từ dễ đến khó.
-QUAN TRỌNG: Sinh task bám sát vào Lĩnh vực (domain):
-- Nếu lĩnh vực là "ENGLISH" hoặc "JAPANESE": sinh các task ôn tập từ vựng, ngữ pháp, luyện nghe, luyện nói (Tuyệt đối KHÔNG sinh task liên quan đến viết code).
-- Nếu lĩnh vực là "WEB_DEV", "DATA_SCIENCE", "MOBILE_DEV" hoặc không rõ: sinh các task thực hành code, sửa lỗi, xây dựng dự án.
-- Thời lượng mỗi task (estimatedMinutes) nên từ 30 đến 120 phút.
+Hãy tạo một lộ trình chi tiết gồm 10 đến 15 task học tập để phủ đều TẤT CẢ các kỹ năng này và phân bổ từ dễ đến khó.
+QUAN TRỌNG:
+1. Mức độ task (EASY/MEDIUM/HARD/EXPERT) phải phù hợp với "Mức độ" ban đầu của kỹ năng (vd: kỹ năng mức >=0.5 thì không giao task EASY cơ bản).
+2. Giá trị "skillName" PHẢI CHÍNH XÁC 100% giống tên kỹ năng trong danh sách trên, KHÔNG ĐƯỢC tự chế tên kỹ năng mới.
+3. Sinh task bám sát vào Lĩnh vực (domain):
+- Nếu lĩnh vực là "ENGLISH" hoặc "JAPANESE": sinh các task ngôn ngữ (từ vựng, ngữ pháp, luyện nghe, luyện nói).
+- Nếu lĩnh vực là "WEB_DEV", "DATA_SCIENCE", "MOBILE_DEV" hoặc không rõ: sinh các task thực hành code, sửa lỗi, dự án.
+4. Thời lượng mỗi task (estimatedMinutes) từ 30 đến 120 phút.
 
 Hãy trả về DUY NHẤT một chuỗi JSON dạng mảng (array) chứa các object, không bọc trong markdown codeblock \`\`\`json.
 Mỗi object có cấu trúc:
@@ -127,21 +160,12 @@ Mỗi object có cấu trúc:
   }
 ]`;
 
-    const result = await withTimeout<any>(model.generateContent(prompt), TIMEOUT_MS, 'AI generation timed out');
-    const response = await result.response;
-    let text = response.text().trim();
-    
-    try {
-      const startIndex = text.indexOf('[');
-      const endIndex = text.lastIndexOf(']');
-      if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-        text = text.substring(startIndex, endIndex + 1);
-      }
-      return JSON.parse(text) as TaskSuggestion[];
-    } catch (parseError) {
-      console.error('Failed to parse JSON for initial tasks. Raw text:', text);
-      throw new Error('AI returned invalid JSON format');
-    }
+    return await generateJsonWithRetry<TaskSuggestion[]>(
+      model,
+      prompt,
+      25000,
+      'AI generation timed out'
+    );
   } catch (error) {
     console.error('Error generating initial tasks with Gemini:', error);
     throw error;
@@ -235,3 +259,159 @@ Lộ trình phải phân bổ rõ ràng theo từng tuần (Tuần 1, Tuần 2, 
   }
 }
 
+/**
+ * Executor callback type for Function Calling.
+ */
+export type AIExecutor = (name: string, args: Record<string, any>) => Promise<any>;
+
+const chatTools = [
+  {
+    functionDeclarations: [
+      {
+        name: 'createTask',
+        description: 'Tạo 1 task mới vào Kanban board (cột Cần Làm) gắn với một kỹ năng cụ thể.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING', description: 'Tên của task cần tạo' },
+            skillName: { type: 'STRING', description: 'Tên kỹ năng (môn học) tương ứng với task' },
+            difficulty: { type: 'STRING', description: 'Mức độ khó của task. Bắt buộc thuộc [EASY, MEDIUM, HARD, EXPERT]' },
+            estimatedMinutes: { type: 'NUMBER', description: 'Thời gian hoàn thành dự kiến (phút)' }
+          },
+          required: ['title', 'skillName']
+        }
+      },
+      {
+        name: 'getMyProgress',
+        description: 'Kiểm tra phần trăm thành thạo (% mastery) của các kỹ năng người dùng đang học.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            skillName: { type: 'STRING', description: 'Tên kỹ năng cần kiểm tra. Bỏ trống nếu muốn xem tất cả.' }
+          }
+        }
+      },
+      {
+        name: 'startPomodoro',
+        description: 'Kích hoạt 1 phiên Pomodoro Focus Timer (chế độ Work 25 phút).',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            taskTitle: { type: 'STRING', description: 'Tên task muốn gắn với Pomodoro (nếu có).' }
+          }
+        }
+      },
+      {
+        name: 'addRoadmapStep',
+        description: 'Tạo 1 bước mới trong Lộ trình cá nhân.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING', description: 'Tên của bước lộ trình' },
+            skillName: { type: 'STRING', description: 'Tên kỹ năng (môn học) tương ứng' },
+            difficulty: { type: 'STRING', description: 'Mức độ khó. Bắt buộc thuộc [EASY, MEDIUM, HARD, EXPERT]' },
+            estimatedMinutes: { type: 'NUMBER', description: 'Thời gian hoàn thành dự kiến (phút)' },
+            position: { type: 'STRING', description: 'Vị trí của bước (ví dụ: END để thêm vào cuối)' }
+          },
+          required: ['title', 'skillName']
+        }
+      },
+      {
+        name: 'getRiskStatus',
+        description: 'Kiểm tra tỷ lệ rủi ro (Risk Score) hiện tại của người dùng. Từ đó AI có thể đưa ra lời khuyên phù hợp.',
+      },
+      {
+        name: 'suggestNextTask',
+        description: 'Đề xuất task tiếp theo nên học dựa trên Priority Score. AI dùng dữ liệu này để đưa ra gợi ý.'
+      }
+    ]
+  }
+];
+
+/**
+ * Chat with AI — conversational Q&A with context of user's skills and recent messages.
+ * Supports Function Calling (Tool Use).
+ */
+export async function chatWithAI(
+  userMessage: string,
+  skillContext: string[],
+  recentMessages: { role: 'USER' | 'ASSISTANT'; content: string }[],
+  executor?: AIExecutor
+): Promise<{ text: string; functionCalled?: string }> {
+  if (!aiClient) {
+    throw new Error('Gemini AI not initialized. Check GEMINI_API_KEY.');
+  }
+
+  // Build skill context string
+  const skillList = skillContext.length > 0
+    ? `Người dùng đang học: ${skillContext.join(', ')}.`
+    : 'Người dùng chưa cung cấp thông tin kỹ năng cụ thể.';
+
+  const systemPrompt = `Bạn là Trợ lý học tập của EduPath, hỗ trợ người dùng giải đáp thắc mắc về các kỹ năng họ đang học (lập trình, tiếng Anh, tiếng Nhật...). Trả lời ngắn gọn, rõ ràng, bằng tiếng Việt, phù hợp với người tự học.
+TUYỆT ĐỐI không tự suy diễn việc xóa task hay xóa kỹ năng. Với các hành động làm thay đổi dữ liệu, hãy hỏi lại người dùng để xác nhận nếu thấy chưa rõ ràng.
+${skillList}`;
+
+  // Configure model with tools and system instruction
+  const model = aiClient.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: systemPrompt,
+    tools: chatTools
+  });
+
+  // Build history array using Gemini SDK structure
+  const contents: any[] = recentMessages.map(m => ({
+    role: m.role === 'USER' ? 'user' : 'model',
+    parts: [{ text: m.content }]
+  }));
+  
+  // Add current user message
+  contents.push({ role: 'user', parts: [{ text: userMessage }] });
+
+  // 1. Send first request
+  const result = await withTimeout(
+    model.generateContent({ contents }),
+    20000,
+    'Chat AI timeout after 20 seconds'
+  );
+  
+  const response = await result.response;
+  
+  // 2. Check if a function call is requested
+  const functionCalls = response.functionCalls();
+  if (functionCalls && functionCalls.length > 0 && executor) {
+    const call = functionCalls[0];
+    let functionResult;
+    try {
+      functionResult = await executor(call.name, call.args);
+    } catch (err: any) {
+      functionResult = { error: err.message || 'Lỗi khi thực thi action' };
+    }
+
+    // Append AI's function call request to history
+    contents.push({ role: 'model', parts: [{ functionCall: call }] });
+    
+    // Append the function execution result
+    contents.push({
+      role: 'function',
+      parts: [{ functionResponse: { name: call.name, response: functionResult } }]
+    });
+
+    // 3. Send second request to get natural language response based on function result
+    const finalResult = await withTimeout(
+      model.generateContent({ contents }),
+      20000,
+      'Chat AI timeout during function response'
+    );
+    
+    const finalResponse = await finalResult.response;
+    return {
+      text: finalResponse.text().trim(),
+      functionCalled: call.name
+    };
+  }
+
+  // No function called, return text directly
+  return {
+    text: response.text().trim()
+  };
+}

@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import useAuth from '../../../hooks/useAuth';
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+const hasGoogleLogin = GOOGLE_CLIENT_ID !== '' && GOOGLE_CLIENT_ID !== 'your-google-client-id-here.apps.googleusercontent.com';
 import { GoogleLogin } from '@react-oauth/google';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
@@ -60,7 +63,7 @@ export default function LoginPage() {
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
           <Input
             label="Địa chỉ Email"
             type="email"
@@ -69,6 +72,7 @@ export default function LoginPage() {
             placeholder="example@student.fpt.edu.vn"
             icon={<Mail className="w-5 h-5 text-slate-600" />}
             required
+            autoComplete="off"
           />
 
           <div className="relative">
@@ -80,6 +84,7 @@ export default function LoginPage() {
               placeholder="••••••••"
               icon={<Lock className="w-5 h-5 text-slate-600" />}
               required
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -121,34 +126,37 @@ export default function LoginPage() {
         </form>
 
         {/* OAuth options */}
-        <div className="relative flex items-center justify-center my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-800" />
-          </div>
-          <span className="relative px-3 bg-slate-900 text-slate-500 text-xs font-bold uppercase">
-            hoặc
-          </span>
-        </div>
+        {hasGoogleLogin && (
+          <>
+            <div className="relative flex items-center justify-center my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800" />
+              </div>
+              <span className="relative px-3 bg-slate-900 text-slate-500 text-xs font-bold uppercase">
+                hoặc
+              </span>
+            </div>
 
-        <div className="flex justify-center w-full">
-          <div className="w-full flex justify-center [&>div]:w-full [&>div>div]:w-full [&>div>div>iframe]:w-full hover:opacity-90 transition-opacity">
-            <GoogleLogin
-              onSuccess={credentialResponse => {
-                if (credentialResponse.credential) {
-                  loginWithGoogle(credentialResponse.credential);
-                }
-              }}
-              onError={() => {
-                toast.error('Đăng nhập Google thất bại');
-              }}
-              useOneTap
-              theme="outline"
-              shape="pill"
-              text="signin_with"
-              width="384"
-            />
-          </div>
-        </div>
+            <div className="flex justify-center w-full">
+              <div className="w-full flex justify-center [&>div]:w-full [&>div>div]:w-full [&>div>div>iframe]:w-full hover:opacity-90 transition-opacity">
+                <GoogleLogin
+                  onSuccess={credentialResponse => {
+                    if (credentialResponse.credential) {
+                      loginWithGoogle(credentialResponse.credential);
+                    }
+                  }}
+                  onError={() => {
+                    toast.error('Đăng nhập Google thất bại');
+                  }}
+                  theme="outline"
+                  shape="pill"
+                  text="signin_with"
+                  width="384"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Footer Link */}
         <div className="text-center text-xs font-medium text-slate-500 mt-6 select-none">

@@ -43,6 +43,18 @@ export async function emitRedFlag(studentId: string, riskScore: number): Promise
   const message = `Cảnh báo: Điểm rủi ro học tập hiện tại của bạn đã vượt quá giới hạn an toàn (${riskScore}%). Vui lòng hoàn thành công việc hoặc trao đổi với Mentor.`;
   
   try {
+    const studentInfo = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { user: { include: { notificationSettings: true } } }
+    });
+
+    if (!studentInfo) return;
+
+    if (studentInfo.user.notificationSettings && studentInfo.user.notificationSettings.riskAlert === false) {
+      console.log(`[SOCKET SERVICE] Skipping RED_FLAG for ${studentInfo.user.fullName} because riskAlert is turned off.`);
+      return;
+    }
+
     // 1. Create Alert record in DB
     const alert = await prisma.alert.create({
       data: {

@@ -4,7 +4,7 @@ import prisma from '../prisma/client';
 import { ApiError } from '../utils/apiError';
 import { TaskStatus, Difficulty } from '../types/enums';
 import { calculatePriority } from '../utils/priorityScheduler';
-import { generateRoadmap } from '../services/gemini.service';
+import { generateRoadmap, generateInitialRoadmapTasks } from '../services/gemini.service';
 
 /**
  * Get active student tasks sorted by the Priority Scheduler.
@@ -20,6 +20,7 @@ export async function getRoadmapTasks(req: AuthRequest, res: Response, next: Nex
     const tasks = await prisma.task.findMany({
       where: {
         studentId,
+        isActive: true,
         status: {
           in: [TaskStatus.TODO, TaskStatus.IN_PROGRESS]
         }
@@ -31,7 +32,7 @@ export async function getRoadmapTasks(req: AuthRequest, res: Response, next: Nex
 
     // 2. Fetch student masteries
     const masteries = await prisma.skillMastery.findMany({
-      where: { studentId }
+      where: { studentId, isActive: true }
     });
 
     // 3. Map tasks to SchedulerTask format and calculate priorities
@@ -127,40 +128,92 @@ export async function generateAIRoadmap(req: AuthRequest, res: Response, next: N
       throw new ApiError(404, 'Không tìm thấy học viên.');
     }
 
-    const goal = student.learningGoal || 'Thành thạo công nghệ thông tin';
+    if (!student.learningGoal || student.learningGoal.trim() === '') {
+      throw new ApiError(400, 'Vui lòng hoàn tất khảo sát đầy đủ trước khi tạo lộ trình');
+    }
 
-    // Get weak skill masteries (masteryLevel < 0.5)
+    const goal = student.learningGoal;
+
+    // Get active skill masteries
     const masteries = await prisma.skillMastery.findMany({
       where: {
         studentId,
-        masteryLevel: { lt: 0.5 }
+        isActive: true
       },
       include: {
         skill: true
       }
     });
 
-    // Fallback if no weak skills are found, use all masteries
-    const listToAnalyze = masteries.length > 0
-      ? masteries
-      : await prisma.skillMastery.findMany({
-          where: { studentId },
-          include: { skill: true },
-          take: 5
-        });
+    if (masteries.length === 0) {
+      throw new ApiError(400, 'Bạn chưa có kỹ năng nào đang theo đuổi. Vui lòng thêm kỹ năng trước khi tạo lộ trình.');
+    }
 
-    const weakSkillsInfo = listToAnalyze.map(m => ({
-      name: m.skill.name,
-      masteryLevel: m.masteryLevel,
-      domain: m.skill.domain
-    }));
-
-    const markdownRoadmap = await generateRoadmap(weakSkillsInfo, goal);
-
-    res.status(200).json({
-      success: true,
-      roadmap: markdownRoadmap
+    const aiSkillsContext = masteries.map(m => {
+      let levelDesc = 'Người mới bắt đầu';
+      if (m.masteryLevel > 0.4) levelDesc = 'Đã có nền tảng cơ bản';
+      if (m.masteryLevel > 0.6) levelDesc = 'Khá thành thạo';
+      return `${m.skill.name} (${levelDesc})`;
     });
+
+    try {
+      const taskSuggestions = await generateInitialRoadmapTasks(
+        aiSkillsContext,
+        goal,
+        2, // default study hours
+        3, // default duration months
+        student.learningStyle || 'Thực hành'
+      );
+
+      const tasksToCreate = taskSuggestions.map((suggestion, index) => {
+        let matchedSkillId = masteries[0].skillId;
+        const aiName = suggestion.skillName.toLowerCase();
+        const matchedMastery = masteries.find(m => m.skill.name.toLowerCase() === aiName || aiName.includes(m.skill.name.toLowerCase()));
+        if (matchedMastery) matchedSkillId = matchedMastery.skillId;
+
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + index + 1);
+
+        return {
+          studentId,
+          title: suggestion.title,
+          description: suggestion.reason,
+          skillId: matchedSkillId,
+          status: 'TODO' as const,
+          difficulty: (suggestion.difficulty as any) || 'MEDIUM',
+          estimatedMinutes: suggestion.estimatedMinutes || 60,
+          deadline: deadline,
+          isManualOverride: false,
+          isAIGenerated: true,
+          manualOrder: null
+        };
+      });
+
+      // Transaction: Soft delete old AI tasks, insert new tasks
+      await prisma.$transaction([
+        prisma.task.updateMany({
+          where: {
+            studentId,
+            isManualOverride: false,
+            status: { not: 'DONE' }
+          },
+          data: {
+            isActive: false
+          }
+        }),
+        prisma.task.createMany({
+          data: tasksToCreate
+        })
+      ]);
+
+      res.status(200).json({
+        success: true,
+        message: 'Lộ trình học tập đã được cập nhật thành công.'
+      });
+    } catch (aiError) {
+      console.error('Failed to generate roadmap tasks:', aiError);
+      throw new ApiError(500, 'Không thể tạo lộ trình tự động lúc này, vui lòng thử lại sau hoặc dùng nút Thêm Bước để tạo lộ trình thủ công');
+    }
   } catch (error) {
     next(error);
   }

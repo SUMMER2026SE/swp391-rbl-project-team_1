@@ -26,7 +26,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+  const hasGoogleClientId = clientId !== '' && clientId !== 'your-google-client-id-here.apps.googleusercontent.com';
 
   return (
     <html
@@ -34,7 +35,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full bg-slate-950 text-slate-100 antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
-        <GoogleOAuthProvider clientId={clientId}>
+        <GoogleOAuthProvider clientId={hasGoogleClientId ? clientId : 'placeholder'}>
           <AuthProvider>
             <Toaster
               position="top-right"

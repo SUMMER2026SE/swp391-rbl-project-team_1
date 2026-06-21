@@ -76,13 +76,13 @@ function OnboardingBanner({ onDismiss }: { onDismiss: () => void }) {
             <RefreshCw className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-slate-200 font-bold text-xs mb-1">Đổi hướng học</p>
+            <p className="text-slate-200 font-bold text-xs mb-1">Lộ trình cá nhân</p>
             <p className="text-slate-500 text-[11px] leading-relaxed font-medium">
-              Muốn thay đổi lĩnh vực hoặc mục tiêu? Vào{' '}
+              Vào{' '}
               <Link href="/student/roadmap" className="text-purple-400 font-bold underline underline-offset-2">
-                AI Roadmap
+                Lộ trình cá nhân
               </Link>{' '}
-              và bấm "Tạo Lại Lộ Trình" để AI tái thiết kế phù hợp với hướng mới.
+              để xem toàn cảnh các giai đoạn học tập và chi tiết các đầu việc cần hoàn thành trên hành trình của bạn.
             </p>
           </div>
         </div>
@@ -156,18 +156,14 @@ export default function StudentDashboard() {
           setTasksDoneCount(roadmapRes.data.progress?.completed || 0);
         }
 
+        // Always fetch fresh user data from /auth/me to get up-to-date learningGoal
+        // (avoids stale cached sessionStorage value right after onboarding)
         const meRes = await api.get('/auth/me');
         if (meRes.data.success) {
-          const studentProfile = await api.get(`/mentor/students/${user.studentId}`).catch(() => null);
-          if (studentProfile?.data?.success) {
-            const studentDetails = studentProfile.data.data;
-            setRiskScore(studentDetails.student.currentRiskScore);
-            setTotalFocusTime(studentDetails.student.totalFocusTime);
-            setGoalText(studentDetails.student.learningGoal || '');
-          } else {
-            setRiskScore(user.student?.currentRiskScore || 0);
-            setGoalText(user.student?.learningGoal || '');
-          }
+          const freshStudent = meRes.data.user?.student;
+          setRiskScore(freshStudent?.currentRiskScore || 0);
+          setTotalFocusTime(freshStudent?.totalFocusTime || 0);
+          setGoalText(freshStudent?.learningGoal || '');
         }
 
         const leaderboardRes = await api.get('/leaderboard');
@@ -182,7 +178,7 @@ export default function StudentDashboard() {
     }
 
     loadDashboardData();
-  }, [user]);
+  }, [user?.studentId]);
 
   if (isLoading) {
     return (
@@ -211,16 +207,22 @@ export default function StudentDashboard() {
 
   // Parse goal display: separate description from study-hour metadata
   // Backend stores: "Thành thạo React (Mục tiêu học tập: 2 giờ/ngày trong 3 tháng)"
+  // Defensive: also strips any leading comma/whitespace from malformed stored values
   const parseGoalText = (raw: string) => {
     if (!raw) return { description: '', metadata: '' };
-    // Find the last occurrence of "(Mục tiêu học tập:..." pattern
-    const idx = raw.lastIndexOf(' (Mục tiêu học tập:');
-    if (idx !== -1) {
-      const description = raw.substring(0, idx).trim();
-      const inner = raw.substring(idx + ' (Mục tiêu học tập:'.length).replace(/\)$/, '').trim();
-      return { description, metadata: inner };
+    // Match the metadata suffix pattern (Mục tiêu học tập: ...)
+    const match = raw.match(/^(.*)\s*\(Mục tiêu học tập:\s*(.+?)\)\s*$/);
+    if (match) {
+      // Strip any leading/trailing punctuation or commas from description (defensive against bad DB data)
+      const description = match[1].trim().replace(/^[,;\s]+/, '').trim();
+      const metadata = match[2].trim();
+      // Only accept description if it contains at least one letter/number character
+      const isValidDescription = /[\p{L}\d]/u.test(description);
+      return { description: isValidDescription ? description : '', metadata };
     }
-    return { description: raw, metadata: '' };
+    // No metadata suffix — return raw trimmed (strip leading comma/punctuation defensively)
+    const stripped = raw.trim().replace(/^[,;\s]+/, '').trim();
+    return { description: stripped, metadata: '' };
   };
 
   const { description: goalDescription, metadata: goalMetadata } = parseGoalText(goalText);
