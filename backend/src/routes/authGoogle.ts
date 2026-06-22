@@ -1,6 +1,7 @@
 import { Router } from "express";
 import passport from "passport";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -13,12 +14,36 @@ if (!JWT_SECRET) {
 // GET /api/auth/google
 router.get(
     "/api/auth/google",
-    passport.authenticate("google", { scope: ["profile", "email"], session: false })
+    (req, res, next) => {
+        const state = crypto.randomBytes(16).toString("hex");
+        res.cookie("oauth_state", state, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 10 * 60 * 1000, // 10 minutes
+            sameSite: "lax",
+            path: "/"
+        });
+        passport.authenticate("google", { scope: ["profile", "email"], session: false, state })(req, res, next);
+    }
 );
 
 // GET /api/auth/google/callback
 router.get(
     "/api/auth/google/callback",
+    (req, res, next) => {
+        // CSRF Verification
+        const cookieHeader = req.headers.cookie || "";
+        const match = cookieHeader.match(/(?:^|;\s*)oauth_state=([^;]+)/);
+        const cookieState = match ? decodeURIComponent(match[1]) : null;
+        const queryState = req.query.state;
+
+        if (!cookieState || !queryState || cookieState !== queryState) {
+            console.error("CSRF Validation failed: State mismatch");
+            return res.redirect(`${CLIENT_URL}/login?error=google_failed`);
+        }
+        res.clearCookie("oauth_state");
+        next();
+    },
     (req, res, next) => {
         passport.authenticate("google", { session: false }, (err, user, info) => {
             if (err || !user) {
@@ -44,7 +69,14 @@ router.get(
             expiresIn: "7d",
         });
 
-        res.redirect(`${CLIENT_URL}/auth/callback?token=${token}`);
+        res.cookie("token", token, {
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/"
+        });
+
+        res.redirect(`${CLIENT_URL}/auth/callback`);
     }
 );
 

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Alert from "@/components/common/Alert";
+import Cookies from "js-cookie";
 
 // Component to handle parameters inside Suspense boundary
 function AuthCallbackContent() {
@@ -16,7 +17,8 @@ function AuthCallbackContent() {
   const processedRef = useRef(false);
 
   useEffect(() => {
-    const token = searchParams.get("token");
+    // Read token from cookie (secure) or fallback to URL param
+    const token = Cookies.get("token") || searchParams.get("token");
 
     if (!token) {
       if (processedRef.current) return;
@@ -34,11 +36,13 @@ function AuthCallbackContent() {
     const processAuth = async () => {
       try {
         await handleOAuthSuccess(token);
+        Cookies.remove("token"); // Clean up cookie after transferring to localStorage
         // Redirect to homepage or user area
         router.push("/");
         router.refresh();
       } catch (err: unknown) {
         console.error("Lỗi xử lý đăng nhập Google:", err);
+        Cookies.remove("token"); // Also clean up on error
         setError("Đăng nhập bằng Google thất bại. Đang chuyển hướng về trang đăng nhập...");
         setTimeout(() => {
           router.push("/login?error=google_failed");

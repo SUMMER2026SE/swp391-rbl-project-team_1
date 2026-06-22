@@ -155,6 +155,17 @@ export async function getAppointmentDetailHandler(
             throw new ApiError("Appointment not found", 404);
         }
 
+        const role = req.user?.role;
+        const reqUserId = req.user?.userId;
+
+        if (role === "USER" && appointment.userId !== reqUserId) {
+            throw new ApiError("Forbidden: You do not have access to this appointment", 403);
+        }
+
+        if (role === "DOCTOR" && appointment.doctor?.userAccount?.id !== reqUserId) {
+            throw new ApiError("Forbidden: You do not have access to this appointment", 403);
+        }
+
         res.json({
             message: "Appointment details fetched successfully",
             appointment,

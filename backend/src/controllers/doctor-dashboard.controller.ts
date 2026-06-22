@@ -144,10 +144,26 @@ export const createDoctorSchedule = async (req: AuthenticatedRequest, res: Respo
 
         const { dayOfWeek, startTime, endTime, isAvailable } = req.body;
 
+        const parsedDay = parseInt(dayOfWeek);
+        if (isNaN(parsedDay) || parsedDay < 0 || parsedDay > 6) {
+            return res.status(400).json({ message: "Invalid dayOfWeek. Must be between 0 and 6." });
+        }
+
+        const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        if (!startTime || !timeRegex.test(startTime)) {
+            return res.status(400).json({ message: "Invalid startTime format. Use HH:mm." });
+        }
+        if (!endTime || !timeRegex.test(endTime)) {
+            return res.status(400).json({ message: "Invalid endTime format. Use HH:mm." });
+        }
+        if (startTime >= endTime) {
+            return res.status(400).json({ message: "startTime must be before endTime." });
+        }
+
         const schedule = await prisma.doctorSchedule.create({
             data: {
                 doctorId: doctor.id,
-                dayOfWeek: parseInt(dayOfWeek),
+                dayOfWeek: parsedDay,
                 startTime,
                 endTime,
                 isAvailable: isAvailable ?? true
