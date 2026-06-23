@@ -10,7 +10,7 @@ export interface MedicalPackage {
 
 export const packageService = {
     async getPackages() {
-        const response = await api.get<{ message: string; count: number; packages: MedicalPackage[] }>("/packages");
+        const response = await api.get<MedicalPackage[]>("/packages");
         return response.data;
     },
 };

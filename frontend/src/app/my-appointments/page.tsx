@@ -22,6 +22,7 @@ function MyAppointmentsContent() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPrescriptionApptId, setSelectedPrescriptionApptId] = useState<string | null>(null);
   const [reviewTargetAppt, setReviewTargetAppt] = useState<{ id: string; doctorName: string; specialtyName: string } | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
   
   // Tab State
   const [activeTab, setActiveTab] = useState<AppointmentStatus | "ALL">("ALL");
@@ -45,6 +46,22 @@ function MyAppointmentsContent() {
       setError(errorMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelAppointment = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn huỷ lịch hẹn này không? Hành động này không thể hoàn tác.")) {
+      return;
+    }
+    try {
+      setCancelingId(id);
+      await appointmentService.cancelAppointment(id);
+      toast.success("Huỷ lịch hẹn thành công!");
+      fetchAppointments();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Đã xảy ra lỗi khi huỷ lịch hẹn");
+    } finally {
+      setCancelingId(null);
     }
   };
 
@@ -155,6 +172,10 @@ function MyAppointmentsContent() {
               minute: "2-digit",
               hour12: false,
             });
+
+            const diffMs = appointmentDate.getTime() - new Date().getTime();
+            const diffHours = diffMs / (1000 * 60 * 60);
+            const canCancel = diffHours >= 24;
 
             return (
               <div
@@ -269,13 +290,35 @@ function MyAppointmentsContent() {
                           Thanh toán ngay
                         </Button>
                       </Link>
+                      {canCancel && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleCancelAppointment(app.id)}
+                          disabled={cancelingId === app.id}
+                          className="rounded-xl text-[10px] font-bold px-3 py-1.5 w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                        >
+                          {cancelingId === app.id ? "Đang huỷ..." : "Huỷ lịch hẹn"}
+                        </Button>
+                      )}
                       <p className="text-[9px] text-slate-500 text-center italic leading-tight">Chuyển khoản VietQR trong 30 phút</p>
                     </div>
                   )}
 
                   {app.status === "PENDING" && (
-                    <div className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-2 font-medium justify-center w-full text-center leading-normal">
-                      Đã nhận biên lai thanh toán. Vui lòng chờ xác nhận.
+                    <div className="flex flex-col gap-1.5 w-full">
+                      <div className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-2 font-medium justify-center w-full text-center leading-normal">
+                        Đã nhận biên lai thanh toán. Vui lòng chờ xác nhận.
+                      </div>
+                      {canCancel && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleCancelAppointment(app.id)}
+                          disabled={cancelingId === app.id}
+                          className="rounded-xl text-[10px] font-bold px-3 py-1.5 w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                        >
+                          {cancelingId === app.id ? "Đang huỷ..." : "Huỷ lịch hẹn"}
+                        </Button>
+                      )}
                     </div>
                   )}
                   {app.status === "CONFIRMED" && (
@@ -285,6 +328,16 @@ function MyAppointmentsContent() {
                           <Video className="h-4 w-4" /> Vào phòng khám
                         </Button>
                       </Link>
+                      {canCancel && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleCancelAppointment(app.id)}
+                          disabled={cancelingId === app.id}
+                          className="rounded-xl text-[10px] font-bold px-3 py-1.5 w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                        >
+                          {cancelingId === app.id ? "Đang huỷ..." : "Huỷ lịch hẹn"}
+                        </Button>
+                      )}
                       <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5 justify-center text-center font-medium leading-normal w-full">
                         Lịch hẹn của bạn đã được xác nhận.
                       </div>

@@ -285,3 +285,68 @@ export async function uploadPaymentProofHandler(
         next(error);
     }
 }
+
+/**
+ * POST /api/appointments/:id/cancel
+ * Protected (USER role): Cancels an appointment if it's > 24h before appointmentDate.
+ */
+export async function cancelAppointmentHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        const { id } = req.params;
+
+        if (!userId) {
+            throw new ApiError("Authentication required", 401);
+        }
+
+        if (!id) {
+            throw new ApiError("Appointment ID is required", 400);
+        }
+
+        const appointment = await prisma.appointment.findUnique({
+            where: { id }
+        });
+
+        if (!appointment) {
+            throw new ApiError("Appointment not found", 404);
+        }
+
+        if (appointment.userId !== userId) {
+            throw new ApiError("You are not authorized to cancel this appointment", 403);
+        }
+
+        if (appointment.status === "CANCELLED" || appointment.status === "EXPIRED" || appointment.status === "COMPLETED") {
+            throw new ApiError(`Cannot cancel an appointment with status ${appointment.status}`, 400);
+        }
+
+        const now = new Date();
+        const appointmentDate = new Date(appointment.appointmentDate);
+        
+        // Calculate diff in hours
+        const diffMs = appointmentDate.getTime() - now.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        if (diffHours < 24) {
+            throw new ApiError("Chỉ được huỷ lịch khám trước 24 tiếng so với giờ hẹn", 400);
+        }
+
+        const updatedAppointment = await prisma.appointment.update({
+            where: { id },
+            data: {
+                status: "CANCELLED",
+                cancellationReason: "Người bệnh yêu cầu huỷ",
+            }
+        });
+
+        res.json({
+            message: "Huỷ lịch hẹn thành công",
+            appointment: updatedAppointment
+        });
+    } catch (error) {
+        next(error);
+    }
+}

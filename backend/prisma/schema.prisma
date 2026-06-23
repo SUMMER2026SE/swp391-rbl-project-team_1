@@ -269,6 +269,7 @@ model MedicalPackage {
   description String?
   price       Int           @default(0)
   hospital    String        @default("Bệnh viện Hoàn Mỹ Đà Nẵng")
+  estimatedDuration Int     @default(30)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   appointments Appointment[]

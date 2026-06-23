@@ -114,8 +114,10 @@ export default function DoctorDetailPage({ params }: PageProps) {
     async function fetchPackages() {
       try {
         const res = await packageService.getPackages();
-        if (res && res.packages) {
-          setPackages(res.packages);
+        if (Array.isArray(res)) {
+          setPackages(res);
+        } else if (res && (res as any).packages) {
+          setPackages((res as any).packages);
         }
       } catch (err) {
         console.error("Failed to load packages:", err);
