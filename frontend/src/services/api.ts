@@ -31,7 +31,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Standard error response from backend
-    const message = error.response?.data?.message || "Đã xảy ra lỗi hệ thống!";
+    const message = error.response?.data?.message || error.message || "Đã xảy ra lỗi hệ thống!";
     const status = error.response?.status;
 
     if (status === 401 && typeof window !== "undefined") {
@@ -41,11 +41,11 @@ api.interceptors.response.use(
       // Optional: redirect to login if necessary
     }
 
-    return Promise.reject({
-      message,
-      status,
-      originalError: error,
-    });
+    const customError = new Error(message);
+    (customError as any).status = status;
+    (customError as any).originalError = error;
+
+    return Promise.reject(customError);
   }
 );
 

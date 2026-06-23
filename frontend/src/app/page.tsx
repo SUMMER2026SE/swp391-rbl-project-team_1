@@ -92,7 +92,7 @@ export default function HomePage() {
                     <Search className="h-5 w-5 text-slate-400 shrink-0" />
                     <input
                       type="text"
-                      placeholder="Tìm tên bác sĩ, chuyên khoa hoặc bệnh viện..."
+                      placeholder="Tìm tên bác sĩ, chuyên khoa..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="bg-transparent border-none outline-none w-full text-slate-900 placeholder:text-slate-400 text-sm"

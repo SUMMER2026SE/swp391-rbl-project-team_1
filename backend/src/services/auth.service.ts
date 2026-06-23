@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import axios from "axios";
+import { OAuth2Client } from "google-auth-library";
 import { User, Role } from "@prisma/client";
 
 import prisma from "../prisma/client";
@@ -12,6 +12,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     throw new Error("JWT_SECRET environment variable is required");
 }
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export interface AuthTokenPayload {
     userId: string;
@@ -354,18 +356,15 @@ export async function resetPassword(
  */
 export async function googleLogin(idToken: string): Promise<AuthResult> {
     try {
-        // Verify token with Google API
-        const response = await axios.get<{
-            email?: string;
-            email_verified?: string | boolean;
-            name?: string;
-            picture?: string;
-            aud?: string;
-        }>(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+        // Verify token with Google Auth Library
+        const ticket = await googleClient.verifyIdToken({
+            idToken: idToken,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
 
-        const payload = response.data;
+        const payload = ticket.getPayload();
 
-        if (!payload.email) {
+        if (!payload || !payload.email) {
             throw new ApiError("Google login failed: Email not provided in token", 400);
         }
 
@@ -414,12 +413,13 @@ export async function googleLogin(idToken: string): Promise<AuthResult> {
         const { password: _password, ...safeUser } = user;
 
         return { token, user: safeUser };
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof ApiError) {
             throw error;
         }
-        console.error("Google authentication error:", error);
-        throw new ApiError("Invalid Google ID Token or network error", 401);
+        console.error("Google authentication error:", error?.response?.data || error);
+        const errorMessage = error?.response?.data?.error_description || error?.response?.data?.error || "Invalid Google ID Token or network error";
+        throw new ApiError(errorMessage, 401);
     }
 }
 

@@ -39,7 +39,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Trang Chủ", href: "/" },
-    { name: "Bệnh Viện", href: "/clinics" },
+    { name: "Giới Thiệu", href: "/about" },
     { name: "Danh Sách Bác Sĩ", href: "/doctors" },
     { name: "Kiểm Tra Sức Khỏe", href: "/health-tests" },
     { name: "Tin Tức", href: "/news" },
