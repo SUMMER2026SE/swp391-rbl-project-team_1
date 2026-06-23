@@ -178,9 +178,12 @@ model Appointment {
   
   // New prepayment fields
   transactionCode String?           @unique
-  amount          Int               @default(150000)
+  amount          Int               @default(50000)
   paymentProof    String?
   paymentAt       DateTime?
+  
+  packageId       String?
+  medicalPackage  MedicalPackage?   @relation(fields: [packageId], references: [id])
   
   medicalRecord   MedicalRecord?
   review          Review?
@@ -258,5 +261,16 @@ model Payment {
   payDate         DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+}
+
+model MedicalPackage {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  price       Int           @default(0)
+  hospital    String        @default("Bệnh viện Hoàn Mỹ Đà Nẵng")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  appointments Appointment[]
 }
 

@@ -9,6 +9,7 @@ interface CreateAppointmentRequestBody {
     doctorId: string;
     appointmentDate: string;
     notes?: string;
+    packageId?: string;
 }
 
 /**
@@ -27,7 +28,7 @@ export async function createAppointmentHandler(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate, notes } = req.body as CreateAppointmentRequestBody;
+        const { doctorId, appointmentDate, notes, packageId } = req.body as CreateAppointmentRequestBody;
 
         if (!doctorId || !appointmentDate) {
             throw new ApiError("Doctor ID and appointment date are required", 400);
@@ -48,6 +49,7 @@ export async function createAppointmentHandler(
             doctorId,
             appointmentDate: date,
             notes,
+            packageId,
         });
 
         res.status(201).json({

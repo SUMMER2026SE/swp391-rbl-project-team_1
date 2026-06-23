@@ -15,6 +15,7 @@ import doctorDashboardRoutes from "./routes/doctor-dashboard.routes";
 import articleRoutes from "./routes/article.routes";
 import reviewRoutes from "./routes/review.routes";
 import paymentRoutes from "./routes/payment.routes";
+import packageRoutes from "./routes/package.routes";
 import { initReminderScheduler } from "./utils/emailService";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
@@ -49,6 +50,7 @@ app.use("/api", chatRoutes);
 app.use("/api", articleRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", paymentRoutes);
+app.use("/api", packageRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
 app.get("/api/profile", verifyToken, getProfile);
 

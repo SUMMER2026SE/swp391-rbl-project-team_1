@@ -30,6 +30,7 @@ export interface CreateAppointmentParams {
     doctorId: string;
     appointmentDate: Date;
     notes?: string;
+    packageId?: string;
 }
 
 function generateTransactionCode(): string {
@@ -58,10 +59,8 @@ export async function createAppointment(
         throw new ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
     }
 
-    const amount = doctor.price ?? (process.env.DEFAULT_CONSULTATION_FEE ? parseInt(process.env.DEFAULT_CONSULTATION_FEE, 10) : null);
-    if (amount === null) {
-        throw new ApiError("Bác sĩ chưa được cấu hình giá khám y tế. Vui lòng liên hệ quản trị viên.", 400);
-    }
+    // Tiền cọc cố định là 50,000 VND
+    const amount = 50000;
 
     // prevent duplicate booking for the same doctor at the exact same datetime
     const existing = await prisma.appointment.findFirst({
@@ -97,6 +96,7 @@ export async function createAppointment(
             notes: params.notes,
             amount,
             transactionCode,
+            packageId: params.packageId,
         },
     });
 
@@ -186,6 +186,11 @@ export async function uploadPaymentProof(
             appointmentDate: updated.appointmentDate,
             notes: updated.notes,
             status: "PENDING",
+            amount: updated.amount,
+            transactionCode: updated.transactionCode || undefined,
+            paymentAt: updated.paymentAt,
+            appointmentId: updated.id,
+            paymentMethod: "Chuyển khoản ngân hàng",
         }).catch((err) => console.error("Error sending confirmation email:", err));
     }
 

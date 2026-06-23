@@ -87,6 +87,7 @@ export interface CreateAppointmentRequest {
   clinicId: string;
   appointmentDate: string; // ISO String
   notes?: string;
+  packageId?: string;
 }
 
 export interface CreateAppointmentResponse {

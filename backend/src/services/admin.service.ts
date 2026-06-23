@@ -2,6 +2,7 @@ import prisma from "../prisma/client";
 import { Role, AppointmentStatus } from "@prisma/client";
 import { ApiError } from "../utils/apiError";
 import { AdminUserDto } from "../types/user.types";
+import { sendBookingStatusUpdateEmail } from "../utils/emailService";
 
 export interface AppointmentWithRelations {
     id: string;
@@ -157,7 +158,7 @@ export async function updateAppointmentStatus(
         throw new ApiError("Appointment not found", 404);
     }
 
-    return prisma.appointment.update({
+    const updated = await prisma.appointment.update({
         where: { id: appointmentId },
         data: { status, cancellationReason },
         include: {
@@ -166,6 +167,7 @@ export async function updateAppointmentStatus(
                     id: true,
                     email: true,
                     role: true,
+                    fullName: true,
                 },
             },
             doctor: {
@@ -173,10 +175,27 @@ export async function updateAppointmentStatus(
                     id: true,
                     name: true,
                     specialty: true,
+                    clinic: true,
+                    hospital: true,
                 },
             },
         },
-    }) as unknown as Promise<AppointmentWithRelations>;
+    });
+
+    if (updated.user?.email && (status === "CONFIRMED" || status === "CANCELLED")) {
+        sendBookingStatusUpdateEmail(updated.user.email, {
+            patientName: updated.user.fullName || updated.user.email,
+            doctorName: updated.doctor.name,
+            specialtyName: updated.doctor.specialty.name,
+            clinicName: updated.doctor.clinic?.name || updated.doctor.hospital,
+            appointmentDate: updated.appointmentDate,
+            status,
+            cancellationReason,
+            notes: updated.notes,
+        }).catch((err) => console.error("Error sending status update email:", err));
+    }
+
+    return updated as unknown as AppointmentWithRelations;
 }
 
 /**

@@ -151,6 +151,11 @@ export async function sendBookingConfirmationEmail(
         appointmentDate: Date;
         notes?: string | null;
         status: string;
+        amount?: number;
+        paymentMethod?: string;
+        transactionCode?: string;
+        paymentAt?: Date | null;
+        appointmentId?: string;
     }
 ): Promise<void> {
     if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
@@ -205,12 +210,52 @@ export async function sendBookingConfirmationEmail(
                 </tr>
                 ` : ""}
                 <tr>
+                  <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Mã lịch hẹn:</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.appointmentId || "N/A"}</td>
+                </tr>
+                <tr>
                   <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Trạng thái:</td>
                   <td style="padding: 6px 0;">
                     <span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">Chờ xác nhận</span>
                   </td>
                 </tr>
               </table>
+            </div>
+
+            ${details.amount ? `
+            <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin-top: 0; color: #166534; font-weight: bold; margin-bottom: 10px;">Thông tin thanh toán (Đặt cọc)</p>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold; width: 150px;">Số tiền đã thanh toán:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: bold;">${details.amount.toLocaleString("vi-VN")} VND</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold;">Phương thức:</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.paymentMethod || "Chuyển khoản / Upload minh chứng"}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold;">Mã giao dịch (Appt ID):</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.transactionCode || "N/A"}</td>
+                </tr>
+                ${details.paymentAt ? `
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold;">Thời gian thanh toán:</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.paymentAt.toLocaleTimeString("vi-VN")} - ${details.paymentAt.toLocaleDateString("vi-VN")}</td>
+                </tr>
+                ` : ""}
+              </table>
+            </div>
+            ` : ""}
+
+            <div style="margin: 20px 0; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 13px; color: #475569;">
+              <strong>Lưu ý / Hướng dẫn:</strong>
+              <ul style="margin-top: 5px; margin-bottom: 0; padding-left: 20px;">
+                <li>Vui lòng đến đúng giờ khám. Nếu đến muộn quá 15 phút, lịch hẹn có thể bị hủy.</li>
+                <li>Nhớ mang theo CCCD và thẻ BHYT (nếu áp dụng) để làm thủ tục.</li>
+                <li>Nếu cần đổi/hủy lịch hẹn, xin liên hệ với chúng tôi ít nhất trước 2 tiếng qua mục hỗ trợ hoặc hotline.</li>
+                <li>Tiền cọc sẽ được hoàn lại theo chính sách của bệnh viện nếu quý khách hủy lịch hợp lệ.</li>
+              </ul>
             </div>
 
             <p style="color: #475569; font-size: 14px; line-height: 1.6;">
