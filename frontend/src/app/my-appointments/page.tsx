@@ -6,7 +6,7 @@ import { appointmentService } from "@/services/appointment.service";
 import { Appointment, AppointmentStatus } from "@/types/appointment";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2, Video } from "lucide-react";
+import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2, Video, Package } from "lucide-react";
 import Link from "next/link";
 import Button from "@/components/common/Button";
 import BookingProgress from "@/components/ui/BookingProgress";
@@ -190,13 +190,13 @@ function MyAppointmentsContent() {
                 <div className="space-y-4 flex-grow">
                   <div className="flex items-start gap-4">
                     <div className="h-12 w-12 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center shrink-0">
-                      <Stethoscope className="h-6 w-6" />
+                      {app.medicalPackage ? <Package className="h-6 w-6" /> : <Stethoscope className="h-6 w-6" />}
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="font-bold text-slate-900 text-base">{app.doctor?.name || "Bác sĩ Chuyên gia"}</h3>
+                      <h3 className="font-bold text-slate-900 text-base">{app.medicalPackage?.name || app.doctor?.name || "Bác sĩ Chuyên gia"}</h3>
                       <div className="flex items-center gap-1.5 text-xs text-teal-700 bg-teal-50 rounded-lg px-2 py-0.5 w-max font-semibold">
-                        <span>{app.doctor?.specialty?.name || "Đang cập nhật"}</span>
+                        <span>{app.medicalPackage ? "Gói khám" : (app.doctor?.specialty?.name || "Đang cập nhật")}</span>
                       </div>
                     </div>
                   </div>
@@ -213,10 +213,10 @@ function MyAppointmentsContent() {
                       <span>Giờ hẹn: <strong>{timeStr}</strong></span>
                     </div>
 
-                    {app.doctor?.hospital && (
+                    {(app.doctor?.hospital || app.medicalPackage?.hospital) && (
                       <div className="flex items-center gap-2 sm:col-span-2 md:col-span-1">
                         <Award className="h-4 w-4 text-slate-400 shrink-0" />
-                        <span className="truncate">Địa điểm: <strong>{app.doctor.hospital}</strong></span>
+                        <span className="truncate">Địa điểm: <strong>{app.doctor?.hospital || app.medicalPackage?.hospital}</strong></span>
                       </div>
                     )}
                   </div>
@@ -245,7 +245,7 @@ function MyAppointmentsContent() {
                   {/* Payment details row */}
                   <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span className="text-slate-500">
-                      Chi phí khám: <strong className="text-slate-800">{(app.amount || app.doctor?.price || 2000).toLocaleString("vi-VN")} VND</strong>
+                      Chi phí khám: <strong className="text-slate-800">{(app.amount || app.medicalPackage?.price || app.doctor?.price || 2000).toLocaleString("vi-VN")} VND</strong>
                     </span>
                     <div className="flex items-center gap-1.5 font-medium">
                       <span className="text-slate-500">Thanh toán:</span>
@@ -395,8 +395,8 @@ function MyAppointmentsContent() {
                           variant="outline"
                           onClick={() => setReviewTargetAppt({
                             id: app.id,
-                            doctorName: app.doctor?.name || "Bác sĩ Chuyên gia",
-                            specialtyName: app.doctor?.specialty?.name || "Đang cập nhật"
+                            doctorName: app.medicalPackage?.name || app.doctor?.name || "Bác sĩ Chuyên gia",
+                            specialtyName: app.medicalPackage ? "Gói khám" : (app.doctor?.specialty?.name || "Đang cập nhật")
                           })}
                           className="rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 w-full px-4 py-2 hover:scale-[1.02] transition-all border-teal-500 text-teal-650 hover:bg-teal-50/20"
                         >

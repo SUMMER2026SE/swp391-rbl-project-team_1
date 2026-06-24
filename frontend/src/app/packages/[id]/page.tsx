@@ -179,7 +179,7 @@ export default function PackageDetailPage() {
               </div>
 
               <Link 
-                href={`/doctors?hospital=${encodeURIComponent(pkg.hospital)}`} 
+                href={`/packages/${pkg.id}/booking`} 
                 className="w-full bg-[#017a86] hover:bg-teal-700 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-between transition-colors shadow-lg shadow-teal-500/20"
               >
                 <span>Đặt lịch hẹn</span>

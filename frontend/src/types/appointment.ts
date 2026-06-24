@@ -61,8 +61,9 @@ export interface Payment {
 export interface Appointment {
   id: string;
   userId: string;
-  doctorId: string;
-  clinicId: string;
+  doctorId?: string;
+  clinicId?: string;
+  packageId?: string;
   appointmentDate: string; // ISO String
   status: AppointmentStatus;
   notes: string | null;
@@ -70,6 +71,7 @@ export interface Appointment {
   createdAt: string;
   doctor?: Doctor;
   clinic?: Clinic;
+  medicalPackage?: any;
   user?: User;
   medicalRecord?: MedicalRecord | null;
   review?: Review | null;
@@ -83,8 +85,8 @@ export interface Appointment {
 }
 
 export interface CreateAppointmentRequest {
-  doctorId: string;
-  clinicId: string;
+  doctorId?: string;
+  clinicId?: string;
   appointmentDate: string; // ISO String
   notes?: string;
   packageId?: string;

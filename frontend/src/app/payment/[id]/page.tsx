@@ -13,6 +13,7 @@ import {
     Calendar,
     Stethoscope,
     ChevronRight,
+    Package,
 } from "lucide-react";
 import { appointmentService } from "@/services/appointment.service";
 import { Appointment } from "@/types/appointment";
@@ -306,11 +307,11 @@ function PaymentContent({ id }: { id: string }) {
                         
                         <div className="flex items-start gap-3 text-xs">
                             <div className="h-9 w-9 bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center rounded-xl shrink-0">
-                                <Stethoscope className="h-4 w-4" />
+                                {appointment.medicalPackage ? <Package className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />}
                             </div>
                             <div>
-                                <p className="font-bold text-slate-900">{appointment.doctor?.name}</p>
-                                <p className="text-slate-500 text-[10px] mt-0.5">{appointment.doctor?.specialty?.name}</p>
+                                <p className="font-bold text-slate-900">{appointment.medicalPackage?.name || appointment.doctor?.name || "Hệ thống"}</p>
+                                <p className="text-slate-500 text-[10px] mt-0.5">{appointment.medicalPackage ? "Gói khám" : appointment.doctor?.specialty?.name}</p>
                             </div>
                         </div>
 
@@ -410,7 +411,7 @@ export default function PrePaymentPage({ params }: { params: Promise<{ id: strin
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span className="text-teal-600 font-extrabold bg-teal-50 px-2 py-1 rounded">2. Chuyển khoản thanh toán</span>
                     <ChevronRight className="h-3.5 w-3.5" />
-                    <span>3. Chờ bác sĩ xác nhận</span>
+                    <span>3. Chờ xác nhận</span>
                 </div>
 
                 <Suspense
