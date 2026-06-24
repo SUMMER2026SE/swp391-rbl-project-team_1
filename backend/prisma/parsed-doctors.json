@@ -1,0 +1,982 @@
+[
+  {
+    "name": "Văn Trung Nghĩa",
+    "title": "Ts.Bs.",
+    "specialty": "Cấp cứu",
+    "image": null,
+    "experience": 22,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y dược Huế 2004",
+      "Tốt nghiệp Tiến sĩ sinh học phân tử và công nghệ sinh học tại Ý năm 2015"
+    ],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Phạm Hữu Huyền",
+    "title": "ThS.Bs.",
+    "specialty": "Cấp cứu",
+    "image": "phamhuuhuyen.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Phạm Hữu Huyền tốt nghiệp Cử nhân Y khoa, Cử nhân Ngoại khoa và sở hữu bằng Thạc sĩ Y khoa tại Đại học Y Dược Huế. Với hơn 17 năm kinh nghiệm trong lĩnh vực y tế, cấp cứu, hồi sức tích cực – giải độc và nội khoa, bác sĩ Huyền được đánh giá cao về chuyên môn sâu và luôn cập nhật tay nghề. Ông có nhiều chứng chỉ được tích lũy qua nhiều năm, bao gồm cả những chứng chỉ về cấp cứu nhi khoa nâng cao, bệnh lý tuyến giáp, ngừng tim và hô hấp cơ bản, cùng những chứng chỉ khác.",
+    "title": "Bác sĩ",
+    "specialty": "Cấp cứu",
+    "image": "phamhuuhuyen.jpg",
+    "experience": 25,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2001.",
+      "Tốt nghiệp Bác sĩ Chuyên khoa I – Y học cổ truyền Đại học Y Dược Huế năm 2008.",
+      "Chứng nhận lý thuyết và thực hành Phục hồi chức năng tại Bệnh viện C Đà Nẵng năm 2009.",
+      "Chứng nhận Kỹ thuật tiêm nội khớp tại Đại học Y Dược HCM năm 2016.",
+      "Chứng nhận thực hành lâm sàng nội tim mạch tại Bệnh viện Đà Nẵng năm 2016.",
+      "Chứng nhận hoàn thành khóa học điều trị bệnh bằng liệu pháp Thư giãn cân cơ do tổ chức Steady Footsteps.Inc cấp năm 2016",
+      "Chứng nhận hoàn thành khóa học “Bộ đôi kết hợp hoàn hảo Sóng xung kích và Lazer châm cường độ cao trong điều trị bệnh lý Cơ xương khớp cấp và mãn tính” tại Bệnh viện Chấn Thương – Chỉnh hình – Phục hồi chức năng Đà Nẵng năm 2018."
+    ],
+    "description": "Số năm công tác: 17 năm "
+  },
+  {
+    "name": "Khúc Văn Đáp",
+    "title": "BS.CKI",
+    "specialty": "Cấp cứu",
+    "image": "khucvandap.jpg",
+    "experience": 16,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2010.",
+      "Tốt nghiệp Bác sĩ chuyên khoa cấp I chuyên ngành Hồi sức cấp cứu Đại học Y Dược Huế năm 2017."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Sơn Hà",
+    "title": "BS.CKI",
+    "specialty": "Cấp cứu",
+    "image": "nguyensonha.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Hồ Ngọc Tâm",
+    "title": "BS.CKI",
+    "specialty": "Cấp cứu",
+    "image": "hongoctam.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Phạm Doãn Kiên",
+    "title": "THs.Bs",
+    "specialty": "Cấp cứu",
+    "image": "phamdoankien.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Phan Kế Nghĩa",
+    "title": "Bs.CKI",
+    "specialty": "Cấp cứu",
+    "image": "phankenghia.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Quang Phúc",
+    "title": "Bs.CKI",
+    "specialty": "Da Liễu",
+    "image": "nguyenquangphuc.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Phạm Thị Thanh Huyền",
+    "title": "THs.Bs",
+    "specialty": "Huyết Học",
+    "image": "phamthithanhhuyen.jpg",
+    "experience": 10,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 2004.",
+      "Tốt nghiệp Thạc sỹ Y học chức năng Đại học Y Dược Huế năm 2011.",
+      "Kinh nghiệm công tác trong lĩnh vực Xét nghiệm y khoa: từ năm 2004 đến nay."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Viết Sơn",
+    "title": "THs.Bs",
+    "specialty": "Huyết Học",
+    "image": "nguyenvietson.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Lê VănLong",
+    "title": "Bs.CKII",
+    "specialty": "Mắt",
+    "image": "levanlong.jpg",
+    "experience": 31,
+    "certificates": [
+      "Tốt nghiệp bác sĩ chuyên khoa I Mắt Học viện Quân Y năm 1995",
+      "Tốt nghiệp bác sĩ chuyên khoa II Mắt Học viện Quân Y năm 2003",
+      "Hoàn thành khóa Tập huấn về tật khúc xạ từ 06/8/2007-14/9/2007 BV Mắt Đà Nẵng"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Trần Quốc Trung",
+    "title": "ThS. BSNT",
+    "specialty": "Nam Khoa",
+    "image": "tranquoctrung.jpg",
+    "experience": 5,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2021.",
+      "Tốt nghiệp Thạc sĩ Ngoại khoa Đại học Y Dược Huế năm 2024",
+      "Tốt nghiệp Bác sĩ Nội trú chuyên ngành ngoại khoa Đại học Y Dược Huế năm 2024"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Trịnh Nhật Minh",
+    "title": "1) Ths.BSNT.",
+    "specialty": "Ngoại Chấn Thương",
+    "image": "trinhnhatminh.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Phạm Duy Hải",
+    "title": "ThS.BSNT",
+    "specialty": "Ngoại Chấn Thương",
+    "image": null,
+    "experience": 9,
+    "certificates": [
+      "Tốt nghiệp Bác sỹ đa khoa Đại học Y Dược Huế năm 2017.",
+      "Tốt nghiệp Thạc sĩ Bác sĩ nội trú – Ngoại khoa Đại học Y Dược Huế năm 2020."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Trần Thái Sơn",
+    "title": "Bs.CKI",
+    "specialty": "Ngoại Chấn Thương",
+    "image": "tranthaison.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Thái Phiên",
+    "title": "Bs.Hoàng",
+    "specialty": "Ngoại thần kinh",
+    "image": "hoangthaiphien.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Trần Quốc Trung",
+    "title": "ThS. BSNT",
+    "specialty": "Ngoại tiết niệu",
+    "image": "tranquoctrung.jpg",
+    "experience": 5,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2021.",
+      "Tốt nghiệp Thạc sĩ Ngoại khoa Đại học Y Dược Huế năm 2024",
+      "Tốt nghiệp Bác sĩ Nội trú chuyên ngành ngoại khoa Đại học Y Dược Huế năm 2024"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Dương Ngọc Hiệp",
+    "title": "Bs",
+    "specialty": "Ngoại tiết niệu",
+    "image": "duongngochiep.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Phạm Trong Khôi",
+    "title": "ThS.BSNT",
+    "specialty": "Ngoại Tiêu Hóa",
+    "image": "phamtrongkhoi.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Đức Dũng",
+    "title": "Bs.CKI",
+    "specialty": "Ngoại Tiêu Hóa",
+    "image": "nguyenducdung.jpg",
+    "experience": 10,
+    "certificates": [
+      "Chứng nhận phẫu thuật Nội soi ổ bụng Bệnh viện Hữu nghị Việt Đức Hà Nội năm 2006.",
+      "Chứng nhận Chuyên khoa Hồi sức cấp cứu Bệnh viện trung ương Huế năm 2004.",
+      "Chứng nhận Siêu âm tổng quát Bệnh viện Đà Nẵng năm 2009.",
+      "Chứng nhận tham dự tập huấn Chẩn đoán và điều trị các bệnh lý vùng hậu môn – trực tràng tại Bệnh viện Đại học Y Dược TP HCM năm 2015."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Huỳnh Thúc Bảo",
+    "title": "Bs.CKII",
+    "specialty": "Ngoại tim mạch",
+    "image": "huynhthucbao.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Huỳnh Thúc Bảo tốt nghiệp bác sĩ y khoa tại Đại học Y Dược Huế năm 2008. Sau đó, ông lấy bằng Bác sĩ Chuyên khoa II Nội Tim mạch vào năm 2019. Bác sĩ Bảo cũng có bằng Thạc sĩ Tim mạch từ trường Đại học Y Dược Huế. Với hơn 15 năm kinh nghiệm trong chẩn đoán và điều trị các bệnh tim mạch, thực hiện can thiệp động mạch vành, can thiệp bệnh tim bẩm sinh, đặt máy tạo nhịp tim tạm thời và vĩnh viễn, theo dõi Holter ECG 24/24 giờ. Bác sĩ Bảo được các đồng nghiệp và bệnh nhân đánh giá cao về trình độ chuyên môn và kỹ năng y tế đặc biệt của mình.",
+    "title": "Bác sĩ",
+    "specialty": "Ngoại tim mạch",
+    "image": "huynhthucbao.jpg",
+    "experience": 15,
+    "certificates": [],
+    "description": "Số năm công tác: 15 năm "
+  },
+  {
+    "name": "Tương Nguyễn Thoại Nhân",
+    "title": "Bs.CKII",
+    "specialty": "Nhi",
+    "image": null,
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Trương Nguyễn Thoại Nhân là một trong những sinh viên ưu tú tốt nghiệp Thạc sĩ, bác sĩ Nội trú Nhi Khoa tại Đại học Y Dược Huế. Sau đó, ông tốt nghiệp chuyên khoa II chuyên ngành Nhi Khoa – Đại học Y Dược Huế năm 2021.",
+    "title": "Bác sĩ",
+    "specialty": "Nhi",
+    "image": "truongnguyenthoainhan.jpg",
+    "experience": 20,
+    "certificates": [],
+    "description": "Với gần 20 năm kinh nghiệm khám và điều trị Nhi Khoa cũng như Quản lý Bệnh viện, bác sĩ Nhân từng đảm nhiệm các vị trí Trưởng khoa Nhi, Trưởng khoa Điều trị Quốc tế, Phó Giám Đốc Điều Hành… Và hiện tại là Giám Đốc Bệnh viện Hoàn Mỹ Đà Nẵng Số năm công tác: 20 năm Quá trình công tác:2006 – 2010: Bác sĩ điều trị khoa PICU – Khoa Nhi – Bệnh viện Trung Ương Huế.2014: Trưởng khoa Nhi kiêm Trưởng khoa khám và điều trị Quốc tế Bệnh viện Hoàn Mỹ Đà Nẵng2017 – 2018: Phó Giám Đốc Quản lý chất lượng – CQO – Bệnh viện Hoàn Mỹ Đà Nẵng2018 – 2019: Phó Giám Đốc Quản trị vận hành – COO – Bệnh viện Hoàn Mỹ Đà Nẵng2019 – 2022 : Phó Giám Đốc Điều Hành – DCEO – kiêm Phó giám đốc Quản trị vận hành Bệnh viện Hoàn Mỹ Đà NẵngHiện tại: Giám đốc Bệnh viện Hoàn Mỹ Đà Nẵng Kinh nghiệm và đào tạo: "
+  },
+  {
+    "name": "Bùi Quốc Đạt",
+    "title": "Ths.BSNT",
+    "specialty": "Nhi",
+    "image": "buiquocdat.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Bùi Quốc Đạt tốt nghiệp Bác sĩ Y khoa tại Đại học Y Dược Huế năm 2002. Ông cũng có bằng Thạc sĩ Nhi khoa và Nội khoa. Với hơn 20 năm kinh nghiệm chẩn đoán và điều trị các bệnh lý nhi khoa, bác sĩ Đạt được biết đến với chuyên môn y tế sâu rộng và cam kết mang lại kết quả điều trị tối ưu cho bệnh nhân.",
+    "title": "Bác sĩ",
+    "specialty": "Nhi",
+    "image": "buiquocdat.jpg",
+    "experience": 24,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y dược Huế năm 2002.",
+      "Tốt nghiệp Thạc sĩ – Bác sĩ Nội trú Nhi khoa năm 2006.",
+      "Chứng nhận đào tạo liên tục: Khám sàng lọc trước tiêm và theo dõi, xử trí phản ứng sau tiêm chủng (24 tiết) từ ngày 08/07/2021 đến ngày 10/07/2021, cấp ngày 10/07/2021"
+    ],
+    "description": "Số năm công tác: 20 năm "
+  },
+  {
+    "name": "Nguyễn Thị Hồng Đức",
+    "title": "TS.BS",
+    "specialty": "Nhi",
+    "image": "nguyenthihongduc.jpg",
+    "experience": 15,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2011.",
+      "Tốt nghiệp Thạc sĩ chuyên ngành nhi khoa Đại học Y Dược Huế năm 2015.",
+      "Tốt nghiệp Tiến sĩ Chuyên ngành Y sinh Đại học quốc gia Kyungpook Hàn Quốc năm 2025",
+      "Chứng nhận hoàn thành đào tạo chuyên sâu tại khoa Nhi Bệnh viện Đại học quốc gia Kyungpook từ ngày 01/09/2024 – 15/02/2025",
+      "Chứng nhận hoàn thành đào tạo tại đơn vị Chăm sóc đặc biệt sơ sinh Bệnh viện Đại học quốc gia Kyungpook từ ngày 14/06/2024 – 06/12/2024",
+      "Giấy chứng nhận đã thực hành lâm sàng Khoa Thận (Kỹ thuật sinh thiết thận và đọc kết quả) từ ngày 17/08/2015-13/11/2015 Bệnh viện Nhi đồng 1."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Công Tiến",
+    "title": "THS.BSNT",
+    "specialty": "Nhi",
+    "image": "nguyencongtien.jpg",
+    "experience": 6,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2020.",
+      "Tốt nghiệp Thạc sĩ Nhi khoa Đại học Y Dược Huế năm 2023",
+      "Tốt nghiệp Bác sĩ Nội trú chuyên ngành nhi khoa Đại học Y Dược Huế năm 2023"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Đoàn Thị Bảo Ân",
+    "title": "THS.BSNT",
+    "specialty": "Nhi",
+    "image": "doanthibaoan.jpg",
+    "experience": 13,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 2013.",
+      "Tốt nghiệp Thạc sĩ – Bác sĩ nội trú Nhi khoa Đại học Y Dược Huế năm 2016.",
+      "Chứng nhận hoàn thành các khóa đào tạo “Dinh dưỡng nhi khoa – Những thông tin cập nhật”, “Tập huấn thở máy nâng cao”, “Cập nhật kiến thức về Sơ sinh học”,…"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Phạm Chinh Hà",
+    "title": "THS.BSNT",
+    "specialty": "Nhi",
+    "image": "nguyenphamchinhha.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Lương Hồng Vân",
+    "title": "THS.BS",
+    "specialty": "Nhi",
+    "image": "luonghongvan.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Viết Linh Kha",
+    "title": "THS.BS",
+    "specialty": "Nhi",
+    "image": "nguyenvietlinhkha.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Trần Thị Phương Thảo",
+    "title": "THS.BSNT",
+    "specialty": "Nhi",
+    "image": "tranthiphuongthao.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Trương Đức Hiền",
+    "title": "THS.BSNT",
+    "specialty": "Nhi",
+    "image": "truongduchien.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Võ Thị Sinh",
+    "title": "BS.CKII",
+    "specialty": "Nhi",
+    "image": "vothisinh.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Hà Hùng",
+    "title": "THS.BS",
+    "specialty": "Nhi",
+    "image": "hahung.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Phan Văn Thuận",
+    "title": "THS.BS",
+    "specialty": "Nhi",
+    "image": "phanvanthuan.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Võ Nguyễn Quí Tuấn",
+    "title": "THS.BS",
+    "specialty": "Nội tim mạch",
+    "image": "vonguyenquituan.jpg",
+    "experience": 17,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y dược Huế năm 2009.",
+      "Tốt nghiệp Thạc sĩ Nội khoa Đại học Y dược Huế năm 2013."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Cao Anh Khoa",
+    "title": "THS.BS",
+    "specialty": "Nội tim mạch",
+    "image": "caoanhkhoa.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Thanh Phương",
+    "title": "BS.CKI",
+    "specialty": "Nội tim mạch",
+    "image": "nguyenthanhphuong.jpg",
+    "experience": 9,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y dược Huế năm 2017",
+      "Chứng nhận Hồi sức sau phẫu thuật tim tại Đại học Y dược HCM cấp năm 2019",
+      "Chứng nhận Siêu âm tim và hồi sức sau mổ tim tại Đại học Y dược HCM cấp năm 2018"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Phan Mại",
+    "title": "BS.CKI",
+    "specialty": "Nội tim mạch",
+    "image": "phanmai.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Văn Chúc",
+    "title": "BS.CKI",
+    "specialty": "Nội tim mạch",
+    "image": "nguyenvanchuc.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Nguyễn Văn Chúc có 20 năm kinh nghiệm trong thực hiện đo điện tim, điện tim gắng sức, chuyên trách Điện tâm đồ",
+    "title": "BS.CKI.",
+    "specialty": "Nội tim mạch",
+    "image": "nguyenvanchuc.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Hồng Nam",
+    "title": "THS.BS",
+    "specialty": "Nội tim mạch",
+    "image": "nguyenhongnam.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới Thiệu Thạc sĩ, Bác sĩ Nguyễn Hồn Nam là chuyên gia giàu kinh nghiệm trong lĩnh vực nội tim mạch. Ông đảm nhiệm vai trò khám, chẩn đoán, điều trị và theo dõi các bệnh lý liên quan đến tim và hệ tuần hoàn, góp phần nâng cao chất lượng điều trị và chăm sóc sức khỏe tim mạch cho người bệnh. "
+  },
+  {
+    "name": "Huỳnh Thúc Bảo",
+    "title": "BS.CKII",
+    "specialty": "Nội tim mạch",
+    "image": "huynhthucbao.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới Thiệu "
+  },
+  {
+    "name": "Huỳnh Thúc Bảo tốt nghiệp bác sĩ y khoa tại Đại học Y Dược Huế năm 2008. Sau đó, ông lấy bằng Bác sĩ Chuyên khoa II Nội Tim mạch vào năm 2019. Bác sĩ Bảo cũng có bằng Thạc sĩ Tim mạch từ trường Đại học Y Dược Huế. Với hơn 15 năm kinh nghiệm trong chẩn đoán và điều trị các bệnh tim mạch, thực hiện can thiệp động mạch vành, can thiệp bệnh tim bẩm sinh, đặt máy tạo nhịp tim tạm thời và vĩnh viễn, theo dõi Holter ECG 24/24 giờ. Bác sĩ Bảo được các đồng nghiệp và bệnh nhân đánh giá cao về trình độ chuyên môn và kỹ năng y tế đặc biệt của mình.",
+    "title": "Bác sĩ",
+    "specialty": "Nội tim mạch",
+    "image": "huynhthucbao.jpg",
+    "experience": 15,
+    "certificates": [],
+    "description": "Số năm công tác: 15 năm "
+  },
+  {
+    "name": "Trần Minh Nghĩa",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "tranminhnghia.jpg",
+    "experience": 25,
+    "certificates": [],
+    "description": "Giới Thiệu ‘Bác sĩ Trần Minh Nghĩa tốt nghiệp Thạc sĩ Y Khoa tại Đại Học Y Dược Huế. Với 30 năm kinh nghiệp trong lĩnh vực Nội Khoa cũng như quản lý bệnh viện. Bác sĩ Nghĩa được đồng nghiệp và bệnh nhân đánh giá cao về chuyên môn và sự tận tâm. Ông làm việc tại Bệnh viện Hoàn Mỹ Đà Nẵng từ năm 2003 và là Phó Giám Đốc Chuyên Môn từ năm 2012. Số năm công tác: 25 năm Quá trình công tác:1992 – 1993: Bác sĩ điều trị (thực tập) tại khoa Nội Tim mạch Bệnh viện Trung Ương Huế1993 – 2003: Bác sĩ điều trị tại Khoa Nội – Bệnh viện Điện Bàn, Quảng Nam2003 – 2007: Bác sĩ điều trị tại Khoa Nội – Bệnh viện Hoàn Mỹ Đà Nẵng2007 – 2011: Trưởng khoa Nội Tổng hợp – Bệnh viện Hoàn Mỹ Đà Nẵng2011 – 2012: Trưởng khoa Nội Tổng hợp – kiêm Trưởng phòng Kế hoạch tổng hợp – Bệnh viện Hoàn Mỹ Đà Nẵng2012 – Nay: Phó Giám Đốc Chuyên Môn – Bệnh viện Hoàn Mỹ Đà Nẵng Kinh nghiệm và đào tạo:1991: Tốt nghiệp Bác sĩ Đa Khoa tại Trường Đại Học Y Dược Huế1992 -1993: Học chuyên khoa Tim mạch tại Bệnh viện Trung Ương Huế1997 – 1999: Học Thạc sĩ Y Khoa, chuyên ngành Nội Khoa tại Bệnh viện Y Dược Huế01/2005 – 12/2005: Học tuần hoàn ngoài cơ thể, Hồi sức tim mạch tại Học Viện Reims – Cộng Hòa Pháp2006: Học tuần hoàn cơ thể, Hồi sức tim mạch tại Bệnh viện Trung Ương Huế2005: Học quản lý Bệnh viện tại Đại học kỹ thuật Y Dược Đà Nẵng "
+  },
+  {
+    "name": "Nguyễn Anh Tuyến",
+    "title": "TSS.BSNT",
+    "specialty": "Nội tổng quát",
+    "image": "nguyenanhtuyen.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Nguyễn Anh Tuyến tốt nghiệp Cử nhân Y khoa và hoàn thành chương trình Bác sĩ nội trú Nội khoa cũng như sở hữu bằng Thạc sĩ Y khoa tại Đại học Y Dược Huế. Với gần 20 năm kinh nghiệm trong chẩn đoán và điều trị các bệnh nội khoa, bác sĩ Tuyến được đồng nghiệp và bệnh nhân tin tưởng về chuyên môn sâu và cam kết mang lại kết quả điều trị tối ưu cho bệnh nhân. Hơn nữa, bác sĩ cũng được đào tạo chuyên sâu trong lĩnh vực tiêu hóa, gan mật, nội tiết và các bệnh truyền nhiễm.",
+    "title": "Bác sĩ",
+    "specialty": "Nội tổng quát",
+    "image": "nguyenanhtuyen.jpg",
+    "experience": 20,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Huế năm 2004.",
+      "Tốt nghiệp Thạc sĩ – Bác sĩ Nội trú Nội khoa Đại học Y Huế năm 2009.",
+      "Chứng nhận Hội thảo khoa học “Nội soi tiêu hóa” năm 2011.",
+      "Chứng nhận Hội thảo huấn luyện “Nội soi mật tụy ngược dòng (ERCP)” năm 2012.",
+      "Chứng nhận hoàn thành chương trình tập huấn nâng cao năng lực cho cán bộ y tế về chẩn đoán và điều trị viêm gan virus C năm 2015.",
+      "Chứng nhận đào tạo liên tục Hội chứng chuyển hóa – Một thách thức cho sức khỏe toàn cầu năm 2015.",
+      "Chứng nhận đào tạo liên tục “Bệnh gan di truyền-Cập nhật về Viêm gan siêu vi” năm 2018."
+    ],
+    "description": "Số năm công tác: 20 năm "
+  },
+  {
+    "name": "chuyên khoa Nội Tiêu hóa – Bệnh viện Trung ương Huế.",
+    "title": "Bác sĩ",
+    "specialty": "Nội tổng quát",
+    "image": null,
+    "experience": 10,
+    "certificates": [],
+    "description": "Kinh nghiệm về khám và điều trị các bệnh lý Nội khoa tổng quát, chuyên khoa Nội Tiêu hóa – Gan mật – Nội tiết – Nhiễm – Lão khoa: từ năm 2004 đến nay. "
+  },
+  {
+    "name": "Trương Thị Mai Anh",
+    "title": "BS.CKI",
+    "specialty": "Nội tổng quát",
+    "image": "truongthimaianh.jpg",
+    "experience": 6,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Thái Bình năm 2020",
+      "Tốt nghiệp Bác sĩ Chuyên khoa cấp I chuyên ngành Nội khoa Đại học Y Hà Nội năm 2024."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Huỳnh Văn Phúc",
+    "title": "THS.BSNT",
+    "specialty": "Nội tổng quát",
+    "image": "huynhvanphuc.jpg",
+    "experience": 5,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2021.",
+      "Tốt nghiệp Thạc sĩ Nội khoa Đại học Y Dược Huế năm 2024",
+      "Tốt nghiệp Bác sĩ Nội trú chuyên ngành nội khoa Đại học Y Dược Huế năm 2024."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Lê Thị Hồng",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "lethihong.jpg",
+    "experience": 8,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 2018",
+      "Tốt nghiệp Thạc sĩ Nội khoa Đại học Y Dược Huế năm 2022",
+      "Tốt nghiệp Bác sĩ nội trú Nội khoa Đại học Y Dược Huế năm 2022",
+      "Điện tâm đồ cơ bản và nâng cao 6 tháng từ 10/03/2021 đến 09/09/2021 Bệnh viện Đại học Y dược Huế"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Lâm Trọng Cơ",
+    "title": "BS.CKII",
+    "specialty": "Nội tổng quát",
+    "image": "lamtrongco.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Đoàn Ngọc Phong",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "doanngocphong.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Lê Quang Huy",
+    "title": "BS.CKI",
+    "specialty": "Nội tổng quát",
+    "image": "lequanghuy.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Trung Tín",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "nguyentrungtin.jpg",
+    "experience": 8,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 2018",
+      "Tốt nghiệp Thạc sĩ Nội khoa Đại học Y Dược Huế năm 2022",
+      "Tốt nghiệp Bác sĩ nội trú Nội khoa Đại học Y Dược Huế năm 2022"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Trần Quốc Khánh",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "tranquockhanh.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Lê Quang Hùng",
+    "title": "BS.CKI",
+    "specialty": "Nội tổng quát",
+    "image": "lequanghung.jpg",
+    "experience": 8,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y dược Huế năm 2018",
+      "Tốt nghiệp Bác sĩ chuyên khoa cấp I Nội khoa do Đại học Y dược Huế cấp năm 2022"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Lê Thanh Thư",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": null,
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Ngô Thị Xuân An",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "ngothixuanan.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Phan Hoàng Nhật Phương",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "phanhoangnhatphuong.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Đinh Phú Phước",
+    "title": "BS",
+    "specialty": "Nội tổng quát",
+    "image": "dinhphuphuoc.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Hồ Thị Minh Huệ",
+    "title": "BS.CKI",
+    "specialty": "Nội tổng quát",
+    "image": "hothiminhhue.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Bằng cấp chuyên môn – các khóa đào tạo:– Tốt nghiệp Bác sĩ đa khoa Đại học y TP Hồ Chí Minh năm 2010– Tốt nghiệp Bác sĩ Chuyên khoa I Nội khoa năm 2014– Chứng nhận theo học Nội hô hấp năm 2012– Chứng nhận hoàn thành khóa học cập nhập kiến thức y khoa tổng quát năm 2013– Chứng nhận tham dự lớp quản lý hen và bệnh phổi tắc nghẽn mãn tính trong cộng đồng năm 2015– Chứng nhận tham dự thuốc ức chế SGLT 2 – Liệu pháp mới trong kiểm soát đường huyết năm 2015– Chứng nhận hoàn thành khóa học Bổ túc kiến thức về Nội tiết năm 2015 "
+  },
+  {
+    "name": "Đặng Phục",
+    "title": "BS.CKI",
+    "specialty": "Nội tổng quát",
+    "image": "dangphuc.jpg",
+    "experience": 22,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 1997",
+      "Tốt nghiệp Bác sĩ Chuyên khoa cấp I chuyên ngành Nội khoa năm 2013",
+      "Chứng nhận hoàn thành khóa học Siêu âm tổng quát Bệnh viện Đà Nẵng năm 2013"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Hà Xuân Tuấn",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "haxuantuan.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Hồng Nam",
+    "title": "THS.BS",
+    "specialty": "Nội tổng quát",
+    "image": "nguyenhongnam.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu Thạc sĩ, Bác sĩ Nguyễn Hồn Nam là chuyên gia giàu kinh nghiệm trong lĩnh vực nội tim mạch. Ông đảm nhiệm vai trò khám, chẩn đoán, điều trị và theo dõi các bệnh lý liên quan đến tim và hệ tuần hoàn, góp phần nâng cao chất lượng điều trị và chăm sóc sức khỏe tim mạch cho người bệnh. "
+  },
+  {
+    "name": "Nguyễn Nhã Phước",
+    "title": "BS.CKI",
+    "specialty": "Răng-Hàm-Mặt",
+    "image": "nguyennhaphuoc.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Nguyễn Nhã Phước tốt nghiệp chuyên ngành Răng hàm mặt tại Đại học Y Dược Huế và lấy bằng Bác sĩ Chuyên khoa I chuyên ngành Răng hàm mặt tại Đại học Y Dược TP.HCM. Với hơn 9 năm kinh nghiệm trong việc khám và điều trị các bệnh lý răng hàm mặt, bác sĩ Phước cam kết mang đến dịch vụ chăm sóc bệnh nhân đạt tiêu chuẩn cao nhất và mang lại nụ cười tỏa sáng cho bệnh nhân.",
+    "title": "Bác sĩ",
+    "specialty": "Răng-Hàm-Mặt",
+    "image": "nguyennhaphuoc.jpg",
+    "experience": 12,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Răng hàm mặt Đại học Y dược Huế năm 2014",
+      "Tốt nghiệp Bác sĩ Chuyên khoa I Răng hàm mặt Đại học Y dược HCM năm 2019"
+    ],
+    "description": "Số năm công tác: 9 năm "
+  },
+  {
+    "name": "Nguyễn Đắc Trí Minh",
+    "title": "BS",
+    "specialty": "Răng-Hàm-Mặt",
+    "image": "nguyendactriminh.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Đình Bắc Ý",
+    "title": "BS.CKI",
+    "specialty": "Răng-Hàm-Mặt",
+    "image": "nguyendinhbacy.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Hồ Thị Thúy",
+    "title": "BS",
+    "specialty": "Răng-Hàm-Mặt",
+    "image": "hothithuy.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Lê Minh Toàn",
+    "title": "TS.BS",
+    "specialty": "Sản",
+    "image": "leminhtoan.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Lê Minh Toàn tốt nghiệp Cử nhân Y khoa và Chuyên khoa cấp II về Phụ sản tại Đại học Y Dược Huế. Với hơn 40 năm kinh nghiệm trong lĩnh vực khám chữa bệnh sản khoa, bác sĩ Toàn được đồng nghiệp và bệnh nhân đánh giá cao về tay nghề cũng như cam kết mang lại kết quả điều trị tối ưu cho bệnh nhân.",
+    "title": "Bác sĩ",
+    "specialty": "Sản",
+    "image": "leminhtoan.jpg",
+    "experience": 43,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 1983",
+      "Tốt nghiệp Bác sĩ Chuyên khoa cấp II Sản khoa Đại học Y Huế năm 2000",
+      "Bằng Tiến sĩ khoa học Bộ trưởng Bộ giáo dục và đào tạo cấp năm 1995",
+      "Chứng nhận hoàn thành khóa bồi dưỡng kiến thức quản lý nhà nước chương trình chuyên viên năm 2003",
+      "Chứng nhận Siêu âm chẩn đoán trong sản phụ khoa Viện Bảo vệ bà mẹ và Trẻ sơ sinh cấp năm 1993",
+      "Chứng nhận Bồi dưỡng sau đại học ngắn hạn (đào tạo lại) chuyên ngành Phụ sản (phát hiện sớm ung thư cổ tử cung) Đại học Y Hà Nội cấp năm 1994"
+    ],
+    "description": "Số năm công tác: 40 năm "
+  },
+  {
+    "name": "Phan Văn Hà",
+    "title": "BS.CKI",
+    "specialty": "Sản",
+    "image": "phanvanha.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Phan Văn Hà tốt nghiệp Cử nhân Y khoa và Ngoại khoa. Sau đó, bác sĩ Hà tiếp tục sở hữu bằng Chuyên khoa I về Sản khoa tại Đại học Y Dược Huế. Với hơn 18 năm kinh nghiệm, Bác sĩ Hà được đào tạo bài bản về siêu âm, chẩn đoán, sinh đẻ không đau, phẫu thuật các bệnh lý sản phụ khoa. Là người luôn tin tưởng vào việc không ngừng nâng cao tay nghề, bác sĩ Hà cũng thường xuyên cập nhật xu hướng y học mới nhất và sở hữu nhiều chứng chỉ bao gồm siêu âm sản khoa, siêu âm chẩn đoán trước sinh, phẫu thuật nội soi cơ bản trong sản phụ khoa và nhiều chứng chỉ khác.",
+    "title": "Bác sĩ",
+    "specialty": "Sản",
+    "image": "phanvanha.jpg",
+    "experience": 21,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y dược Huế năm 2005.",
+      "Tốt nghiệp Bác sĩ CKI Sản khoa Đại học Y Dược Huế 2016.",
+      "Chứng nhận tham gia các lớp học: Siêu âm sản phụ khoa, Siêu âm chẩn đoán trước sinh, Phẫu thuật nội soi cơ bản trong phụ khoa."
+    ],
+    "description": "Số năm công tác: 18 năm "
+  },
+  {
+    "name": "Thái Thị Thúy Vân",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "thaithithuyvan.jpg",
+    "experience": 5,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2021.",
+      "Tốt nghiệp Thạc sĩ Sản phụ khoa Đại học Y Dược Huế năm 2024.",
+      "Tốt nghiệp Bác sĩ nội trú chuyên ngành sản phụ khoa Đại học Y Dược Huế năm 2024."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Phạm Mai Thành Đạt",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "phammaithanhdat.jpg",
+    "experience": 5,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2021.",
+      "Tốt nghiệp Thạc sĩ Sản phụ khoa Đại học Y Dược Huế năm 2024.",
+      "Tốt nghiệp Bác sĩ nội trú chuyên ngành sản phụ khoa Đại học Y Dược Huế năm 2024."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Hồ Hoàng Thùy Nhung",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": null,
+    "experience": 10,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2021.",
+      "Tốt nghiệp Thạc sĩ Sản phụ khoa Đại học Y Dược Huế năm 2024.",
+      "Tốt nghiệp Bác sĩ nội trú chuyên ngành sản phụ khoa Đại học Y Dược Huế năm 2024."
+    ],
+    "description": "Giới thiệu "
+  },
+  {
+    "name": "Huỳnh Lê Thảo Nguyên",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "huynhlethaonguyen.jpg",
+    "experience": 5,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ Đa khoa Đại học Y Dược Huế năm 2021.",
+      "Tốt nghiệp Thạc sĩ Sản phụ khoa Đại học Y Dược Huế năm 2024.",
+      "Tốt nghiệp Bác sĩ nội trú chuyên ngành sản phụ khoa Đại học Y Dược Huế năm 2024."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Thị Mỹ Thơm",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "nguyenthimythom.jpg",
+    "experience": 8,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 2018",
+      "Tốt nghiệp Thạc sĩ Sản phụ khoa khoa Đại học Y Dược Huế năm 2022",
+      "Tốt nghiệp Bác sĩ nội trú Sản phụ khoa Đại học Y Dược Huế năm 2022",
+      "Chứng nhận cập nhật về hướng dẫn sàng lọc tiền sản Đại học Y Dược Huế cấp năm 2019"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Trần Duy Anh",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "tranduyanh.jpg",
+    "experience": 12,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Hồ Chí Minh năm 2014",
+      "Tốt nghiệp Thạc sĩ Sản phụ khoa Đại học Y dược HCM năm 2018",
+      "Tốt nghiệp Bác sĩ nội trú Sản phụ khoa Đại học Y dược HCM năm 2018",
+      "Tốt nghiệp CKI sản phụ khoa Đại học Y dược HCM năm 2018"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Hồ Nguyên",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "honguyen.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Lê Vũ",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "levu.jpg",
+    "experience": 7,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 2019",
+      "Tốt nghiệp Thạc sĩ Sản phụ khoa Đại học Y dược Huế năm 2022",
+      "Tốt nghiệp Bác sĩ nội trú Sản phụ khoa Đại học Y dược Huế năm 2022"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Lê Trung Nghĩa",
+    "title": "BS",
+    "specialty": "Sản",
+    "image": "letrungnghia.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Trịnh Thị Băng Tâm",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "trinhthibangtam.jpg",
+    "experience": 10,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y Dược Huế năm 2016.",
+      "Tốt nghiệp Thạc sĩ Bác sĩ nội trú chuyên ngành Sản khoa Đại học Y Dược Huế năm 2019"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Trương Hữu Trí",
+    "title": "THS.BSNT",
+    "specialty": "Sản",
+    "image": "truonghuutri.jpg",
+    "experience": 10,
+    "certificates": [
+      "Tốt nghiệp Bác sỹ đa khoa Đại học Y dược Huế năm 2016",
+      "Tốt nghiệp Thạc sĩ Bác sỹ nội trú – Sản khoa Đại học Y dược Huế năm 2019"
+    ],
+    "description": ""
+  },
+  {
+    "name": "Nguyễn Ngọc Quang",
+    "title": "BS.CKII",
+    "specialty": "Tai-Mũi-Họng",
+    "image": "nguyenngocquang.jpg",
+    "experience": 14,
+    "certificates": [
+      "Tốt nghiệp Bác sĩ đa khoa Đại học Y dược Huế năm 2012.",
+      "Tốt nghiệp Bác sĩ Nội trú Tai mũi họng Đại học Y dược Huế năm 2015.",
+      "Tốt nghiệp Bác sĩ Chuyên khoa II Mũi họng Đại học Y dược Huế năm 2023.",
+      "Chứng nhận Đào tạo phẫu thuật nội soi mũi xoang nâng cao ở Bệnh viện Đại học Y dược Hồ Chí Minh năm 2018",
+      "Chứng nhận Đào tạo ứng dụng nội soi trong phẫu thuật tai ở Bệnh viện Tai mũi họng TP. HCM năm 2017",
+      "Chứng nhận Đào tạo chuyên sâu về phục hồi chức năng thính giác và tiền đình của hiệp hội Tai mũi họng thế giới năm 2019."
+    ],
+    "description": ""
+  },
+  {
+    "name": "Trần Hữu Anh Tú",
+    "title": "THS.BSNT",
+    "specialty": "Tai-Mũi-Họng",
+    "image": "tranhuuanhtu.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Lê Phú Trà My",
+    "title": "THS.BSNT",
+    "specialty": "Tai-Mũi-Họng",
+    "image": "lephutramy.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  },
+  {
+    "name": "Trần Đức Long",
+    "title": "THS.BSNT",
+    "specialty": "Tai-Mũi-Họng",
+    "image": "tranduclong.jpg",
+    "experience": 10,
+    "certificates": [],
+    "description": ""
+  }
+]

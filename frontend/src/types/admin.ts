@@ -8,6 +8,7 @@ export interface AdminUser {
   email: string;
   role: UserRole;
   doctorId: string | null;
+  isLocked: boolean;
   createdAt: string;
 }
 
@@ -173,6 +174,8 @@ export interface AdminArticle {
   content: string;
   thumbnail: string | null;
   published: boolean;
+  type: string;
+  author: { id: string; fullName: string | null; email: string } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -188,6 +191,7 @@ export interface CreateArticlePayload {
   content: string;
   thumbnail?: string;
   published?: boolean;
+  type?: string;
 }
 
 export interface UpdateArticlePayload {
@@ -195,6 +199,7 @@ export interface UpdateArticlePayload {
   content?: string;
   thumbnail?: string;
   published?: boolean;
+  type?: string;
 }
 
 // ─── Complaints ──────────────────────────────────────────────────
@@ -205,10 +210,17 @@ export interface AdminComplaint {
   id: string;
   message: string;
   status: ComplaintStatus;
+  adminResponse: string | null;
   userId: string;
   user: {
     email: string;
+    fullName: string | null;
   };
+  appointment: {
+    id: string;
+    appointmentDate: string;
+    status: string;
+  } | null;
   createdAt: string;
 }
 
@@ -235,13 +247,19 @@ export interface AppointmentsByMonth {
   count: number;
 }
 
+export interface CancellationStat {
+  reason: string;
+  count: number;
+}
+
 export interface AdminStatistics {
   totalUsers: number;
   totalDoctors: number;
   totalAppointments: number;
-  appointmentsByStatus: AppointmentsByStatus[];
+  appointmentsByStatus: Record<string, number>;
   appointmentsBySpecialty: AppointmentsBySpecialty[];
   appointmentsByMonth: AppointmentsByMonth[];
+  cancellationStats: CancellationStat[];
 }
 
 export interface AdminStatisticsResponse {

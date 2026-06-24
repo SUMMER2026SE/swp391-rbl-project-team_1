@@ -64,6 +64,8 @@ model User {
   chronicDiseases String?
   personalHistory String?
   familyHistory   String?
+  // Admin features
+  isLocked        Boolean       @default(false)
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -72,6 +74,7 @@ model User {
   complaints   Complaint[]
   medicalRecords MedicalRecord[]
   reviews      Review[]
+  articles     Article[]     @relation("ArticleAuthor")
 }
 
 model OTP {
@@ -139,18 +142,24 @@ model Article {
   title       String
   content     String
   thumbnail   String?
+  type        String   @default("news") // "news" or "epidemic_alert"
   published   Boolean  @default(false)
+  authorId    String?
+  author      User?    @relation("ArticleAuthor", fields: [authorId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model Complaint {
-  id        String          @id @default(cuid())
-  message   String
-  status    ComplaintStatus @default(PENDING)
-  userId    String
-  user      User            @relation(fields: [userId], references: [id])
-  createdAt DateTime        @default(now())
+  id            String          @id @default(cuid())
+  message       String
+  status        ComplaintStatus @default(PENDING)
+  adminResponse String?
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  appointmentId String?
+  appointment   Appointment?    @relation(fields: [appointmentId], references: [id])
+  createdAt     DateTime        @default(now())
 }
 
 model DoctorSchedule {
@@ -188,6 +197,7 @@ model Appointment {
   medicalRecord   MedicalRecord?
   review          Review?
   payment         Payment?
+  complaints      Complaint[]
 }
 
 model MedicalRecord {
@@ -267,6 +277,7 @@ model MedicalPackage {
   id          String        @id @default(cuid())
   name        String
   description String?
+  image       String?
   price       Int           @default(0)
   hospital    String        @default("Bệnh viện Hoàn Mỹ Đà Nẵng")
   estimatedDuration Int     @default(30)

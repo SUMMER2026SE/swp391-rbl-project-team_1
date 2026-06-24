@@ -83,6 +83,34 @@ async function callGeminiApi(prompt: string, history: ChatMessage[]): Promise<st
 function getFallbackMedicalResponse(userQuery: string): string {
     const query = userQuery.toLowerCase();
 
+    // 0. General Greetings & Thanks
+    if (query === "chào" || query === "hi" || query === "hello" || query.includes("chào bạn") || query.includes("xin chào")) {
+        return `Chào bạn! Tôi là **MedBooking AI - Trợ lý Bác sĩ Ảo**. Tôi có thể giúp bạn chẩn đoán sơ bộ các triệu chứng bệnh, tư vấn chuyên khoa phù hợp hoặc hướng dẫn bạn cách đặt lịch khám trên hệ thống. 
+Bạn đang gặp vấn đề gì về sức khỏe hay cần hỗ trợ thông tin gì ạ?`;
+    }
+    if (query.includes("cảm ơn") || query.includes("cam on") || query.includes("thank")) {
+        return `Dạ không có gì ạ! Rất vui vì đã có thể hỗ trợ bạn. Chúc bạn thật nhiều sức khỏe! Nếu cần thêm thông tin gì, bạn cứ nhắn tin cho tôi nhé.`;
+    }
+
+    // 0.1 Booking & Platform Inquiries
+    if (
+        query.includes("đặt lịch") ||
+        query.includes("dat lich") ||
+        query.includes("khám bệnh") ||
+        query.includes("kham benh") ||
+        query.includes("hẹn") ||
+        query.includes("đặt chỗ")
+    ) {
+        return `Chào bạn! Để đặt lịch khám bệnh trên hệ thống MedBooking, bạn có thể làm theo các bước sau:
+
+1. Truy cập trang **[Danh sách Bác sĩ](/doctors)** hoặc **[Gói khám](/packages)** trên thanh menu.
+2. Tìm kiếm và lựa chọn Bác sĩ/Gói khám phù hợp với nhu cầu của bạn.
+3. Nhấp vào nút **"Đặt lịch hẹn"**, chọn ngày giờ khám còn trống.
+4. Điền thông tin cá nhân và tiến hành thanh toán trực tuyến (qua VNPAY hoặc mã QR) để hệ thống tự động xác nhận lịch hẹn của bạn.
+
+Nếu bạn chưa biết tình trạng của mình nên khám chuyên khoa nào, hãy mô tả triệu chứng bệnh tại đây để tôi có thể tư vấn giúp bạn nhé!`;
+    }
+
     // 1. Respiratory & Flu (Sốt, ho, viêm họng, sổ mũi, đau họng, cảm lạnh, cúm...)
     if (
         query.includes("ho") ||

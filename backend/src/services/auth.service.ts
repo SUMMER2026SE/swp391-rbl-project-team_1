@@ -226,6 +226,7 @@ export async function findUserById(id: string): Promise<Omit<User, "password"> |
             chronicDiseases: true,
             personalHistory: true,
             familyHistory: true,
+            isLocked: true,
             createdAt: true,
             updatedAt: true,
         },

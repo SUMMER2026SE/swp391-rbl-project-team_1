@@ -20,7 +20,6 @@ export interface UserSafeDto {
     allergies: string | null;
     chronicDiseases: string | null;
     personalHistory: string | null;
-    familyHistory: string | null;
 
     createdAt: Date;
     updatedAt: Date;
@@ -43,5 +42,6 @@ export interface AdminUserDto {
     email: string;
     role: Role;
     doctorId: string | null;
+    isLocked: boolean;
     createdAt: Date;
 }

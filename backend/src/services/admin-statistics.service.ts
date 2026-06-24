@@ -20,6 +20,11 @@ interface AppointmentsByMonth {
     count: number;
 }
 
+interface CancellationStats {
+    reason: string;
+    count: number;
+}
+
 interface AdminStatistics {
     totalUsers: number;
     totalDoctors: number;
@@ -27,6 +32,7 @@ interface AdminStatistics {
     appointmentsByStatus: AppointmentsByStatus;
     appointmentsBySpecialty: AppointmentsBySpecialty[];
     appointmentsByMonth: AppointmentsByMonth[];
+    cancellationStats: CancellationStats[];
 }
 
 /**
@@ -40,12 +46,14 @@ export async function getStatistics(): Promise<AdminStatistics> {
         totalAppointments,
         statusCounts,
         specialtyCounts,
+        cancellationStats,
     ] = await Promise.all([
         prisma.user.count(),
         prisma.doctor.count(),
         prisma.appointment.count(),
         getAppointmentsByStatus(),
         getAppointmentsBySpecialty(),
+        getCancellationStats(),
     ]);
 
     const appointmentsByMonth = await getAppointmentsByMonth();
@@ -57,6 +65,7 @@ export async function getStatistics(): Promise<AdminStatistics> {
         appointmentsByStatus: statusCounts,
         appointmentsBySpecialty: specialtyCounts,
         appointmentsByMonth,
+        cancellationStats,
     };
 }
 
@@ -145,4 +154,74 @@ async function getAppointmentsByMonth(): Promise<AppointmentsByMonth[]> {
         month,
         count,
     }));
+}
+
+async function getCancellationStats(): Promise<CancellationStats[]> {
+    const cancelledAppointments = await prisma.appointment.findMany({
+        where: {
+            status: "CANCELLED",
+        },
+        select: {
+            cancellationReason: true,
+        },
+    });
+
+    const reasonMap = new Map<string, number>();
+
+    for (const appt of cancelledAppointments) {
+        const reason = appt.cancellationReason || "Không có lý do";
+        reasonMap.set(reason, (reasonMap.get(reason) ?? 0) + 1);
+    }
+
+    return Array.from(reasonMap.entries())
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Export appointments statistics to CSV string.
+ */
+export async function exportStatisticsCsv(): Promise<string> {
+    const appointments = await prisma.appointment.findMany({
+        include: {
+            doctor: {
+                include: {
+                    specialty: true,
+                }
+            },
+            user: true,
+        },
+        orderBy: { appointmentDate: 'desc' }
+    });
+
+    const headers = [
+        "Mã Lịch Hẹn",
+        "Ngày Khám",
+        "Trạng Thái",
+        "Lý Do Hủy",
+        "Bệnh Nhân",
+        "Email Bệnh Nhân",
+        "Bác Sĩ",
+        "Chuyên Khoa",
+    ];
+
+    const rows = appointments.map(appt => [
+        appt.id,
+        appt.appointmentDate.toISOString(),
+        appt.status,
+        appt.cancellationReason || "",
+        appt.user.fullName || "",
+        appt.user.email || "",
+        appt.doctor.name,
+        appt.doctor.specialty.name,
+    ]);
+
+    const escapeCsv = (str: string) => `"${String(str).replace(/"/g, '""')}"`;
+
+    const csvContent = [
+        headers.map(escapeCsv).join(","),
+        ...rows.map(row => row.map(escapeCsv).join(","))
+    ].join("\n");
+
+    return csvContent;
 }

@@ -68,8 +68,8 @@ export const appointmentService = {
     return response.data;
   },
 
-  async cancelAppointment(id: string): Promise<{ message: string; appointment: Appointment }> {
-    const response = await api.post<{ message: string; appointment: Appointment }>(`/appointments/${id}/cancel`);
+  async cancelAppointment(id: string, reason: string): Promise<{ message: string; appointment: Appointment }> {
+    const response = await api.post<{ message: string; appointment: Appointment }>(`/appointments/${id}/cancel`, { reason });
     return response.data;
   },
 };

@@ -12,6 +12,8 @@ import Button from "@/components/common/Button";
 import BookingProgress from "@/components/ui/BookingProgress";
 import PrescriptionModal from "@/components/ui/PrescriptionModal";
 import SubmitReviewModal from "@/components/ui/SubmitReviewModal";
+import CancelAppointmentModal from "@/components/appointments/CancelAppointmentModal";
+import ErrorModal from "@/components/common/ErrorModal";
 import { Star } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -23,6 +25,7 @@ function MyAppointmentsContent() {
   const [selectedPrescriptionApptId, setSelectedPrescriptionApptId] = useState<string | null>(null);
   const [reviewTargetAppt, setReviewTargetAppt] = useState<{ id: string; doctorName: string; specialtyName: string } | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [showCancelError, setShowCancelError] = useState(false);
   
   // Tab State
   const [activeTab, setActiveTab] = useState<AppointmentStatus | "ALL">("ALL");
@@ -49,15 +52,16 @@ function MyAppointmentsContent() {
     }
   };
 
-  const handleCancelAppointment = async (id: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn huỷ lịch hẹn này không? Hành động này không thể hoàn tác.")) {
-      return;
-    }
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+
+  const handleCancelAppointment = async (reason: string) => {
+    if (!cancelTargetId) return;
     try {
-      setCancelingId(id);
-      await appointmentService.cancelAppointment(id);
+      setCancelingId(cancelTargetId);
+      await appointmentService.cancelAppointment(cancelTargetId, reason);
       toast.success("Huỷ lịch hẹn thành công!");
       fetchAppointments();
+      setCancelTargetId(null);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err.message || "Đã xảy ra lỗi khi huỷ lịch hẹn");
     } finally {
@@ -175,7 +179,7 @@ function MyAppointmentsContent() {
 
             const diffMs = appointmentDate.getTime() - new Date().getTime();
             const diffHours = diffMs / (1000 * 60 * 60);
-            const canCancel = diffHours >= 24;
+            const canCancel = diffHours > 0;
 
             return (
               <div
@@ -293,7 +297,13 @@ function MyAppointmentsContent() {
                       {canCancel && (
                         <Button
                           variant="outline"
-                          onClick={() => handleCancelAppointment(app.id)}
+                          onClick={() => {
+                            if (diffHours < 24) {
+                              setShowCancelError(true);
+                            } else {
+                              setCancelTargetId(app.id);
+                            }
+                          }}
                           disabled={cancelingId === app.id}
                           className="rounded-xl text-[10px] font-bold px-3 py-1.5 w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                         >
@@ -312,7 +322,13 @@ function MyAppointmentsContent() {
                       {canCancel && (
                         <Button
                           variant="outline"
-                          onClick={() => handleCancelAppointment(app.id)}
+                          onClick={() => {
+                            if (diffHours < 24) {
+                              setShowCancelError(true);
+                            } else {
+                              setCancelTargetId(app.id);
+                            }
+                          }}
                           disabled={cancelingId === app.id}
                           className="rounded-xl text-[10px] font-bold px-3 py-1.5 w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                         >
@@ -331,7 +347,13 @@ function MyAppointmentsContent() {
                       {canCancel && (
                         <Button
                           variant="outline"
-                          onClick={() => handleCancelAppointment(app.id)}
+                          onClick={() => {
+                            if (diffHours < 24) {
+                              setShowCancelError(true);
+                            } else {
+                              setCancelTargetId(app.id);
+                            }
+                          }}
                           disabled={cancelingId === app.id}
                           className="rounded-xl text-[10px] font-bold px-3 py-1.5 w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                         >
@@ -406,6 +428,21 @@ function MyAppointmentsContent() {
           onSuccess={fetchAppointments}
         />
       )}
+
+      {cancelTargetId && (
+        <CancelAppointmentModal
+          onClose={() => setCancelTargetId(null)}
+          onConfirm={handleCancelAppointment}
+          loading={cancelingId === cancelTargetId}
+        />
+      )}
+
+      <ErrorModal
+        isOpen={showCancelError}
+        onClose={() => setShowCancelError(false)}
+        title="Không thể huỷ lịch hẹn"
+        message="Theo quy định của phòng khám, bạn chỉ được phép huỷ lịch hẹn trước 24 tiếng so với giờ khám. Vui lòng liên hệ trực tiếp phòng khám nếu cần hỗ trợ khẩn cấp."
+      />
     </div>
   );
 }

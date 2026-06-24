@@ -22,9 +22,10 @@ interface ArticleFormData {
   content: string;
   thumbnail: string;
   published: boolean;
+  type: string;
 }
 
-const emptyForm: ArticleFormData = { title: "", content: "", thumbnail: "", published: false };
+const emptyForm: ArticleFormData = { title: "", content: "", thumbnail: "", published: false, type: "news" };
 
 export default function AdminArticlesPage() {
   const [articles, setArticles] = useState<AdminArticle[]>([]);
@@ -89,6 +90,7 @@ export default function AdminArticlesPage() {
       content: article.content,
       thumbnail: article.thumbnail || "",
       published: article.published,
+      type: article.type || "news",
     });
     setModalOpen(true);
   };
@@ -103,6 +105,7 @@ export default function AdminArticlesPage() {
           content: formData.content,
           thumbnail: formData.thumbnail || undefined,
           published: formData.published,
+          type: formData.type,
         };
         await adminService.updateArticle(editingArticle.id, payload);
         setActionMessage({ type: "success", text: `Đã cập nhật bài viết "${formData.title}".` });
@@ -112,6 +115,7 @@ export default function AdminArticlesPage() {
           content: formData.content,
           thumbnail: formData.thumbnail || undefined,
           published: formData.published,
+          type: formData.type,
         };
         await adminService.createArticle(payload);
         setActionMessage({ type: "success", text: `Đã tạo bài viết "${formData.title}" thành công!` });
@@ -233,7 +237,18 @@ export default function AdminArticlesPage() {
                 {filteredArticles.map((article) => (
                   <tr key={article.id} className="hover:bg-slate-900/40 transition-colors">
                     <td className="p-5 font-bold text-slate-200 max-w-[300px]">
-                      <p className="truncate" title={article.title}>{article.title}</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        {article.type === "epidemic_alert" ? (
+                          <span className="text-[9px] uppercase tracking-wide font-black px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/20">
+                            CẢNH BÁO DỊCH
+                          </span>
+                        ) : (
+                          <span className="text-[9px] uppercase tracking-wide font-black px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/20">
+                            TIN TỨC
+                          </span>
+                        )}
+                        <p className="truncate" title={article.title}>{article.title}</p>
+                      </div>
                       <p className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[250px]" title={article.content}>
                         {article.content.substring(0, 80)}...
                       </p>
@@ -341,6 +356,20 @@ export default function AdminArticlesPage() {
                   rows={8}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm resize-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Phân loại *
+                </label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm"
+                >
+                  <option value="news">Tin tức chung</option>
+                  <option value="epidemic_alert">Cảnh báo dịch bệnh</option>
+                </select>
               </div>
 
               <div>

@@ -36,7 +36,7 @@ function PaymentContent({ id }: { id: string }) {
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
-    const [timeLeft, setTimeLeft] = useState<number>(1800); // 30 mins in seconds
+    const [timeLeft, setTimeLeft] = useState<number>(300); // 5 mins in seconds
     const [isExpired, setIsExpired] = useState(false);
     const [successPaid, setSuccessPaid] = useState(false);
 
@@ -54,7 +54,7 @@ function PaymentContent({ id }: { id: string }) {
                 const createdTime = new Date(res.appointment.createdAt).getTime();
                 const now = Date.now();
                 const elapsedSeconds = Math.floor((now - createdTime) / 1000);
-                const remaining = 1800 - elapsedSeconds;
+                const remaining = 300 - elapsedSeconds;
 
                 if (res.appointment.status !== "PENDING_PAYMENT") {
                     if (res.appointment.status === "PENDING" || res.appointment.status === "CONFIRMED") {

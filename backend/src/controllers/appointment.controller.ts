@@ -297,7 +297,8 @@ export async function cancelAppointmentHandler(
 ): Promise<void> {
     try {
         const userId = req.user?.userId;
-        const { id } = req.params;
+        const id = req.params.id as string;
+        const { reason } = req.body;
 
         if (!userId) {
             throw new ApiError("Authentication required", 401);
@@ -308,7 +309,8 @@ export async function cancelAppointmentHandler(
         }
 
         const appointment = await prisma.appointment.findUnique({
-            where: { id }
+            where: { id },
+            include: { payment: true }
         });
 
         if (!appointment) {
@@ -331,14 +333,32 @@ export async function cancelAppointmentHandler(
         const diffHours = diffMs / (1000 * 60 * 60);
 
         if (diffHours < 24) {
-            throw new ApiError("Chỉ được huỷ lịch khám trước 24 tiếng so với giờ hẹn", 400);
+            throw new ApiError("Bạn chỉ được huỷ lịch hẹn trước 24 tiếng khi khám", 400);
+        }
+
+        // Handle refund if payment was already PAID
+        let finalReason = reason || "Người bệnh yêu cầu huỷ";
+        
+        if (appointment.payment && appointment.payment.status === "PAID") {
+            // Update Payment status to REFUNDED
+            await prisma.payment.update({
+                where: { id: appointment.payment.id },
+                data: { status: "REFUNDED" }
+            });
+            finalReason += " (Hệ thống đang xử lý hoàn tiền về tài khoản ngân hàng gốc)";
+        } else if (appointment.payment && appointment.payment.status === "PENDING") {
+            // If it was just pending, cancel the payment record as well
+            await prisma.payment.update({
+                where: { id: appointment.payment.id },
+                data: { status: "FAILED" } // Or CANCELLED if enum existed
+            });
         }
 
         const updatedAppointment = await prisma.appointment.update({
             where: { id },
             data: {
                 status: "CANCELLED",
-                cancellationReason: "Người bệnh yêu cầu huỷ",
+                cancellationReason: finalReason,
             }
         });
 

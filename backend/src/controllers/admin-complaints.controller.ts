@@ -44,7 +44,9 @@ export async function resolveComplaintHandler(
             throw new ApiError("Complaint ID is required", 400);
         }
 
-        const complaint = await resolveComplaint(id);
+        const { adminResponse } = req.body as { adminResponse?: string };
+
+        const complaint = await resolveComplaint(id, adminResponse);
         res.json({
             message: "Complaint resolved successfully",
             data: complaint,

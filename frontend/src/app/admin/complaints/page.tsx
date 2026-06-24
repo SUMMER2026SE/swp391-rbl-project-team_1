@@ -24,6 +24,10 @@ export default function AdminComplaintsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ComplaintStatus | "ALL">("ALL");
 
+  // Modal State
+  const [resolvingComplaint, setResolvingComplaint] = useState<AdminComplaint | null>(null);
+  const [adminResponse, setAdminResponse] = useState("");
+
   const loadComplaints = useCallback(async () => {
     try {
       setLoading(true);
@@ -61,12 +65,14 @@ export default function AdminComplaintsPage() {
     return matchesSearch && matchesTab;
   });
 
-  const handleResolve = async (complaint: AdminComplaint) => {
-    if (complaint.status === "RESOLVED") return;
+  const handleResolve = async () => {
+    if (!resolvingComplaint) return;
     setSubmitting(true);
     try {
-      await adminService.resolveComplaint(complaint.id);
-      setActionMessage({ type: "success", text: "Đã đánh dấu phản hồi là đã xử lý." });
+      await adminService.resolveComplaint(resolvingComplaint.id, adminResponse);
+      setActionMessage({ type: "success", text: "Đã đánh dấu phản hồi là đã xử lý và phản hồi tới người dùng." });
+      setResolvingComplaint(null);
+      setAdminResponse("");
       loadComplaints();
     } catch (err: unknown) {
       const errorMsg =
@@ -161,11 +167,23 @@ export default function AdminComplaintsPage() {
                   <tr key={complaint.id} className="hover:bg-slate-900/40 transition-colors">
                     <td className="p-5 font-bold text-slate-200">{complaint.user.email}</td>
                     <td className="p-5 text-slate-400 max-w-[350px]">
-                      <p className="leading-relaxed" title={complaint.message}>
+                      <p className="leading-relaxed text-slate-300 font-medium" title={complaint.message}>
                         {complaint.message.length > 150
                           ? `${complaint.message.substring(0, 150)}...`
                           : complaint.message}
                       </p>
+                      {complaint.appointment && (
+                        <div className="mt-2 text-[10px] text-teal-400 border border-teal-500/20 bg-teal-500/10 p-2 rounded">
+                          <p><span className="font-bold">Lịch khám:</span> {complaint.appointment.id}</p>
+                          <p><span className="font-bold">Ngày:</span> {new Date(complaint.appointment.appointmentDate).toLocaleString("vi-VN")}</p>
+                        </div>
+                      )}
+                      {complaint.adminResponse && (
+                        <div className="mt-2 text-[10px] bg-slate-900 border border-slate-700 p-2 rounded">
+                          <span className="font-bold text-slate-500">Phản hồi của Admin: </span>
+                          <span className="text-slate-300">{complaint.adminResponse}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="p-5">
                       {complaint.status === "RESOLVED" ? (
@@ -188,11 +206,14 @@ export default function AdminComplaintsPage() {
                     <td className="p-5 text-right">
                       {complaint.status === "PENDING" ? (
                         <button
-                          onClick={() => handleResolve(complaint)}
+                          onClick={() => {
+                            setResolvingComplaint(complaint);
+                            setAdminResponse("");
+                          }}
                           disabled={submitting}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
                         >
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Đã xử lý
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Xử lý
                         </button>
                       ) : (
                         <span className="text-[10px] text-slate-600 italic">Đã hoàn tất</span>
@@ -205,6 +226,49 @@ export default function AdminComplaintsPage() {
           )}
         </div>
       </div>
+
+      {/* Resolve Modal */}
+      {resolvingComplaint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-4">Xử lý khiếu nại</h3>
+            <div className="mb-4 text-sm text-slate-300">
+              <p><span className="font-bold text-slate-400">Người gửi:</span> {resolvingComplaint.user.email}</p>
+              <p className="mt-2"><span className="font-bold text-slate-400">Nội dung:</span></p>
+              <p className="bg-slate-900 p-3 rounded mt-1">{resolvingComplaint.message}</p>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                Phản hồi từ Admin (Không bắt buộc)
+              </label>
+              <textarea
+                value={adminResponse}
+                onChange={(e) => setAdminResponse(e.target.value)}
+                placeholder="Nhập nội dung phản hồi gửi tới người dùng..."
+                rows={4}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setResolvingComplaint(null)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 bg-slate-900 border border-slate-800 hover:text-slate-100 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleResolve}
+                disabled={submitting}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-50"
+              >
+                {submitting ? "Đang xử lý..." : "Xác nhận xử lý"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

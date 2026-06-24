@@ -32,7 +32,7 @@ export default function AboutPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/doctors">
-              <Button variant="teal" size="lg" className="w-full sm:w-auto text-lg px-8 py-4 rounded-full shadow-lg shadow-teal-500/30">
+              <Button variant="teal" className="w-full sm:w-auto text-lg px-8 py-4 h-auto shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40 rounded-2xl flex items-center justify-center font-bold">
                 Đặt lịch khám ngay
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

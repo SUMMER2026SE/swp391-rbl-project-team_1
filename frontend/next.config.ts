@@ -7,6 +7,19 @@ const nextConfig: NextConfig = {
   // Hide technology footprint from attackers
   poweredByHeader: false,
 
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "placehold.co",
+      }
+    ],
+  },
+
   // Inject secure browser headers globally
   async headers() {
     return [

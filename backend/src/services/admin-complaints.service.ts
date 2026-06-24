@@ -12,6 +12,13 @@ type ComplaintWithUser = Prisma.ComplaintGetPayload<{
                 role: true;
             };
         };
+        appointment: {
+            select: {
+                id: true;
+                appointmentDate: true;
+                status: true;
+            };
+        };
     };
 }>;
 
@@ -29,6 +36,13 @@ export async function getAllComplaints(): Promise<ComplaintWithUser[]> {
                     role: true,
                 },
             },
+            appointment: {
+                select: {
+                    id: true,
+                    appointmentDate: true,
+                    status: true,
+                },
+            },
         },
         orderBy: { createdAt: "desc" },
     });
@@ -37,7 +51,7 @@ export async function getAllComplaints(): Promise<ComplaintWithUser[]> {
 /**
  * Marks a complaint as resolved.
  */
-export async function resolveComplaint(id: string): Promise<ComplaintWithUser> {
+export async function resolveComplaint(id: string, adminResponse?: string): Promise<ComplaintWithUser> {
     const complaint = await prisma.complaint.findUnique({ where: { id } });
 
     if (!complaint) {
@@ -50,7 +64,10 @@ export async function resolveComplaint(id: string): Promise<ComplaintWithUser> {
 
     return prisma.complaint.update({
         where: { id },
-        data: { status: ComplaintStatus.RESOLVED },
+        data: { 
+            status: ComplaintStatus.RESOLVED,
+            ...(adminResponse !== undefined && { adminResponse })
+        },
         include: {
             user: {
                 select: {
@@ -58,6 +75,13 @@ export async function resolveComplaint(id: string): Promise<ComplaintWithUser> {
                     email: true,
                     fullName: true,
                     role: true,
+                },
+            },
+            appointment: {
+                select: {
+                    id: true,
+                    appointmentDate: true,
+                    status: true,
                 },
             },
         },

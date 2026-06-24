@@ -41,6 +41,7 @@ export default function Navbar() {
     { name: "Trang Chủ", href: "/" },
     { name: "Giới Thiệu", href: "/about" },
     { name: "Danh Sách Bác Sĩ", href: "/doctors" },
+    { name: "Gói Khám", href: "/packages" },
     { name: "Kiểm Tra Sức Khỏe", href: "/health-tests" },
     { name: "Tin Tức", href: "/news" },
   ];

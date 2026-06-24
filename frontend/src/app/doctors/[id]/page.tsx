@@ -454,44 +454,12 @@ export default function DoctorDetailPage({ params }: PageProps) {
             </div>
           ) : (
             <form onSubmit={handleBookAppointment} className="space-y-6">
-              {/* Step 1: Pick Package */}
-              {packages.length > 0 && (
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-slate-800">
-                    Bước 1: Chọn gói khám bệnh
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {packages.map((pkg) => (
-                      <div
-                        key={pkg.id}
-                        onClick={() => setSelectedPackage(pkg)}
-                        className={`cursor-pointer p-4 rounded-xl border transition-all ${
-                          selectedPackage?.id === pkg.id
-                            ? "border-teal-500 bg-teal-50 shadow-sm"
-                            : "border-slate-200 bg-white hover:border-teal-300"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="flex items-center gap-2">
-                            <Package className={`h-5 w-5 ${selectedPackage?.id === pkg.id ? "text-teal-600" : "text-slate-400"}`} />
-                            <h4 className="font-bold text-sm text-slate-800">{pkg.name}</h4>
-                          </div>
-                          {selectedPackage?.id === pkg.id && <CheckCircle2 className="h-5 w-5 text-teal-600 shrink-0" />}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2 line-clamp-2">{pkg.description}</p>
-                        <div className="mt-3 text-sm font-semibold text-teal-700">
-                          {pkg.price.toLocaleString("vi-VN")} VND <span className="text-xs text-slate-400 font-normal">/ {pkg.estimatedDuration} phút</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* Step 2: Pick Date */}
+
+              {/* Step 1: Pick Date */}
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-slate-800">
-                  Bước {packages.length > 0 ? "2" : "1"}: Chọn ngày khám bệnh
+                  Bước 1: Chọn ngày khám bệnh
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
                   {next7Days.map((day) => (
@@ -514,11 +482,11 @@ export default function DoctorDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              {/* Step 3: Pick Time slot */}
+              {/* Step 2: Pick Time slot */}
               {selectedDate && (
                 <div className="space-y-3 pt-2">
                   <label className="block text-sm font-medium text-slate-800">
-                    Bước {packages.length > 0 ? "3" : "2"}: Chọn khung giờ khám rảnh
+                    Bước 2: Chọn khung giờ khám rảnh
                   </label>
                   {availableTimeSlots.length === 0 ? (
                     <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-800">
@@ -559,11 +527,11 @@ export default function DoctorDetailPage({ params }: PageProps) {
                 </div>
               )}
 
-              {/* Step 4: Note Symptom */}
+              {/* Step 3: Note Symptom */}
               {selectedSlot && (
                 <div className="space-y-3 pt-2">
                   <label htmlFor="notes" className="block text-sm font-medium text-slate-800">
-                    Bước {packages.length > 0 ? "4" : "3"}: Nhập triệu chứng bệnh (tùy chọn)
+                    Bước 3: Nhập triệu chứng bệnh (tùy chọn)
                   </label>
                   <textarea
                     id="notes"

@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { Role } from "@prisma/client";
 
-import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler, getPendingPaymentsHandler } from "../controllers/admin.controller";
+import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler, getPendingPaymentsHandler, lockUserHandler } from "../controllers/admin.controller";
 import { getDoctors, moderateDoctorHandler, getPendingDoctorsHandler, approveDoctorHandler, rejectDoctorHandler, lockDoctorHandler } from "../controllers/admin-doctors.controller";
 import { getSpecialties, createSpecialtyHandler, updateSpecialtyHandler, deleteSpecialtyHandler } from "../controllers/admin-specialties.controller";
 import { getClinics, createClinicHandler, updateClinicHandler, deleteClinicHandler } from "../controllers/admin-clinics.controller";
 import { getArticles, createArticleHandler, updateArticleHandler, deleteArticleHandler } from "../controllers/admin-articles.controller";
 import { getComplaints, resolveComplaintHandler } from "../controllers/admin-complaints.controller";
-import { getStatisticsHandler } from "../controllers/admin-statistics.controller";
+import { getStatisticsHandler, getExportStatisticsHandler } from "../controllers/admin-statistics.controller";
 import { verifyToken } from "../middleware/auth.middleware";
 import { verifyAdmin } from "../middleware/authorization.middleware";
 
@@ -37,6 +37,17 @@ router.put(
     verifyToken,
     verifyAdmin,
     updateUser
+);
+
+/**
+ * PATCH /api/admin/users/:id/lock
+ * Locks/unlocks a user.
+ */
+router.patch(
+    "/admin/users/:id/lock",
+    verifyToken,
+    verifyAdmin,
+    lockUserHandler
 );
 
 /**
@@ -348,6 +359,17 @@ router.get(
     verifyToken,
     verifyAdmin,
     getStatisticsHandler
+);
+
+/**
+ * GET /api/admin/statistics/export
+ * Exports comprehensive statistics as CSV.
+ */
+router.get(
+    "/admin/statistics/export",
+    verifyToken,
+    verifyAdmin,
+    getExportStatisticsHandler
 );
 
 export default router;

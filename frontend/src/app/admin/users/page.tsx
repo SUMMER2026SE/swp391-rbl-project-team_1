@@ -10,7 +10,7 @@ import { UserRole } from "@/types/auth";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
-import { Search, UserCog, Link as LinkIcon, Trash2, ShieldAlert, Award, UserCheck } from "lucide-react";
+import { Search, UserCog, Link as LinkIcon, Trash2, ShieldAlert, Award, UserCheck, Lock, Unlock } from "lucide-react";
 
 export default function AdminUsersPage() {
   const { user: currentAdmin } = useAuth();
@@ -120,6 +120,31 @@ export default function AdminUsersPage() {
         err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message)
           : "Không thể xóa tài khoản này.";
+      setActionMessage({
+        type: "error",
+        text: errorMsg,
+      });
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
+  // Handle lock user
+  const handleLockUser = async (userId: string, isLocked: boolean) => {
+    setActionMessage(null);
+    setSubmittingAction(true);
+    try {
+      await adminService.lockUser(userId, isLocked);
+      setActionMessage({
+        type: "success",
+        text: `Đã ${isLocked ? "khóa" : "mở khóa"} tài khoản thành công!`,
+      });
+      loadData(); // reload
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "Không thể thay đổi trạng thái khóa tài khoản.";
       setActionMessage({
         type: "error",
         text: errorMsg,
@@ -243,6 +268,11 @@ export default function AdminUsersPage() {
                       <td className="p-5 font-bold text-slate-200">
                         <span className="flex items-center gap-1.5">
                           {u.email}
+                          {u.isLocked && (
+                            <span className="text-[9px] uppercase tracking-wide font-black px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/20">
+                              BỊ KHÓA
+                            </span>
+                          )}
                           {isMe && (
                             <span className="text-[9px] uppercase tracking-wide font-black px-1.5 py-0.5 rounded bg-teal-500 text-slate-950">
                               BẠN
@@ -339,16 +369,26 @@ export default function AdminUsersPage() {
                           year: "numeric",
                         })}
                       </td>
-                      <td className="p-5 text-right">
+                      <td className="p-5 text-right flex justify-end gap-2">
                         {!isMe && u.role !== "ADMIN" ? (
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            className="p-2 rounded-lg bg-slate-900 hover:bg-red-500/10 border border-slate-800 hover:border-red-500/20 text-slate-400 hover:text-red-400 transition-all shadow-sm"
-                            title="Xóa tài khoản thành viên"
-                            disabled={submittingAction}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleLockUser(u.id, !u.isLocked)}
+                              className={`p-2 rounded-lg border transition-all shadow-sm ${u.isLocked ? "bg-emerald-900/20 hover:bg-emerald-500/10 border-emerald-800/50 hover:border-emerald-500/20 text-emerald-400 hover:text-emerald-300" : "bg-slate-900 hover:bg-orange-500/10 border-slate-800 hover:border-orange-500/20 text-slate-400 hover:text-orange-400"}`}
+                              title={u.isLocked ? "Mở khóa tài khoản" : "Khóa tài khoản"}
+                              disabled={submittingAction}
+                            >
+                              {u.isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="p-2 rounded-lg bg-slate-900 hover:bg-red-500/10 border border-slate-800 hover:border-red-500/20 text-slate-400 hover:text-red-400 transition-all shadow-sm"
+                              title="Xóa tài khoản thành viên"
+                              disabled={submittingAction}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
                         ) : (
                           <span className="text-slate-600 italic text-[10px] pr-2">Bảo vệ</span>
                         )}

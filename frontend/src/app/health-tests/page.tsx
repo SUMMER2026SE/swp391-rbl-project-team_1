@@ -422,7 +422,7 @@ export default function HealthTestsPage() {
                         <p className="text-[10px] text-slate-500">Đặt khám nhanh với bác sĩ dinh dưỡng trên MedBooking.</p>
                       </div>
                     </div>
-                    <Link href={`/doctors?specialty=spec_noi_tong_quat`}>
+                    <Link href={`/doctors?specialty=noi-tong-quat`}>
                       <Button variant="teal" className="rounded-xl py-2 px-4 text-[10px] font-bold shrink-0">
                         Đặt khám dinh dưỡng ngay
                       </Button>
@@ -546,7 +546,7 @@ export default function HealthTestsPage() {
                         <p className="text-[10px] text-red-700">Đặt khám nhanh chuyên khoa Thần kinh/Tâm lý để nhận chỉ định điều trị.</p>
                       </div>
                     </div>
-                    <Link href={`/doctors?specialty=spec_than_kinh`}>
+                    <Link href={`/doctors?specialty=than-kinh`}>
                       <Button variant="danger" className="rounded-xl py-2.5 px-4 text-[10px] font-bold shrink-0 shadow-sm shadow-red-200">
                         Đặt khám thần kinh/tâm thần
                       </Button>
@@ -668,7 +668,7 @@ export default function HealthTestsPage() {
                         <p className="text-[10px] text-slate-500">Đăng ký tham vấn nhanh với Bác sĩ chuyên khoa Thần kinh trên MedBooking.</p>
                       </div>
                     </div>
-                    <Link href={`/doctors?specialty=spec_than_kinh`}>
+                    <Link href={`/doctors?specialty=than-kinh`}>
                       <Button variant="teal" className="rounded-xl py-2 px-4 text-[10px] font-bold shrink-0">
                         Hẹn gặp bác sĩ chuyên khoa
                       </Button>

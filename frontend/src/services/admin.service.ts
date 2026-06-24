@@ -42,6 +42,11 @@ export const adminService = {
     return response.data;
   },
 
+  async lockUser(id: string, isLocked: boolean): Promise<{ message: string }> {
+    const response = await api.patch<{ message: string }>(`/admin/users/${id}/lock`, { isLocked });
+    return response.data;
+  },
+
   async linkDoctorToUser(userId: string, doctorId: string): Promise<{ message: string; data: AdminUser }> {
     const response = await api.post<{ message: string; data: AdminUser }>(
       `/admin/users/${userId}/link-doctor/${doctorId}`
@@ -169,14 +174,19 @@ export const adminService = {
     return response.data;
   },
 
-  async resolveComplaint(id: string): Promise<{ message: string; data: AdminComplaint }> {
-    const response = await api.put<{ message: string; data: AdminComplaint }>(`/admin/complaints/${id}/resolve`);
+  async resolveComplaint(id: string, adminResponse?: string): Promise<{ message: string; data: AdminComplaint }> {
+    const response = await api.put<{ message: string; data: AdminComplaint }>(`/admin/complaints/${id}/resolve`, { adminResponse });
     return response.data;
   },
 
   // ─── Statistics ────────────────────────────────────────────────
   async getStatistics(): Promise<AdminStatisticsResponse> {
     const response = await api.get<AdminStatisticsResponse>("/admin/statistics");
+    return response.data;
+  },
+
+  async exportStatistics(): Promise<Blob> {
+    const response = await api.get<Blob>("/admin/statistics/export", { responseType: "blob" });
     return response.data;
   },
 };

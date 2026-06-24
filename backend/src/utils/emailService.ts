@@ -488,6 +488,91 @@ export async function sendBookingReminderEmail(
     }
 }
 
+/**
+ * Send Booking Notification to Doctor Email
+ */
+export async function sendBookingNotificationToDoctorEmail(
+    email: string,
+    details: {
+        patientName: string;
+        doctorName: string;
+        appointmentDate: Date;
+        notes?: string | null;
+        appointmentId: string;
+    }
+): Promise<void> {
+    if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
+
+    try {
+        const dateStr = details.appointmentDate.toLocaleDateString("vi-VN", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+        const timeStr = details.appointmentDate.toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+        });
+
+        const mailOptions = {
+            from: process.env.MAIL_USER,
+            to: email,
+            subject: "Bạn có lịch khám mới đã được duyệt - MedBooking",
+            html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">MedBooking</h1>
+            <p style="color: #ccfbf1; margin: 5px 0 0 0; font-size: 14px;">Thông Báo Lịch Khám Mới</p>
+          </div>
+          <div style="background: #ffffff; padding: 30px;">
+            <p style="color: #334155; font-size: 16px; font-weight: bold; margin-top: 0;">Xin chào Bác sĩ ${details.doctorName},</p>
+            <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+              Hệ thống MedBooking vừa duyệt thành công một lịch khám bệnh mới của bạn. Dưới đây là thông tin chi tiết:
+            </p>
+            
+            <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">Bệnh nhân:</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.patientName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Thời gian:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-weight: bold;">${timeStr} - ${dateStr}</td>
+                </tr>
+                ${details.notes ? `
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Triệu chứng:</td>
+                  <td style="padding: 6px 0; color: #64748b; font-style: italic;">${details.notes}</td>
+                </tr>
+                ` : ""}
+                <tr>
+                  <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Mã lịch hẹn:</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.appointmentId}</td>
+                </tr>
+              </table>
+            </div>
+
+            <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+              Vui lòng đăng nhập vào ứng dụng dành cho Bác sĩ để xem thêm thông tin bệnh án và chuẩn bị cho ca khám này.
+            </p>
+          </div>
+          <div style="background: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9; color: #94a3b8; font-size: 12px;">
+            <p style="margin: 0;">© 2026 MedBooking. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Booking notification sent to doctor email: ${email}`);
+    } catch (error) {
+        console.error("Failed to send booking notification to doctor:", error);
+    }
+}
+
 // Global variable to keep track of the last date we ran the daily reminder check (e.g. "YYYY-MM-DD")
 let lastSentReminderDate = "";
 

@@ -9,6 +9,7 @@ import {
     linkDoctorToUser as linkDoctorToUserService,
     updateAppointmentStatus,
     getPendingPayments,
+    lockUser,
 } from "../services/admin.service";
 import { updateUserRole } from "../services/user.service";
 import { ApiError } from "../utils/apiError";
@@ -115,6 +116,36 @@ export async function removeUser(
         await deleteUser(id);
         res.json({
             message: "User deleted successfully",
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * PATCH /api/admin/users/:id/lock
+ * Locks/unlocks a user. ADMIN only.
+ */
+export async function lockUserHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const id = req.params.id as string;
+        const { isLocked } = req.body as { isLocked?: boolean };
+
+        if (!id) {
+            throw new ApiError("User ID is required", 400);
+        }
+
+        if (isLocked === undefined) {
+            throw new ApiError("isLocked boolean is required", 400);
+        }
+
+        await lockUser(id, isLocked);
+        res.json({
+            message: `User ${isLocked ? "locked" : "unlocked"} successfully`,
         });
     } catch (error) {
         next(error);

@@ -198,7 +198,7 @@ export async function uploadPaymentProof(
 }
 
 export async function autoCancelExpiredAppointments(): Promise<void> {
-    const timeLimit = new Date(Date.now() - 30 * 60 * 1000); // 30 mins ago
+    const timeLimit = new Date(Date.now() - 5 * 60 * 1000); // 5 mins ago
     
     // Find all expired appointments
     const expired = await prisma.appointment.findMany({
@@ -221,7 +221,7 @@ export async function autoCancelExpiredAppointments(): Promise<void> {
             },
             data: {
                 status: "EXPIRED",
-                cancellationReason: "Hủy tự động do quá hạn 30 phút không hoàn tất chuyển khoản.",
+                cancellationReason: "Hủy tự động do quá hạn 5 phút không hoàn tất chuyển khoản.",
             },
         });
     }
@@ -233,6 +233,7 @@ export async function getAppointmentsByUser(userId: string): Promise<Appointment
         include: {
             doctor: true,
             payment: true,
+            review: true,
             medicalRecord: {
                 include: {
                     prescriptions: true,
@@ -295,6 +296,7 @@ export async function getAppointmentById(id: string): Promise<Appointment | null
             },
             doctor: true,
             payment: true,
+            review: true,
             medicalRecord: {
                 include: {
                     prescriptions: true,

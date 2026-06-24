@@ -1,7 +1,7 @@
 import { NextFunction, Response } from "express";
 
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
-import { getStatistics } from "../services/admin-statistics.service";
+import { getStatistics, exportStatisticsCsv } from "../services/admin-statistics.service";
 
 /**
  * GET /api/admin/statistics
@@ -18,6 +18,27 @@ export async function getStatisticsHandler(
             message: "Statistics retrieved successfully",
             data: statistics,
         });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/admin/statistics/export
+ * Exports comprehensive statistics as CSV.
+ */
+export async function getExportStatisticsHandler(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const csvData = await exportStatisticsCsv();
+        
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", "attachment; filename=booking_statistics.csv");
+        
+        res.send(csvData);
     } catch (error) {
         next(error);
     }

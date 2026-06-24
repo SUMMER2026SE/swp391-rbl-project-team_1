@@ -2,7 +2,7 @@ import prisma from "../prisma/client";
 import { Role, AppointmentStatus } from "@prisma/client";
 import { ApiError } from "../utils/apiError";
 import { AdminUserDto } from "../types/user.types";
-import { sendBookingStatusUpdateEmail } from "../utils/emailService";
+import { sendBookingStatusUpdateEmail, sendBookingNotificationToDoctorEmail } from "../utils/emailService";
 
 export interface AppointmentWithRelations {
     id: string;
@@ -39,6 +39,7 @@ export async function getAllUsers(): Promise<AdminUserDto[]> {
             email: true,
             role: true,
             doctorId: true,
+            isLocked: true,
             createdAt: true,
         },
         orderBy: { createdAt: "desc" },
@@ -88,6 +89,26 @@ export async function deleteUser(userId: string): Promise<void> {
     await prisma.appointment.deleteMany({ where: { userId } });
 
     await prisma.user.delete({ where: { id: userId } });
+}
+
+/**
+ * Locks or unlocks a user account.
+ */
+export async function lockUser(userId: string, isLocked: boolean): Promise<void> {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+        throw new ApiError("User not found", 404);
+    }
+
+    if (user.role === Role.ADMIN) {
+        throw new ApiError("Cannot lock admin users", 403);
+    }
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { isLocked },
+    });
 }
 
 export interface LinkDoctorResult {
@@ -177,6 +198,9 @@ export async function updateAppointmentStatus(
                     specialty: true,
                     clinic: true,
                     hospital: true,
+                    userAccount: {
+                        select: { email: true }
+                    }
                 },
             },
         },
@@ -193,6 +217,16 @@ export async function updateAppointmentStatus(
             cancellationReason,
             notes: updated.notes,
         }).catch((err) => console.error("Error sending status update email:", err));
+    }
+
+    if (updated.doctor?.userAccount?.email && status === "CONFIRMED") {
+        sendBookingNotificationToDoctorEmail(updated.doctor.userAccount.email, {
+            patientName: updated.user?.fullName || updated.user?.email || "Bệnh nhân",
+            doctorName: updated.doctor.name,
+            appointmentDate: updated.appointmentDate,
+            notes: updated.notes,
+            appointmentId: updated.id,
+        }).catch((err) => console.error("Error sending doctor notification email:", err));
     }
 
     return updated as unknown as AppointmentWithRelations;
