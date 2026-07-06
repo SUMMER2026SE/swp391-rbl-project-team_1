@@ -97,7 +97,8 @@ export default function DoctorAppointmentsPage() {
 
   const filteredAppointments = appointments.filter(app => {
     const matchStatus = filterStatus === "ALL" || app.status === filterStatus;
-    const normalizedName = removeVietnameseTones(app.user.fullName || "");
+    const patientName = app.patientProfile?.fullName || app.user?.fullName || "";
+    const normalizedName = removeVietnameseTones(patientName);
     const normalizedSearch = removeVietnameseTones(searchTerm);
     const matchName = normalizedName.includes(normalizedSearch);
     return matchStatus && matchName;
@@ -172,17 +173,19 @@ export default function DoctorAppointmentsPage() {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
-                          {app.user.avatar ? (
-                            <img src={app.user.avatar} alt={app.user.fullName} className="w-full h-full object-cover" />
+                          {app.patientProfile ? (
+                            <User className="w-6 h-6 text-slate-400 m-auto mt-2" />
+                          ) : app.user?.avatar ? (
+                            <img src={app.user.avatar} alt={app.patientProfile?.fullName || app.user?.fullName} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">
-                              {app.user.fullName?.charAt(0) || "U"}
+                              {(app.patientProfile?.fullName || app.user?.fullName)?.charAt(0) || "U"}
                             </div>
                           )}
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-800">{app.user.fullName}</p>
-                          <p className="text-xs text-slate-500">{app.user.gender} • Sinh năm {new Date(app.user.dateOfBirth).getFullYear() || "N/A"}</p>
+                          <p className="font-semibold text-slate-800">{app.patientProfile?.fullName || app.user?.fullName}</p>
+                          <p className="text-xs text-slate-500">{app.patientProfile?.gender || app.user?.gender} • Sinh năm {new Date(app.patientProfile?.dateOfBirth || app.user?.dateOfBirth || Date.now()).getFullYear() || "N/A"}</p>
                         </div>
                       </div>
                     </td>

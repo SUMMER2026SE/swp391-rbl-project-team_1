@@ -39,18 +39,24 @@ export async function validateBookingSlot(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate } = req.body as {
+        const { doctorId, appointmentDate, packageId } = req.body as {
             doctorId?: string;
             appointmentDate?: string;
+            packageId?: string;
         };
 
-        if (!doctorId || !appointmentDate) {
-            throw new ApiError("doctorId and appointmentDate are required", 400);
+        if ((!doctorId && !packageId) || !appointmentDate) {
+            throw new ApiError("Doctor ID or Package ID, and appointmentDate are required", 400);
         }
 
         const date = new Date(appointmentDate);
         if (Number.isNaN(date.getTime())) {
             throw new ApiError("Invalid appointment date", 400);
+        }
+
+        if (packageId && !doctorId) {
+            // Bypass doctor schedule validation for package booking without a doctor
+            return next();
         }
 
         const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });

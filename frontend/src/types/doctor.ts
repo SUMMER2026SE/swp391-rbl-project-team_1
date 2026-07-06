@@ -82,5 +82,5 @@ export interface DoctorDetailsResponse {
 export interface SchedulesResponse {
   message: string;
   schedules: DoctorSchedule[];
-  bookedSlots?: string[];
+  bookedCounts?: Record<string, number>;
 }

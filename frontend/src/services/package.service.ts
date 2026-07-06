@@ -8,6 +8,13 @@ export interface MedicalPackage {
   hospital: string;
   estimatedDuration: number;
   image?: string;
+  depositPercentage?: number;
+  depositAmount?: number;
+  includedServices?: string[];
+  suitableFor?: string;
+  preparationGuide?: string;
+  cancellationPolicy?: string;
+  isRecommended?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -36,6 +43,16 @@ export const packageService = {
       return response.data;
     } catch (error) {
       console.error("Error fetching package by id:", error);
+      throw error;
+    }
+  },
+
+  async getBookedSlots(id: string): Promise<{ message: string; bookedCounts: Record<string, number> }> {
+    try {
+      const response = await api.get(`/packages/${id}/booked-slots`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching package booked slots:", error);
       throw error;
     }
   }

@@ -156,6 +156,7 @@ export async function sendBookingConfirmationEmail(
         transactionCode?: string;
         paymentAt?: Date | null;
         appointmentId?: string;
+        packageName?: string | null;
     }
 ): Promise<void> {
     if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
@@ -192,8 +193,8 @@ export async function sendBookingConfirmationEmail(
             <div style="background: #f8fafc; border-left: 4px solid #14b8a6; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
                 <tr>
-                  <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">Bác sĩ:</td>
-                  <td style="padding: 6px 0; color: #0f172a;">${details.doctorName} (${details.specialtyName})</td>
+                  <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">${details.packageName ? 'Gói khám:' : 'Bác sĩ:'}</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.packageName ? details.packageName : `${details.doctorName} (${details.specialtyName})`}</td>
                 </tr>
                 <tr>
                   <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Thời gian:</td>
@@ -291,6 +292,7 @@ export async function sendBookingStatusUpdateEmail(
         status: "CONFIRMED" | "CANCELLED" | "COMPLETED" | string;
         cancellationReason?: string | null;
         notes?: string | null;
+        packageName?: string | null;
     }
 ): Promise<void> {
     if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
@@ -364,8 +366,8 @@ export async function sendBookingStatusUpdateEmail(
             <div style="background: #f8fafc; border-left: 4px solid #14b8a6; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
                 <tr>
-                  <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">Bác sĩ:</td>
-                  <td style="padding: 6px 0; color: #0f172a;">${details.doctorName} (${details.specialtyName})</td>
+                  <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">${details.packageName ? 'Gói khám:' : 'Bác sĩ:'}</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.packageName ? details.packageName : `${details.doctorName} (${details.specialtyName})`}</td>
                 </tr>
                 <tr>
                   <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Thời gian:</td>
@@ -414,6 +416,7 @@ export async function sendBookingReminderEmail(
         specialtyName: string;
         clinicName: string;
         appointmentDate: Date;
+        packageName?: string | null;
     }
 ): Promise<void> {
     if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
@@ -450,8 +453,8 @@ export async function sendBookingReminderEmail(
             <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
                 <tr>
-                  <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">Bác sĩ:</td>
-                  <td style="padding: 6px 0; color: #0f172a;">${details.doctorName} (${details.specialtyName})</td>
+                  <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">${details.packageName ? 'Gói khám:' : 'Bác sĩ:'}</td>
+                  <td style="padding: 6px 0; color: #0f172a;">${details.packageName ? details.packageName : `${details.doctorName} (${details.specialtyName})`}</td>
                 </tr>
                 <tr>
                   <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Thời gian:</td>
@@ -635,10 +638,11 @@ async function checkAndSendReminders(): Promise<void> {
                 // Send reminder email
                 await sendBookingReminderEmail(appt.user.email, {
                     patientName: appt.user.fullName || appt.user.email,
-                    doctorName: appt.doctor.name,
-                    specialtyName: appt.doctor.specialty.name,
-                    clinicName: appt.doctor.clinic?.name || appt.doctor.hospital,
+                    doctorName: appt.doctor?.name || "Hệ thống",
+                    specialtyName: appt.doctor?.specialty?.name || "",
+                    clinicName: appt.doctor?.clinic?.name || appt.doctor?.hospital || appt.medicalPackage?.hospital || "Bệnh viện",
                     appointmentDate: appt.appointmentDate,
+                    packageName: appt.medicalPackage?.name
                 });
             }
         }

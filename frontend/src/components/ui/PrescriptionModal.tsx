@@ -72,7 +72,7 @@ export default function PrescriptionModal({ appointmentId, onClose }: Prescripti
 
   const { medicalRecord } = appointment;
   const prescriptions = medicalRecord.prescriptions || [];
-  const patient = appointment.user || { fullName: "Chưa rõ", gender: "Chưa rõ", dateOfBirth: "", address: "" };
+  const patient = appointment.patientProfile || appointment.user || { fullName: "Chưa rõ", gender: "Chưa rõ", dateOfBirth: "", address: "" };
 
   const patientDob = patient.dateOfBirth
     ? new Date(patient.dateOfBirth).toLocaleDateString("vi-VN", {

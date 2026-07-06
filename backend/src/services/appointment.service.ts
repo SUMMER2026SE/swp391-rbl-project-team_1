@@ -27,7 +27,8 @@ async function saveFileLocally(appointmentId: string, fileName: string, fileBuff
 
 export interface CreateAppointmentParams {
     userId: string;
-    doctorId: string;
+    patientProfileId: string;
+    doctorId?: string;
     appointmentDate: Date;
     notes?: string;
     packageId?: string;
@@ -45,36 +46,50 @@ function generateTransactionCode(): string {
 export async function createAppointment(
     params: CreateAppointmentParams
 ): Promise<Appointment> {
-    const doctor = await prisma.doctor.findUnique({ where: { id: params.doctorId } });
+    if (params.doctorId) {
+        const doctor = await prisma.doctor.findUnique({ where: { id: params.doctorId } });
 
-    if (!doctor) {
-        throw new ApiError("Doctor not found", 404);
-    }
+        if (!doctor) {
+            throw new ApiError("Doctor not found", 404);
+        }
 
-    // prevent self-booking
-    const doctorUser = await prisma.user.findUnique({
-        where: { doctorId: params.doctorId }
-    });
-    if (doctorUser && doctorUser.id === params.userId) {
-        throw new ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
-    }
+        // prevent self-booking
+        const doctorUser = await prisma.user.findUnique({
+            where: { doctorId: params.doctorId }
+        });
+        if (doctorUser && doctorUser.id === params.userId) {
+            throw new ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
+        }
 
-    // Tiền cọc cố định là 50,000 VND
-    const amount = 50000;
+        const count = await prisma.appointment.count({
+            where: {
+                doctorId: params.doctorId,
+                appointmentDate: params.appointmentDate,
+                status: {
+                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
+                }
+            },
+        });
 
-    // prevent duplicate booking for the same doctor at the exact same datetime
-    const existing = await prisma.appointment.findFirst({
-        where: {
-            doctorId: params.doctorId,
-            appointmentDate: params.appointmentDate,
-            status: {
-                in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
-            }
-        },
-    });
+        if (count >= 20) {
+            throw new ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
+        }
+    } else if (params.packageId) {
+        const count = await prisma.appointment.count({
+            where: {
+                packageId: params.packageId,
+                appointmentDate: params.appointmentDate,
+                status: {
+                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
+                }
+            },
+        });
 
-    if (existing) {
-        throw new ApiError("Khoảng thời gian này đã được đặt. Vui lòng chọn thời gian khác.", 409);
+        if (count >= 20) {
+            throw new ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
+        }
+    } else {
+        throw new ApiError("Doctor ID or Package ID is required", 400);
     }
 
     // Generate unique transaction code
@@ -87,9 +102,18 @@ export async function createAppointment(
         attempts++;
     }
 
+    let amount = 50000;
+    if (params.packageId) {
+        const pkg = await prisma.medicalPackage.findUnique({ where: { id: params.packageId } });
+        if (pkg) {
+            amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+    }
+
     const created = await prisma.appointment.create({
         data: {
             userId: params.userId,
+            patientProfileId: params.patientProfileId,
             doctorId: params.doctorId,
             appointmentDate: params.appointmentDate,
             status: "PENDING_PAYMENT",
@@ -173,6 +197,7 @@ export async function uploadPaymentProof(
                     clinic: true,
                 },
             },
+            medicalPackage: true,
         },
     });
 
@@ -180,9 +205,9 @@ export async function uploadPaymentProof(
     if (updated.user?.email) {
         sendBookingConfirmationEmail(updated.user.email, {
             patientName: updated.user.fullName || updated.user.email,
-            doctorName: updated.doctor.name,
-            specialtyName: updated.doctor.specialty.name,
-            clinicName: updated.doctor.clinic?.name || updated.doctor.hospital,
+            doctorName: updated.doctor?.name || "Hệ thống",
+            specialtyName: updated.doctor?.specialty?.name || "",
+            clinicName: updated.doctor?.clinic?.name || updated.doctor?.hospital || updated.medicalPackage?.hospital || "Bệnh viện",
             appointmentDate: updated.appointmentDate,
             notes: updated.notes,
             status: "PENDING",
@@ -191,6 +216,7 @@ export async function uploadPaymentProof(
             paymentAt: updated.paymentAt,
             appointmentId: updated.id,
             paymentMethod: "Chuyển khoản ngân hàng",
+            packageName: updated.medicalPackage?.name
         }).catch((err) => console.error("Error sending confirmation email:", err));
     }
 
@@ -231,7 +257,13 @@ export async function getAppointmentsByUser(userId: string): Promise<Appointment
     return prisma.appointment.findMany({
         where: { userId },
         include: {
-            doctor: true,
+            doctor: {
+                include: {
+                    specialty: true,
+                }
+            },
+            patientProfile: true,
+            medicalPackage: true,
             payment: true,
             review: true,
             medicalRecord: {
@@ -267,6 +299,8 @@ export async function getAllAppointments(): Promise<Appointment[]> {
                 },
             },
             doctor: true,
+            patientProfile: true,
+            medicalPackage: true,
         },
         orderBy: {
             appointmentDate: "desc",
@@ -294,7 +328,13 @@ export async function getAppointmentById(id: string): Promise<Appointment | null
                     familyHistory: true,
                 },
             },
-            doctor: true,
+            patientProfile: true,
+            doctor: {
+                include: {
+                    specialty: true,
+                }
+            },
+            medicalPackage: true,
             payment: true,
             review: true,
             medicalRecord: {

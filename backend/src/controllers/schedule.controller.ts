@@ -72,12 +72,16 @@ export async function listSchedules(
             }
         });
 
-        const bookedSlots = activeAppointments.map(app => app.appointmentDate.toISOString());
+        const bookedCounts: Record<string, number> = {};
+        activeAppointments.forEach(app => {
+            const iso = app.appointmentDate.toISOString();
+            bookedCounts[iso] = (bookedCounts[iso] || 0) + 1;
+        });
 
         res.json({
             message: "Schedules fetched",
             schedules,
-            bookedSlots
+            bookedCounts
         });
     } catch (error) {
         next(error);

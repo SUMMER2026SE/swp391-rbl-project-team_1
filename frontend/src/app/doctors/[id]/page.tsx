@@ -13,6 +13,7 @@ import Input from "@/components/common/Input";
 import { Award, Building2, Stethoscope, Clock, CalendarDays, ClipboardCheck, ArrowLeft, CalendarRange, User, FileText, Star, Package, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { packageService, MedicalPackage } from "@/services/package.service";
+import { patientProfileService, PatientProfile } from "@/services/patient-profile.service";
 import BookingProgress from "@/components/ui/BookingProgress";
 import { useBooking } from "@/hooks/useBooking";
 
@@ -33,7 +34,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
 
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [bookedCounts, setBookedCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,10 @@ export default function DoctorDetailPage({ params }: PageProps) {
   const [notes, setNotes] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingMessage, setBookingMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Patient Profiles
+  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
 
   // Reviews States
   const [reviews, setReviews] = useState<any[]>([]);
@@ -75,8 +80,8 @@ export default function DoctorDetailPage({ params }: PageProps) {
         // Fetch schedules
         const scheduleRes = await doctorService.listSchedules(id);
         setSchedules(scheduleRes.schedules);
-        if (scheduleRes.bookedSlots) {
-          setBookedSlots(scheduleRes.bookedSlots);
+        if (scheduleRes.bookedCounts) {
+          setBookedCounts(scheduleRes.bookedCounts);
         }
       } catch (err: unknown) {
         const errorMsg =
@@ -126,12 +131,29 @@ export default function DoctorDetailPage({ params }: PageProps) {
     fetchPackages();
   }, []);
 
+  useEffect(() => {
+    async function fetchProfiles() {
+      if (isAuthenticated && user?.role === "USER") {
+        try {
+          const myProfiles = await patientProfileService.getMyProfiles();
+          setProfiles(myProfiles);
+          const primary = myProfiles.find(p => p.isPrimary);
+          if (primary) setSelectedProfileId(primary.id);
+          else if (myProfiles.length > 0) setSelectedProfileId(myProfiles[0].id);
+        } catch (err) {
+          console.error("Failed to fetch profiles:", err);
+        }
+      }
+    }
+    fetchProfiles();
+  }, [isAuthenticated, user]);
+
   // Generate next 7 days for picking
   const getNext7Days = () => {
     const days = [];
     const weekdays = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
     
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
       
@@ -203,12 +225,19 @@ export default function DoctorDetailPage({ params }: PageProps) {
     // Map slots and mark if they are booked
     const mappedSlots = hourlySlots.map((slot) => {
       const slotDateTime = new Date(`${dateString}T${slot.startTime}:00`);
-      const isBooked = bookedSlots.some(
-        (bookedIso) => new Date(bookedIso).getTime() === slotDateTime.getTime()
-      );
+      const now = new Date();
+      const isTooClose = slotDateTime.getTime() <= now.getTime() + 2 * 60 * 60 * 1000;
+      
+      const isoString = slotDateTime.toISOString();
+      const count = bookedCounts[isoString] || 0;
+      const remaining = 20 - count;
+      const isBooked = count >= 20;
+
       return {
         ...slot,
         isBooked,
+        isTooClose,
+        remaining,
       };
     });
 
@@ -245,6 +274,14 @@ export default function DoctorDetailPage({ params }: PageProps) {
       return;
     }
 
+    if (!selectedProfileId) {
+      setBookingMessage({
+        type: "error",
+        text: "Vui lòng chọn hồ sơ người đi khám.",
+      });
+      return;
+    }
+
     if (!selectedDate || !selectedSlot) {
       setBookingMessage({
         type: "error",
@@ -274,6 +311,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
         appointmentDate: appointmentDateTime.toISOString(),
         notes: notes.trim() || undefined,
         packageId: selectedPackage?.id,
+        patientProfileId: selectedProfileId,
       });
 
       setBookingMessage({
@@ -456,10 +494,48 @@ export default function DoctorDetailPage({ params }: PageProps) {
             <form onSubmit={handleBookAppointment} className="space-y-6">
 
 
+              {/* Step 0: Pick Patient Profile */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-slate-800">
+                  Bước 1: Chọn hồ sơ người đi khám
+                </label>
+                {profiles.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-orange-50 border border-orange-100 flex flex-col gap-3">
+                     <p className="text-sm text-orange-800">Bạn chưa có hồ sơ người khám nào.</p>
+                     <Link href="/profile/patients"><Button type="button" variant="outline" className="text-xs">Tạo hồ sơ mới</Button></Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                     {profiles.map(p => (
+                       <div 
+                         key={p.id}
+                         onClick={() => setSelectedProfileId(p.id)}
+                         className={`p-3 rounded-xl border cursor-pointer flex items-center gap-3 transition-colors ${
+                           selectedProfileId === p.id 
+                           ? 'border-teal-500 bg-teal-50 shadow-sm' 
+                           : 'border-slate-200 hover:border-teal-300'
+                         }`}
+                       >
+                         <User className={`w-5 h-5 ${selectedProfileId === p.id ? 'text-teal-600' : 'text-slate-400'}`} />
+                         <div className="flex-1 min-w-0">
+                           <p className="font-semibold text-sm text-slate-800 truncate">{p.fullName}</p>
+                           <p className="text-xs text-slate-500 truncate">{p.phoneNumber || 'Chưa cập nhật SĐT'}</p>
+                         </div>
+                       </div>
+                     ))}
+                  </div>
+                )}
+                {profiles.length > 0 && (
+                   <div className="mt-2 text-right">
+                     <Link href="/profile/patients" className="text-xs font-semibold text-teal-600 hover:underline">Quản lý hồ sơ khám bệnh</Link>
+                   </div>
+                )}
+              </div>
+
               {/* Step 1: Pick Date */}
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-slate-800">
-                  Bước 1: Chọn ngày khám bệnh
+                  Bước 2: Chọn ngày khám bệnh
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
                   {next7Days.map((day) => (
@@ -486,7 +562,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
               {selectedDate && (
                 <div className="space-y-3 pt-2">
                   <label className="block text-sm font-medium text-slate-800">
-                    Bước 2: Chọn khung giờ khám rảnh
+                    Bước 3: Chọn khung giờ khám rảnh
                   </label>
                   {availableTimeSlots.length === 0 ? (
                     <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-800">
@@ -496,28 +572,33 @@ export default function DoctorDetailPage({ params }: PageProps) {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       {availableTimeSlots.map((slot) => {
                         const isBooked = slot.isBooked;
+                        const isTooClose = slot.isTooClose;
+                        const isDisabled = isTooClose || slot.isBooked;
                         return (
                           <button
                             key={slot.id}
                             type="button"
-                            disabled={isBooked}
+                            disabled={isDisabled}
+                            title={isTooClose ? "Slot quá gần (cách hiện tại < 2 tiếng), vui lòng chọn giờ khác" : slot.isBooked ? "Đã hết chỗ" : undefined}
                             onClick={() => {
                               setSelectedSlot(slot);
                               setGlobalSlot(slot);
                               setBookingMessage(null);
                             }}
-                            className={`flex items-center justify-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all ${
-                              isBooked
+                            className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border text-xs transition-all ${
+                                isDisabled
                                 ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
                                 : selectedSlot?.id === slot.id
                                 ? "bg-teal-600 border-teal-600 text-white shadow-md shadow-teal-600/10"
                                 : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-400 hover:bg-white"
                             }`}
                           >
-                            <Clock className="h-3.5 w-3.5 shrink-0" />
-                            <span>
-                              {slot.startTime} - {slot.endTime}
-                              {isBooked && " (Đầy)"}
+                            <div className="flex items-center gap-1.5 font-semibold">
+                                <Clock className="h-3.5 w-3.5 shrink-0" />
+                                <span>{slot.startTime} - {slot.endTime}</span>
+                            </div>
+                            <span className="text-[10px] opacity-90">
+                                {isTooClose ? "Quá gần" : slot.isBooked ? "Hết chỗ" : `Còn ${slot.remaining} chỗ`}
                             </span>
                           </button>
                         );
@@ -531,7 +612,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
               {selectedSlot && (
                 <div className="space-y-3 pt-2">
                   <label htmlFor="notes" className="block text-sm font-medium text-slate-800">
-                    Bước 3: Nhập triệu chứng bệnh (tùy chọn)
+                    Bước 4: Nhập triệu chứng bệnh (tùy chọn)
                   </label>
                   <textarea
                     id="notes"

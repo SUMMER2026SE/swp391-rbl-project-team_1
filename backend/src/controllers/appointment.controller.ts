@@ -6,10 +6,11 @@ import { ApiError } from "../utils/apiError";
 import prisma from "../prisma/client";
 
 interface CreateAppointmentRequestBody {
-    doctorId: string;
+    doctorId?: string;
     appointmentDate: string;
     notes?: string;
     packageId?: string;
+    patientProfileId: string;
 }
 
 /**
@@ -28,10 +29,16 @@ export async function createAppointmentHandler(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate, notes, packageId } = req.body as CreateAppointmentRequestBody;
+        const { doctorId, appointmentDate, notes, packageId, patientProfileId } = req.body as CreateAppointmentRequestBody;
 
-        if (!doctorId || !appointmentDate) {
-            throw new ApiError("Doctor ID and appointment date are required", 400);
+        if (!patientProfileId) {
+            throw new ApiError("Vui lòng chọn hồ sơ người khám", 400);
+        }
+        if (!doctorId && !packageId) {
+            throw new ApiError("Doctor ID or Package ID is required", 400);
+        }
+        if (!appointmentDate) {
+            throw new ApiError("Appointment date is required", 400);
         }
 
         const date = new Date(appointmentDate);
@@ -40,17 +47,22 @@ export async function createAppointmentHandler(
             throw new ApiError("Invalid appointment date format", 400);
         }
 
-        if (date < new Date()) {
-            throw new ApiError("Appointment date must be in the future", 400);
+        const nowPlus2Hours = new Date();
+        nowPlus2Hours.setHours(nowPlus2Hours.getHours() + 2);
+
+        if (date < nowPlus2Hours) {
+            throw new ApiError("Appointment date must be at least 2 hours from now", 400);
         }
 
         const appointment = await createAppointment({
             userId,
+            patientProfileId,
             doctorId,
             appointmentDate: date,
             notes,
             packageId,
         });
+
 
         res.status(201).json({
             message: "Appointment created successfully",

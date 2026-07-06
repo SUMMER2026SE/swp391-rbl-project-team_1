@@ -72,6 +72,7 @@ export interface Appointment {
   doctor?: Doctor;
   clinic?: Clinic;
   medicalPackage?: any;
+  patientProfile?: any;
   user?: User;
   medicalRecord?: MedicalRecord | null;
   review?: Review | null;
@@ -85,6 +86,7 @@ export interface Appointment {
 }
 
 export interface CreateAppointmentRequest {
+  patientProfileId: string;
   doctorId?: string;
   clinicId?: string;
   appointmentDate: string; // ISO String

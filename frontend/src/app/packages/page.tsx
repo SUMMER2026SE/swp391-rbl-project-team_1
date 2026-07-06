@@ -193,8 +193,15 @@ export default function PackagesPage() {
 
                   {/* Card Content */}
                   <div className="p-5 flex flex-col flex-grow">
-                    <div className="inline-flex items-center self-start px-2.5 py-1 rounded-md bg-[#eaf6f7] text-[#017a86] text-[10px] font-bold mb-3 uppercase tracking-wide">
-                      {pkg.hospital}
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-[#eaf6f7] text-[#017a86] text-[10px] font-bold uppercase tracking-wide">
+                        {pkg.hospital}
+                      </div>
+                      {pkg.isRecommended && (
+                        <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wide border border-orange-200">
+                          🔥 Đề xuất
+                        </div>
+                      )}
                     </div>
                     
                     <h3 className="text-lg font-bold text-[#017a86] mb-2 leading-tight group-hover:text-teal-700 transition-colors line-clamp-2">

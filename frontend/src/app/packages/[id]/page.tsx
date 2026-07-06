@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { packageService, MedicalPackage } from "@/services/package.service";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { MapPin, ArrowRight } from "lucide-react";
+import { MapPin, ArrowRight, Clock, CheckCircle2, Info, AlertTriangle, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 
 export default function PackageDetailPage() {
@@ -57,137 +57,131 @@ export default function PackageDetailPage() {
     );
   }
 
-  // Dummy structured data for SWP391 UI mockup
-  const tableData = [
-    { stt: 1, name: "Khám Nội tổng quát", basic: true, advanced: true },
-    { stt: 2, name: "Chụp Xquang ngực thẳng", basic: false, advanced: true },
-    { stt: 3, name: "Chụp cộng hưởng từ sọ não", basic: true, advanced: true },
-    { stt: 4, name: "(T) Siêu âm Doppler các khối u trong ổ bụng", basic: false, advanced: true },
-    { stt: 5, name: "Doppler động mạch cảnh, Doppler xuyên sọ", basic: false, advanced: true },
-    { stt: 6, name: "Siêu âm Doppler tim", basic: false, advanced: true },
-    { stt: 7, name: "Tổng phân tích nước tiểu (Bằng máy tự động)", basic: false, advanced: true },
-    { stt: 8, name: "Tổng phân tích tế bào máu ngoại vi (bằng máy đếm laser)", basic: false, advanced: true },
-    { stt: 9, name: "Định lượng Glucose [Máu]", basic: true, advanced: true },
-    { stt: 10, name: "Định lượng HbA1c [Máu]", basic: false, advanced: true },
-    { stt: 11, name: "Định lượng Urê máu [Máu]", basic: false, advanced: true },
-    { stt: 12, name: "Định lượng Creatinin (Máu)", basic: true, advanced: true },
-    { stt: 13, name: "Đo hoạt độ ALT (GPT) [Máu]", basic: false, advanced: true },
-    { stt: 14, name: "Đo hoạt độ AST (GOT) [Máu]", basic: false, advanced: true },
-    { stt: 15, name: "Điện giải đồ (Na, K, Cl) [Máu]", basic: false, advanced: true },
-  ];
+  // Calculate deposit
+  const depositAmount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
 
   return (
     <div className="bg-white min-h-screen pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        
+      {/* Hero Header */}
+      <div className="bg-gradient-to-r from-teal-50 to-teal-100 py-12 border-b border-teal-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row gap-6 items-center justify-between">
+            <div className="space-y-4">
+                {pkg.isRecommended && (
+                  <span className="inline-block bg-orange-100 text-orange-700 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wide border border-orange-200">
+                    🔥 Gói Khám Nổi Bật
+                  </span>
+                )}
+                <h1 className="text-3xl md:text-4xl font-extrabold text-[#017a86] leading-tight">
+                    {pkg.name}
+                </h1>
+                <div className="flex items-center gap-4 text-slate-600 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-5 h-5 text-teal-600" />
+                    {pkg.hospital}
+                  </div>
+                  <div className="flex items-center gap-1.5 border-l border-slate-300 pl-4">
+                    <Clock className="w-5 h-5 text-teal-600" />
+                    ~{pkg.estimatedDuration} phút
+                  </div>
+                </div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-xl border border-teal-50 min-w-[300px]">
+                <p className="text-sm text-slate-500 mb-1">Giá niêm yết</p>
+                <p className="text-3xl font-bold text-teal-700 mb-4">{pkg.price.toLocaleString('vi-VN')} đ</p>
+                
+                <div className="bg-teal-50 rounded-xl p-3 mb-5 border border-teal-100">
+                    <div className="flex justify-between items-center text-sm mb-1">
+                        <span className="text-teal-800 font-medium">Cọc giữ chỗ ({pkg.depositPercentage}%):</span>
+                        <span className="font-bold text-teal-900">{depositAmount.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                </div>
+
+                <Link 
+                    href={`/packages/${pkg.id}/booking`} 
+                    className="w-full bg-[#017a86] hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
+                >
+                    <span>Đặt Lịch Ngay</span>
+                    <ArrowRight className="w-5 h-5" />
+                </Link>
+            </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           
-          {/* Main Content (Left Column) */}
-          <div className="lg:col-span-2 space-y-10">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-12">
             
-            {/* Giới thiệu */}
-            <section>
-              <h2 className="text-2xl font-bold text-[#017a86] mb-4">Giới thiệu</h2>
-              <p className="text-slate-600 leading-relaxed">
-                {pkg.description || "Gói khám sức khỏe toàn diện được thiết kế giúp phát hiện sớm các nguy cơ bệnh lý, giúp bạn chủ động phòng ngừa và sống khỏe mạnh hơn."}
+            <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <h2 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <Info className="w-6 h-6 text-teal-600" />
+                Giới thiệu chung
+              </h2>
+              <p className="text-slate-600 leading-relaxed whitespace-pre-line">
+                {pkg.description || "Chưa có thông tin mô tả."}
               </p>
+              
+              {pkg.suitableFor && (
+                  <div className="mt-4 p-4 bg-teal-50/50 rounded-xl border border-teal-100">
+                      <span className="font-bold text-teal-800 block mb-1">Đối tượng phù hợp:</span>
+                      <p className="text-teal-700 text-sm">{pkg.suitableFor}</p>
+                  </div>
+              )}
             </section>
 
-            {/* Gói khám bao gồm */}
             <section>
-              <h2 className="text-2xl font-bold text-[#017a86] mb-6">Gói khám bao gồm</h2>
-              <div className="space-y-6 text-slate-700">
-                <div>
-                  <h3 className="font-semibold mb-2">1.Khám lâm sàng</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                    <li>Đo huyết áp, mạch, BMI</li>
-                    <li>Khám nội tổng quát</li>
+              <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <CheckCircle2 className="w-7 h-7 text-teal-500" />
+                Dịch vụ bao gồm
+              </h2>
+              {pkg.includedServices && pkg.includedServices.length > 0 ? (
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {pkg.includedServices.map((service, idx) => (
+                          <li key={idx} className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-white hover:border-teal-300 transition-colors shadow-sm">
+                              <CheckCircle2 className="w-5 h-5 text-teal-500 shrink-0 mt-0.5" />
+                              <span className="text-slate-700 font-medium">{service}</span>
+                          </li>
+                      ))}
                   </ul>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">2.Xét nghiệm</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                    <li>Công thức máu</li>
-                    <li>Đường huyết (Glucose, HbA1c)</li>
-                    <li>Mỡ máu (Cholesterol, Triglyceride, HDL, LDL)</li>
-                    <li>Men gan (AST, ALT, GGT)</li>
-                    <li>Chức năng thận (Ure, Creantinnin)</li>
-                    <li>Tổng phân tích nước tiểu</li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">3.Chẩn đoán hình ảnh</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                    <li>Chụp MRI sọ não</li>
-                    <li>Siêu âm tim</li>
-                    <li>Siêu âm ổ bụng</li>
-                    <li>Siêu âm động mạch cảnh</li>
-                    <li>X- quang phổi</li>
-                    <li>Điện tim</li>
-                  </ul>
-                </div>
-              </div>
+              ) : (
+                  <p className="text-slate-500 italic">Chi tiết dịch vụ đang được cập nhật.</p>
+              )}
             </section>
+          </div>
 
-            {/* Lợi ích từ gói khám */}
-            <section>
-              <h2 className="text-2xl font-bold text-[#017a86] mb-6">Lợi ích từ gói khám</h2>
-              <div className="overflow-x-auto border border-[#017a86] rounded-t-lg">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-[#017a86] text-white">
-                    <tr>
-                      <th colSpan={4} className="py-4 px-4 text-center font-bold text-base uppercase tracking-wide border-b border-teal-600">
-                        {pkg.name.toUpperCase()} (NAM/ NỮ)
-                      </th>
-                    </tr>
-                    <tr>
-                      <th className="py-3 px-4 text-center border-r border-teal-600 w-16">STT</th>
-                      <th className="py-3 px-4 text-center border-r border-teal-600">DANH MỤC</th>
-                      <th className="py-3 px-4 text-center border-r border-teal-600 w-24">CƠ BẢN</th>
-                      <th className="py-3 px-4 text-center w-24">NÂNG CAO</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {tableData.map((row) => (
-                      <tr key={row.stt} className="hover:bg-slate-50">
-                        <td className="py-3 px-4 text-center text-slate-600 border-r border-slate-200">{row.stt}</td>
-                        <td className="py-3 px-4 text-slate-700 font-medium border-r border-slate-200">{row.name}</td>
-                        <td className="py-3 px-4 text-center text-slate-500 border-r border-slate-200">{row.basic ? "x" : ""}</td>
-                        <td className="py-3 px-4 text-center text-slate-500">{row.advanced ? "x" : ""}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            
+            <div className="bg-amber-50 rounded-2xl p-6 border border-amber-200 shadow-sm">
+              <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                Hướng dẫn chuẩn bị
+              </h3>
+              {pkg.preparationGuide ? (
+                <div className="text-sm text-amber-800 leading-relaxed whitespace-pre-line">
+                  {pkg.preparationGuide}
+                </div>
+              ) : (
+                <p className="text-sm text-amber-700 italic">Vui lòng tuân thủ hướng dẫn chung của bác sĩ trước khi đến khám.</p>
+              )}
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 shadow-sm">
+              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-slate-500" />
+                Chính sách hoàn/hủy cọc
+              </h3>
+              {pkg.cancellationPolicy ? (
+                <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                  {pkg.cancellationPolicy}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic">Chưa có thông tin chính sách cụ thể.</p>
+              )}
+            </div>
             
           </div>
-
-          {/* Sticky Booking Card (Right Column) */}
-          <div className="lg:col-span-1 relative">
-            <div className="sticky top-28 bg-[#eaf6f7] rounded-2xl p-6 border border-[#cce8e9]">
-              <h1 className="text-2xl font-extrabold text-[#017a86] mb-6 leading-tight">
-                {pkg.name}
-              </h1>
-              
-              <div className="flex items-start gap-3 text-slate-600 mb-8">
-                <MapPin className="w-5 h-5 text-[#017a86] shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-sm font-medium">Bệnh viện:</span>
-                  <p className="font-bold text-[#017a86]">{pkg.hospital}</p>
-                </div>
-              </div>
-
-              <Link 
-                href={`/packages/${pkg.id}/booking`} 
-                className="w-full bg-[#017a86] hover:bg-teal-700 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-between transition-colors shadow-lg shadow-teal-500/20"
-              >
-                <span>Đặt lịch hẹn</span>
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </div>
-          </div>
-          
         </div>
       </div>
     </div>
