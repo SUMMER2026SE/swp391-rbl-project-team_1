@@ -44,6 +44,16 @@ export function initSocket(httpServer: any, allowedOrigins: string[]) {
             socket.to(appointmentId).emit("call-ended");
         });
 
+        // Chat functionality
+        socket.on("join-chat", ({ conversationId }) => {
+            socket.join(`chat_${conversationId}`);
+            console.log(`Socket ${socket.id} joined chat_${conversationId}`);
+        });
+
+        socket.on("send-direct-message", ({ conversationId, message }) => {
+            socket.to(`chat_${conversationId}`).emit("receive-direct-message", message);
+        });
+
         socket.on("disconnecting", () => {
             // Find all rooms this socket is in
             const rooms = Array.from(socket.rooms);

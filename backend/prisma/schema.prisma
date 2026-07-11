@@ -76,6 +76,8 @@ model User {
   reviews      Review[]
   articles     Article[]     @relation("ArticleAuthor")
   patientProfiles PatientProfile[]
+  conversations Conversation[]
+  messagesSent  Message[]
 }
 
 model OTP {
@@ -126,6 +128,7 @@ model Doctor {
   medicalRecords  MedicalRecord[]
   certificates    DoctorCertificate[]
   reviews         Review[]
+  conversations   Conversation[]
 }
 
 model Clinic {
@@ -332,3 +335,26 @@ model PatientProfile {
   medicalRecords  MedicalRecord[]
 }
 
+model Conversation {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  doctorId  String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  messages  Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, doctorId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  content        String
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+}

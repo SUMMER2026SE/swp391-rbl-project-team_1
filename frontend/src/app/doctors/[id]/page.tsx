@@ -10,7 +10,11 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
-import { Award, Building2, Stethoscope, Clock, CalendarDays, ClipboardCheck, ArrowLeft, CalendarRange, User, FileText, Star, Package, CheckCircle2 } from "lucide-react";
+import { 
+  CalendarDays, MapPin, Building2, Clock, Info, CheckCircle2, Award, 
+  Stethoscope, CreditCard, Wallet, Plus, Trash2, ArrowRight, X, ChevronRight, FileText,
+  MessageCircle, CalendarRange, User, Star, Package
+} from "lucide-react";
 import Link from "next/link";
 import { packageService, MedicalPackage } from "@/services/package.service";
 import { patientProfileService, PatientProfile } from "@/services/patient-profile.service";
@@ -393,9 +397,15 @@ export default function DoctorDetailPage({ params }: PageProps) {
 
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-950">{doctor.name}</h1>
-                <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-100/50 rounded-lg px-2.5 py-1 mt-2.5">
-                  <Stethoscope className="h-3.5 w-3.5" />
-                  <span>{doctor.specialty?.name}</span>
+                <div className="flex flex-col items-center gap-2 mt-2.5">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-100/50 rounded-lg px-2.5 py-1">
+                    <Stethoscope className="h-3.5 w-3.5" />
+                    <span>{doctor.specialty?.name}</span>
+                  </div>
+                  <Link href={`/messages?doctorId=${doctor.id}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg px-4 py-2 transition-colors">
+                    <MessageCircle className="h-4 w-4" />
+                    <span>Nhắn tin tư vấn</span>
+                  </Link>
                 </div>
               </div>
             </div>

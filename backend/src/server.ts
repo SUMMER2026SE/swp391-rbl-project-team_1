@@ -17,6 +17,7 @@ import reviewRoutes from "./routes/review.routes";
 import paymentRoutes from "./routes/payment.routes";
 import packageRoutes from "./routes/package.routes";
 import patientProfileRoutes from "./routes/patient-profile.routes";
+import messageRoutes from "./routes/message.routes";
 import { initReminderScheduler } from "./utils/emailService";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
@@ -53,6 +54,7 @@ app.use("/api", reviewRoutes);
 app.use("/api", paymentRoutes);
 app.use("/api", packageRoutes);
 app.use("/api/patient-profiles", patientProfileRoutes);
+app.use("/api/messages", messageRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
 app.get("/api/profile", verifyToken, getProfile);
 
