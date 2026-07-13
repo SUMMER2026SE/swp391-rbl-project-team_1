@@ -8,8 +8,12 @@ const admin_clinics_controller_1 = require("../controllers/admin-clinics.control
 const admin_articles_controller_1 = require("../controllers/admin-articles.controller");
 const admin_complaints_controller_1 = require("../controllers/admin-complaints.controller");
 const admin_statistics_controller_1 = require("../controllers/admin-statistics.controller");
+const admin_audit_logs_controller_1 = require("../controllers/admin-audit-logs.controller");
+const admin_notifications_controller_1 = require("../controllers/admin-notifications.controller");
+const doctor_certificate_controller_1 = require("../controllers/doctor-certificate.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const authorization_middleware_1 = require("../middleware/authorization.middleware");
+const auditLog_middleware_1 = require("../middleware/auditLog.middleware");
 const router = (0, express_1.Router)();
 // ─── All routes require ADMIN role ───────────────────────────────────────────
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -22,12 +26,22 @@ router.get("/admin/users", auth_middleware_1.verifyToken, authorization_middlewa
  * PUT /api/admin/users/:id
  * Updates a user's role.
  */
-router.put("/admin/users/:id", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_controller_1.updateUser);
+router.put("/admin/users/:id", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, (0, auditLog_middleware_1.logAdminAction)({ action: "UPDATE_USER_ROLE", targetType: "USER", getTargetId: (req) => req.params.id }), admin_controller_1.updateUser);
+/**
+ * PATCH /api/admin/users/:id/lock
+ * Locks/unlocks a user.
+ */
+router.patch("/admin/users/:id/lock", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, (0, auditLog_middleware_1.logAdminAction)({
+    action: "LOCK_USER", // We use LOCK_USER for both, controller handles it, but ideally we could differentiate based on req.body.isLocked
+    targetType: "USER",
+    getTargetId: (req) => req.params.id,
+    getDetail: (req) => ({ isLocked: req.body.isLocked })
+}), admin_controller_1.lockUserHandler);
 /**
  * DELETE /api/admin/users/:id
  * Deletes a user and their appointments. Cannot delete admins.
  */
-router.delete("/admin/users/:id", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_controller_1.removeUser);
+router.delete("/admin/users/:id", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, (0, auditLog_middleware_1.logAdminAction)({ action: "DELETE_USER", targetType: "USER", getTargetId: (req) => req.params.id }), admin_controller_1.removeUser);
 /**
  * POST /api/admin/users/:userId/link-doctor/:doctorId
  * Links a User account (with DOCTOR role) to a Doctor record.
@@ -39,6 +53,11 @@ router.post("/admin/users/:userId/link-doctor/:doctorId", auth_middleware_1.veri
  * Returns all appointments with user and doctor details.
  */
 router.get("/admin/appointments", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_controller_1.getAppointments);
+/**
+ * GET /api/admin/appointments/pending-approval
+ * Returns all appointments with status PENDING and a paymentProof upload.
+ */
+router.get("/admin/appointments/pending-approval", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_controller_1.getPendingPaymentsHandler);
 /**
  * PUT /api/admin/appointments/:id/status
  * Updates an appointment's status.
@@ -160,4 +179,38 @@ router.put("/admin/complaints/:id/resolve", auth_middleware_1.verifyToken, autho
  * Returns comprehensive admin dashboard statistics.
  */
 router.get("/admin/statistics", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_statistics_controller_1.getStatisticsHandler);
+/**
+ * GET /api/admin/statistics/export
+ * Exports comprehensive statistics as CSV.
+ */
+router.get("/admin/statistics/export", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_statistics_controller_1.getExportStatisticsHandler);
+// ─── Audit Logs ──────────────────────────────────────────────────────────────
+/**
+ * GET /api/admin/audit-logs
+ * Returns audit logs.
+ */
+router.get("/admin/audit-logs", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_audit_logs_controller_1.getAuditLogs);
+// ─── Notifications ───────────────────────────────────────────────────────────
+/**
+ * GET /api/admin/notifications
+ * Returns admin notifications.
+ */
+router.get("/admin/notifications", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_notifications_controller_1.getAdminNotifications);
+/**
+ * PUT /api/admin/notifications/:id/read
+ * Marks a notification as read.
+ */
+router.put("/admin/notifications/:id/read", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_notifications_controller_1.markNotificationRead);
+// ─── Certificate Verification ───────────────────────────────────────────────────
+/**
+ * GET /api/admin/certificates/pending
+ * Admin: Get all certificates pending review
+ */
+router.get("/admin/certificates/pending", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, (req, res) => doctor_certificate_controller_1.doctorCertificateController.getPendingCertificates(req, res));
+/**
+ * PUT /api/admin/certificates/:id/verify
+ * Admin: Verify or reject a specific certificate
+ * Body: { action: 'VERIFY' | 'REJECT', reason?: string }
+ */
+router.put("/admin/certificates/:id/verify", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, (0, auditLog_middleware_1.logAdminAction)({ action: "VERIFY_CERTIFICATE", targetType: "CERTIFICATE", getTargetId: (req) => req.params.id }), (req, res) => doctor_certificate_controller_1.doctorCertificateController.verifyCertificate(req, res));
 exports.default = router;

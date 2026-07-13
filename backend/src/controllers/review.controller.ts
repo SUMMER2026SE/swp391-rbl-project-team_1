@@ -65,7 +65,7 @@ export async function createReview(
             data: {
                 appointmentId,
                 userId,
-                doctorId: appointment.doctorId,
+                doctorId: appointment.doctorId as string,
                 rating: ratingNum,
                 comment: comment ? comment.trim() : null,
             },

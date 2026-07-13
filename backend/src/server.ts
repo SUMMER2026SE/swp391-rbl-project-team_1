@@ -18,6 +18,9 @@ import paymentRoutes from "./routes/payment.routes";
 import packageRoutes from "./routes/package.routes";
 import patientProfileRoutes from "./routes/patient-profile.routes";
 import messageRoutes from "./routes/message.routes";
+import medicineRoutes from "./routes/medicine.routes";
+import medicalRecordRoutes from "./routes/medical-record.routes";
+import videoCallRoutes from "./routes/video-call.routes";
 import { initReminderScheduler } from "./utils/emailService";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
@@ -40,7 +43,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use("/public", express.static(path.join(__dirname, "../public")));
 
 app.use("/api/users", userRoutes);
@@ -56,6 +59,9 @@ app.use("/api", packageRoutes);
 app.use("/api/patient-profiles", patientProfileRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
+app.use("/api/medicines", medicineRoutes);
+app.use("/api/medical-records", medicalRecordRoutes);
+app.use("/api/video-calls", videoCallRoutes);
 app.get("/api/profile", verifyToken, getProfile);
 
 

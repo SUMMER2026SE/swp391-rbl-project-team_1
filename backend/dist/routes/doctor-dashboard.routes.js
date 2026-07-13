@@ -15,6 +15,9 @@ const router = (0, express_1.Router)();
 router.use(auth_middleware_1.verifyToken, authorization_middleware_1.verifyDoctor);
 // Dashboard
 router.get("/dashboard/stats", doctor_dashboard_controller_1.getDashboardStats);
+router.get("/dashboard/charts", doctor_dashboard_controller_1.getDashboardCharts);
+router.get("/statistics", doctor_dashboard_controller_1.getDoctorStatistics);
+router.get("/reviews", doctor_dashboard_controller_1.getDoctorReviews);
 // Profile & Metadata
 router.get("/profile", doctor_dashboard_controller_1.getDoctorProfile);
 router.put("/profile", doctor_dashboard_controller_1.updateDoctorProfile);
@@ -26,6 +29,7 @@ router.put("/schedules/:id", doctor_dashboard_controller_1.updateDoctorSchedule)
 router.delete("/schedules/:id", doctor_dashboard_controller_1.deleteDoctorSchedule);
 // Appointments
 router.get("/appointments", doctor_dashboard_controller_1.getDoctorAppointments);
+router.put("/appointments/bulk-status", doctor_dashboard_controller_1.updateBulkAppointmentStatus);
 router.put("/appointments/:id/status", doctor_dashboard_controller_1.updateAppointmentStatus);
 // Patients & Medical Records
 router.get("/patients", doctor_dashboard_controller_1.getDoctorPatients);

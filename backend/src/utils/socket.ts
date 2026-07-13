@@ -1,7 +1,15 @@
 import { Server, Socket } from "socket.io";
 
+// Global io instance - used by services to emit events
+let io: Server;
+
+export function getIO(): Server {
+    if (!io) throw new Error("Socket.io not initialized");
+    return io;
+}
+
 export function initSocket(httpServer: any, allowedOrigins: string[]) {
-    const io = new Server(httpServer, {
+    io = new Server(httpServer, {
         cors: {
             origin: allowedOrigins,
             methods: ["GET", "POST"],
@@ -12,12 +20,27 @@ export function initSocket(httpServer: any, allowedOrigins: string[]) {
     io.on("connection", (socket: Socket) => {
         console.log(`Socket connected: ${socket.id}`);
 
-        // Join room for a specific appointment
+        // --- Payment notification rooms ---
+        socket.on("join_user_room", ({ userId }: { userId: string }) => {
+            socket.join(`user_${userId}`);
+            console.log(`Socket ${socket.id} joined user_${userId}`);
+        });
+
+        socket.on("join_doctor_room", ({ doctorId }: { doctorId: string }) => {
+            socket.join(`doctor_${doctorId}`);
+            console.log(`Socket ${socket.id} joined doctor_${doctorId}`);
+        });
+
+        socket.on("join_admin_room", () => {
+            socket.join("admin");
+            console.log(`Socket ${socket.id} joined admin room`);
+        });
+
+        // --- Video Call / Appointment rooms ---
         socket.on("join-room", ({ appointmentId, role, name, avatar }) => {
             socket.join(appointmentId);
             console.log(`User ${name} (${role}) joined room ${appointmentId}`);
 
-            // Broadcast to other users in room that a user has connected
             socket.to(appointmentId).emit("user-connected", {
                 socketId: socket.id,
                 role,
@@ -54,8 +77,20 @@ export function initSocket(httpServer: any, allowedOrigins: string[]) {
             socket.to(`chat_${conversationId}`).emit("receive-direct-message", message);
         });
 
+        // --- Video Call Invite Flow ---
+        socket.on("video_call_invite", (data) => {
+            socket.to(`chat_${data.conversationId}`).emit("video_call_invite", data);
+        });
+
+        socket.on("video_call_accepted", (data) => {
+            socket.to(`chat_${data.conversationId}`).emit("video_call_accepted", data);
+        });
+
+        socket.on("video_call_declined", (data) => {
+            socket.to(`chat_${data.conversationId}`).emit("video_call_declined", data);
+        });
+
         socket.on("disconnecting", () => {
-            // Find all rooms this socket is in
             const rooms = Array.from(socket.rooms);
             rooms.forEach((room) => {
                 if (room !== socket.id) {

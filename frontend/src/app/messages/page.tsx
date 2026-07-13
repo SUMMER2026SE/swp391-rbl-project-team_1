@@ -5,10 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 import api from "@/services/api";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { Send, User, MessageCircle, Clock } from "lucide-react";
+import { Send, User, MessageCircle, Clock, Video } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { toast } from "react-hot-toast";
 
 interface Conversation {
     id: string;
@@ -27,7 +28,7 @@ interface Message {
 }
 
 export default function MessagesPage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const initialDoctorId = searchParams.get("doctorId");
@@ -41,6 +42,7 @@ export default function MessagesPage() {
     
     const socketRef = useRef<Socket | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const inviteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch conversations
     useEffect(() => {
@@ -114,10 +116,66 @@ export default function MessagesPage() {
             });
         });
 
+        // --- Video Call Events ---
+        socket.on("video_call_invite", (data: { conversationId: string, doctorId: string, doctorName: string }) => {
+            toast.custom((t) => (
+                <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-2xl pointer-events-auto flex flex-col ring-1 ring-black ring-opacity-5 overflow-hidden p-4 gap-3`}>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center shrink-0">
+                            <Video className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-slate-900">Cuộc gọi video</p>
+                            <p className="text-sm text-slate-500">Bác sĩ <strong className="text-slate-700">{data.doctorName}</strong> đang mời bạn vào phòng tư vấn trực tuyến</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                socketRef.current?.emit("video_call_accepted", { conversationId: data.conversationId, doctorId: data.doctorId });
+                                router.push(`/consult/video/${data.conversationId}`);
+                            }}
+                            className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-xl text-sm transition-colors"
+                        >
+                            Chấp nhận
+                        </button>
+                        <button 
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                socketRef.current?.emit("video_call_declined", { conversationId: data.conversationId, doctorId: data.doctorId });
+                            }}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-xl text-sm transition-colors"
+                        >
+                            Từ chối
+                        </button>
+                    </div>
+                </div>
+            ), { duration: 30000 }); // 30 seconds
+        });
+
+        socket.on("video_call_accepted", (data: { conversationId: string }) => {
+            if (inviteTimeoutRef.current) {
+                clearTimeout(inviteTimeoutRef.current);
+                inviteTimeoutRef.current = null;
+            }
+            toast.success("Bệnh nhân đã chấp nhận cuộc gọi!");
+            router.push(`/consult/video/${data.conversationId}`);
+        });
+
+        socket.on("video_call_declined", () => {
+            if (inviteTimeoutRef.current) {
+                clearTimeout(inviteTimeoutRef.current);
+                inviteTimeoutRef.current = null;
+            }
+            toast.error("Bệnh nhân đã từ chối cuộc gọi.");
+        });
+
         return () => {
             socket.disconnect();
+            if (inviteTimeoutRef.current) clearTimeout(inviteTimeoutRef.current);
         };
-    }, [user]);
+    }, [user, router]);
 
     // Fetch messages when active conversation changes
     useEffect(() => {
@@ -178,7 +236,7 @@ export default function MessagesPage() {
     };
 
     if (authLoading || loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><LoadingSpinner className="text-teal-600" /></div>;
-    if (error) return <div className="p-4"><Alert variant="error" message={error} /></div>;
+    if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
 
     const isDoctor = user?.role === "DOCTOR";
 
@@ -201,7 +259,7 @@ export default function MessagesPage() {
                         ) : (
                             conversations.map((conv) => {
                                 const target = isDoctor ? conv.user : conv.doctor;
-                                const targetName = isDoctor ? target?.fullName : target?.name;
+                                const targetName = isDoctor ? (target as { fullName?: string })?.fullName : (target as { name?: string })?.name;
                                 const lastMsg = conv.messages?.[0];
                                 const isActive = activeConversation?.id === conv.id;
 
@@ -256,7 +314,6 @@ export default function MessagesPage() {
                 <div className="flex-1 bg-white flex flex-col relative">
                     {activeConversation ? (
                         <>
-                            {/* Chat Header */}
                             <div className="h-16 px-6 border-b border-slate-100 flex items-center gap-4 bg-white/80 backdrop-blur z-10 shrink-0">
                                 {isDoctor ? (
                                     <>
@@ -287,6 +344,32 @@ export default function MessagesPage() {
                                         </div>
                                     </>
                                 )}
+                                {/* Nút Video Call ZegoCloud (Chỉ hiển thị với bác sĩ) */}
+                                {isDoctor && (
+                                    <button
+                                        onClick={() => {
+                                            if (!activeConversation) return;
+                                            toast.success("Đang gọi cho bệnh nhân, vui lòng chờ...", { duration: 3000 });
+                                            
+                                            socketRef.current?.emit("video_call_invite", { 
+                                                conversationId: activeConversation.id, 
+                                                doctorId: user?.doctorId || user?.id, 
+                                                doctorName: user?.fullName 
+                                            });
+                                            
+                                            // Set 30s timeout
+                                            if (inviteTimeoutRef.current) clearTimeout(inviteTimeoutRef.current);
+                                            inviteTimeoutRef.current = setTimeout(() => {
+                                                toast.error("Bệnh nhân không phản hồi.");
+                                            }, 30000);
+                                        }}
+                                        title="Gọi Video"
+                                        className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 transition-colors px-3 py-2 rounded-xl shadow-sm"
+                                    >
+                                        <Video className="w-4 h-4" />
+                                        Gọi video
+                                    </button>
+                                )}
                             </div>
 
                             {/* Chat Messages */}
@@ -300,7 +383,7 @@ export default function MessagesPage() {
                                     </div>
                                 ) : (
                                     messages.map((msg, idx) => {
-                                        const isMe = msg.senderId === user.id;
+                                        const isMe = msg.senderId === user!.id;
                                         // Simple time grouping logic could go here
                                         return (
                                             <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>

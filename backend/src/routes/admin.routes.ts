@@ -8,8 +8,12 @@ import { getClinics, createClinicHandler, updateClinicHandler, deleteClinicHandl
 import { getArticles, createArticleHandler, updateArticleHandler, deleteArticleHandler } from "../controllers/admin-articles.controller";
 import { getComplaints, resolveComplaintHandler } from "../controllers/admin-complaints.controller";
 import { getStatisticsHandler, getExportStatisticsHandler } from "../controllers/admin-statistics.controller";
+import { getAuditLogs } from "../controllers/admin-audit-logs.controller";
+import { getAdminNotifications, markNotificationRead } from "../controllers/admin-notifications.controller";
+import { doctorCertificateController } from "../controllers/doctor-certificate.controller";
 import { verifyToken } from "../middleware/auth.middleware";
 import { verifyAdmin } from "../middleware/authorization.middleware";
+import { logAdminAction } from "../middleware/auditLog.middleware";
 
 const router = Router();
 
@@ -36,6 +40,7 @@ router.put(
     "/admin/users/:id",
     verifyToken,
     verifyAdmin,
+    logAdminAction({ action: "UPDATE_USER_ROLE", targetType: "USER", getTargetId: (req) => req.params.id as string }),
     updateUser
 );
 
@@ -47,6 +52,12 @@ router.patch(
     "/admin/users/:id/lock",
     verifyToken,
     verifyAdmin,
+    logAdminAction({
+      action: "LOCK_USER", // We use LOCK_USER for both, controller handles it, but ideally we could differentiate based on req.body.isLocked
+      targetType: "USER",
+      getTargetId: (req) => req.params.id as string,
+      getDetail: (req) => ({ isLocked: req.body.isLocked } as any)
+    }),
     lockUserHandler
 );
 
@@ -58,6 +69,7 @@ router.delete(
     "/admin/users/:id",
     verifyToken,
     verifyAdmin,
+    logAdminAction({ action: "DELETE_USER", targetType: "USER", getTargetId: (req) => req.params.id as string }),
     removeUser
 );
 
@@ -370,6 +382,69 @@ router.get(
     verifyToken,
     verifyAdmin,
     getExportStatisticsHandler
+);
+
+// ─── Audit Logs ──────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/audit-logs
+ * Returns audit logs.
+ */
+router.get(
+    "/admin/audit-logs",
+    verifyToken,
+    verifyAdmin,
+    getAuditLogs
+);
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/notifications
+ * Returns admin notifications.
+ */
+router.get(
+    "/admin/notifications",
+    verifyToken,
+    verifyAdmin,
+    getAdminNotifications
+);
+
+/**
+ * PUT /api/admin/notifications/:id/read
+ * Marks a notification as read.
+ */
+router.put(
+    "/admin/notifications/:id/read",
+    verifyToken,
+    verifyAdmin,
+    markNotificationRead
+);
+
+// ─── Certificate Verification ───────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/certificates/pending
+ * Admin: Get all certificates pending review
+ */
+router.get(
+    "/admin/certificates/pending",
+    verifyToken,
+    verifyAdmin,
+    (req, res) => doctorCertificateController.getPendingCertificates(req, res)
+);
+
+/**
+ * PUT /api/admin/certificates/:id/verify
+ * Admin: Verify or reject a specific certificate
+ * Body: { action: 'VERIFY' | 'REJECT', reason?: string }
+ */
+router.put(
+    "/admin/certificates/:id/verify",
+    verifyToken,
+    verifyAdmin,
+    logAdminAction({ action: "VERIFY_CERTIFICATE", targetType: "CERTIFICATE", getTargetId: (req) => req.params.id as string }),
+    (req, res) => doctorCertificateController.verifyCertificate(req, res)
 );
 
 export default router;

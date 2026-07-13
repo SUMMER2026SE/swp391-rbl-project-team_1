@@ -5,36 +5,51 @@ import { useAuth } from "@/hooks/useAuth";
 import api from "@/services/api";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { CalendarCheck, Users, Clock, XCircle, TrendingUp } from "lucide-react";
+import { CalendarCheck, Users, Clock, CheckCircle2, Star, DollarSign, User } from "lucide-react";
 import Link from "next/link";
-
-interface DoctorAppointment {
-  id: string;
-  appointmentDate: string;
-  status: string;
-  user?: { email: string; name?: string };
-}
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line,
+  PieChart, Pie, Cell
+} from 'recharts';
 
 interface DashboardStats {
   totalAppointmentsToday: number;
   pendingAppointments: number;
+  completedAppointmentsThisMonth: number;
   completedAppointments: number;
   cancelledAppointments: number;
   totalPatients: number;
-  recentAppointments?: DoctorAppointment[];
+  averageRating: number;
+  monthlyRevenue: number;
 }
+
+interface DashboardCharts {
+  barChart: any[];
+  lineChart: any[];
+  donutChart: any[];
+  upcomingAppointments: any[];
+  latestReviews: any[];
+}
+
+const COLORS = ['#14b8a6', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#64748b'];
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [charts, setCharts] = useState<DashboardCharts | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get("/doctor/dashboard/stats");
-        setStats(res.data);
+        const [statsRes, chartsRes] = await Promise.all([
+          api.get("/doctor/dashboard/stats"),
+          api.get("/doctor/dashboard/charts")
+        ]);
+        setStats(statsRes.data);
+        setCharts(chartsRes.data);
       } catch (err: any) {
         setError("Không thể tải dữ liệu thống kê. Vui lòng thử lại sau.");
       } finally {
@@ -43,134 +58,212 @@ export default function DoctorDashboard() {
     };
 
     if (user?.role === "DOCTOR") {
-      fetchStats();
+      fetchData();
     }
   }, [user]);
 
-  if (loading) return <div className="flex justify-center p-12"><LoadingSpinner className="w-8 h-8 text-teal-600" /></div>;
+  if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50"><LoadingSpinner className="w-10 h-10 text-teal-600" /></div>;
   if (error) return <Alert type="error" message={error} />;
+
+  const formatVND = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  };
 
   const statCards = [
     { title: "Lịch hẹn hôm nay", value: stats?.totalAppointmentsToday || 0, icon: <CalendarCheck className="w-8 h-8 text-blue-500" />, bg: "bg-blue-50", href: "/doctor/appointments" },
     { title: "Chờ xác nhận", value: stats?.pendingAppointments || 0, icon: <Clock className="w-8 h-8 text-yellow-500" />, bg: "bg-yellow-50", href: "/doctor/appointments" },
+    { title: "Hoàn thành tháng này", value: stats?.completedAppointmentsThisMonth || 0, icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, bg: "bg-green-50", href: "/doctor/appointments" },
     { title: "Tổng bệnh nhân", value: stats?.totalPatients || 0, icon: <Users className="w-8 h-8 text-teal-500" />, bg: "bg-teal-50", href: "/doctor/patients" },
-    { title: "Đã hoàn thành", value: stats?.completedAppointments || 0, icon: <TrendingUp className="w-8 h-8 text-green-500" />, bg: "bg-green-50", href: "/doctor/appointments" },
-    { title: "Đã hủy", value: stats?.cancelledAppointments || 0, icon: <XCircle className="w-8 h-8 text-red-500" />, bg: "bg-red-50", href: "/doctor/appointments" },
+    { title: "Đánh giá TB", value: `${stats?.averageRating || 0} ★`, icon: <Star className="w-8 h-8 text-orange-500" />, bg: "bg-orange-50", href: "/doctor/reviews" },
+    { title: "Doanh thu tháng này", value: formatVND(stats?.monthlyRevenue || 0), icon: <DollarSign className="w-8 h-8 text-purple-500" />, bg: "bg-purple-50", href: "/doctor/payments" },
   ];
 
-  const totalAppointments = (stats?.pendingAppointments || 0) + (stats?.completedAppointments || 0) + (stats?.cancelledAppointments || 0);
-  const getPercentage = (value: number) => {
-    if (totalAppointments === 0) return 0;
-    return Math.round((value / totalAppointments) * 100);
-  };
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Tổng quan</h2>
-        <p className="text-slate-500">Theo dõi hoạt động phòng khám của bạn hôm nay.</p>
+        <p className="text-slate-500">Phân tích hiệu suất và hoạt động phòng khám của bạn.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Row 1: KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statCards.map((card, idx) => (
-          <Link href={card.href} key={idx} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer">
-            <div className={`p-3 rounded-xl ${card.bg}`}>
-              {card.icon}
+          <Link href={card.href} key={idx} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md hover:border-teal-100 transition-all cursor-pointer group">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`p-3 rounded-xl ${card.bg} group-hover:scale-110 transition-transform`}>
+                {card.icon}
+              </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">{card.title}</p>
-              <h3 className="text-2xl font-bold text-slate-800">{card.value}</h3>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{card.title}</p>
+              <h3 className={`text-xl font-bold ${idx === 5 ? 'text-purple-700 text-lg' : 'text-slate-800'}`}>{card.value}</h3>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Placeholders for charts or upcoming appointments */}
+      {/* Row 2: Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="h-5 w-5 text-teal-500" />
-            <h3 className="font-bold text-slate-800 text-base">Phân tích Lịch hẹn</h3>
-          </div>
-
-          <div className="space-y-6 mt-4">
-            {/* Pending Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm font-semibold">
-                <span className="text-slate-600">Chờ xác nhận</span>
-                <span className="text-yellow-600 font-bold">{stats?.pendingAppointments || 0} ({getPercentage(stats?.pendingAppointments || 0)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${getPercentage(stats?.pendingAppointments || 0)}%` }}
-                  className="h-full bg-yellow-400 rounded-full transition-all duration-500"
-                />
-              </div>
-            </div>
-
-            {/* Completed Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm font-semibold">
-                <span className="text-slate-600">Đã hoàn thành</span>
-                <span className="text-green-600 font-bold">{stats?.completedAppointments || 0} ({getPercentage(stats?.completedAppointments || 0)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${getPercentage(stats?.completedAppointments || 0)}%` }}
-                  className="h-full bg-green-500 rounded-full transition-all duration-500"
-                />
-              </div>
-            </div>
-
-            {/* Cancelled Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm font-semibold">
-                <span className="text-slate-600">Đã hủy</span>
-                <span className="text-red-600 font-bold">{stats?.cancelledAppointments || 0} ({getPercentage(stats?.cancelledAppointments || 0)}%)</span>
-              </div>
-              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${getPercentage(stats?.cancelledAppointments || 0)}%` }}
-                  className="h-full bg-red-500 rounded-full transition-all duration-500"
-                />
-              </div>
-            </div>
+        {/* Bar Chart */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 lg:col-span-2">
+          <h3 className="font-bold text-slate-800 text-base mb-6">Số lịch hẹn theo ngày (7 ngày qua)</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={charts?.barChart || []} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                <Legend iconType="circle" wrapperStyle={{fontSize: '12px'}} />
+                <Bar dataKey="completed" name="Hoàn thành" stackId="a" fill="#10b981" radius={[0, 0, 4, 4]} />
+                <Bar dataKey="confirmed" name="Đã xác nhận" stackId="a" fill="#f59e0b" />
+                <Bar dataKey="cancelled" name="Đã hủy" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-slate-800 text-base">Lịch hẹn tiếp theo</h3>
-            <Link href="/doctor/appointments">
-              <span className="text-xs text-teal-600 hover:underline font-semibold cursor-pointer">Xem tất cả</span>
-            </Link>
-          </div>
-          <div className="space-y-4 flex-grow overflow-y-auto">
-            {!stats?.recentAppointments || stats.recentAppointments.length === 0 ? (
-              <p className="text-sm text-slate-500 italic text-center py-8">Chưa có lịch hẹn nào sắp tới.</p>
+
+        {/* Donut Chart */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <h3 className="font-bold text-slate-800 text-base mb-2">Phân bổ bệnh (ICD-10)</h3>
+          <div className="h-[300px] w-full flex flex-col justify-center items-center">
+            {charts?.donutChart && charts.donutChart.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={charts.donutChart}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {charts.donutChart.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{fontSize: '12px'}} />
+                </PieChart>
+              </ResponsiveContainer>
             ) : (
-              stats.recentAppointments.map((app) => (
-                <div key={app.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex flex-col gap-2">
-                  <div className="flex justify-between items-start">
-                    <span className="font-semibold text-slate-800 text-sm">{app.user?.name || app.user?.email || "Bệnh nhân"}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                      app.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                      app.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
-                      app.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {app.status}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {new Date(app.appointmentDate).toLocaleString('vi-VN')}
-                  </div>
-                </div>
-              ))
+              <p className="text-sm text-slate-400 italic">Chưa có dữ liệu bệnh án</p>
             )}
           </div>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         {/* Line Chart */}
+         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <h3 className="font-bold text-slate-800 text-base mb-6">Xu hướng Bệnh nhân mới (3 tháng)</h3>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={charts?.lineChart || []} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                <Line type="monotone" dataKey="patients" name="Bệnh nhân" stroke="#0ea5e9" strokeWidth={3} dot={{r: 4, fill: '#0ea5e9', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6}} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Row 3: Upcoming & Reviews */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Upcoming Appointments */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col h-[320px]">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-slate-800 text-base">Lịch hẹn tiếp theo</h3>
+              <Link href="/doctor/appointments">
+                <span className="text-xs text-teal-600 hover:underline font-semibold cursor-pointer">Xem tất cả</span>
+              </Link>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+              {!charts?.upcomingAppointments || charts.upcomingAppointments.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-sm text-slate-400 italic">Không có lịch hẹn sắp tới trong ngày.</p>
+                </div>
+              ) : (
+                charts.upcomingAppointments.map(app => (
+                  <div key={app.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3 hover:bg-slate-100 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                      {app.user?.avatar ? (
+                        <img src={app.user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-6 h-6 text-slate-400 m-auto mt-2" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm text-slate-800 line-clamp-1">{app.patientProfile?.fullName || app.user?.fullName}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{new Date(app.appointmentDate).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</p>
+                    </div>
+                    <Link href={`/video-call?appointmentId=${app.id}`}>
+                      <button className="px-3 py-1.5 bg-teal-100 text-teal-700 text-xs font-bold rounded-lg hover:bg-teal-200 transition-colors shrink-0">
+                        Phòng khám
+                      </button>
+                    </Link>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Latest Reviews */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col h-[320px]">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-slate-800 text-base">Đánh giá mới nhất</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+              {!charts?.latestReviews || charts.latestReviews.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-sm text-slate-400 italic">Chưa có đánh giá nào.</p>
+                </div>
+              ) : (
+                charts.latestReviews.map(review => (
+                  <div key={review.id} className="p-3 bg-white rounded-xl border border-slate-100 shadow-sm flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                        {review.user?.avatar ? (
+                          <img src={review.user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="w-5 h-5 text-slate-400 m-auto mt-1.5" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-xs text-slate-800">{review.user?.fullName}</p>
+                        <div className="flex text-orange-400 mt-0.5">
+                          {[1,2,3,4,5].map(star => (
+                            <Star key={star} className={`w-3 h-3 ${star <= review.rating ? 'fill-current' : 'text-slate-200'}`} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {review.comment && (
+                      <p className="text-xs text-slate-600 line-clamp-2 italic">"{review.comment}"</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 10px;
+        }
+      `}</style>
     </div>
   );
 }

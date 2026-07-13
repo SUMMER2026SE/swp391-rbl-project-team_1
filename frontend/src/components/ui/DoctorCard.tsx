@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { Doctor } from "@/types/doctor";
-import { Award, Building2, Stethoscope, ArrowRight, User } from "lucide-react";
+import { Award, Building2, Stethoscope, ArrowRight, User, CheckCircle2 } from "lucide-react";
 import Button from "../common/Button";
 
 interface DoctorCardProps {
@@ -34,8 +34,11 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
 
         {/* Basic Info */}
         <div className="space-y-1.5 min-w-0">
-          <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors text-base truncate">
+          <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors text-base truncate flex items-center gap-1.5">
             {doctor.name}
+            {doctor.isSystemVerified && (
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" aria-label="Bác sĩ đã xác minh" />
+            )}
           </h3>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-100/50 rounded-lg px-2 py-0.5 w-max">
             <Stethoscope className="h-3 w-3" />

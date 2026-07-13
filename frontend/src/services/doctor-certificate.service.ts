@@ -9,15 +9,21 @@ export const doctorCertificateService = {
 
   async createCertificate(data: {
     title: string;
+    type: string;
     issuer?: string;
     issuedYear?: string;
+    expiryYear?: string;
+    certificateNumber?: string;
     description?: string;
     file?: File;
   }): Promise<DoctorCertificate> {
     const formData = new FormData();
     formData.append("title", data.title);
+    formData.append("type", data.type);
     if (data.issuer) formData.append("issuer", data.issuer);
     if (data.issuedYear) formData.append("issuedYear", data.issuedYear);
+    if (data.expiryYear) formData.append("expiryYear", data.expiryYear);
+    if (data.certificateNumber) formData.append("certificateNumber", data.certificateNumber);
     if (data.description) formData.append("description", data.description);
     if (data.file) formData.append("file", data.file);
 
@@ -33,16 +39,22 @@ export const doctorCertificateService = {
     id: string,
     data: {
       title?: string;
+      type?: string;
       issuer?: string;
       issuedYear?: string;
+      expiryYear?: string;
+      certificateNumber?: string;
       description?: string;
       file?: File;
     }
   ): Promise<DoctorCertificate> {
     const formData = new FormData();
     if (data.title) formData.append("title", data.title);
+    if (data.type) formData.append("type", data.type);
     if (data.issuer) formData.append("issuer", data.issuer);
     if (data.issuedYear) formData.append("issuedYear", data.issuedYear);
+    if (data.expiryYear) formData.append("expiryYear", data.expiryYear);
+    if (data.certificateNumber) formData.append("certificateNumber", data.certificateNumber);
     if (data.description) formData.append("description", data.description);
     if (data.file) formData.append("file", data.file);
 

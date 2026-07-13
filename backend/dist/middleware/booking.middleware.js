@@ -29,13 +29,17 @@ async function validateBookingSlot(req, _res, next) {
         if (!userId) {
             throw new apiError_1.ApiError("Authentication required", 401);
         }
-        const { doctorId, appointmentDate } = req.body;
-        if (!doctorId || !appointmentDate) {
-            throw new apiError_1.ApiError("doctorId and appointmentDate are required", 400);
+        const { doctorId, appointmentDate, packageId } = req.body;
+        if ((!doctorId && !packageId) || !appointmentDate) {
+            throw new apiError_1.ApiError("Doctor ID or Package ID, and appointmentDate are required", 400);
         }
         const date = new Date(appointmentDate);
         if (Number.isNaN(date.getTime())) {
             throw new apiError_1.ApiError("Invalid appointment date", 400);
+        }
+        if (packageId && !doctorId) {
+            // Bypass doctor schedule validation for package booking without a doctor
+            return next();
         }
         const doctor = await client_1.default.doctor.findUnique({ where: { id: doctorId } });
         if (!doctor) {
@@ -59,7 +63,13 @@ async function validateBookingSlot(req, _res, next) {
         }
         // Check for duplicate appointment at same doctor + exact time
         const conflict = await client_1.default.appointment.findFirst({
-            where: { doctorId, appointmentDate: date },
+            where: {
+                doctorId,
+                appointmentDate: date,
+                status: {
+                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
+                }
+            },
         });
         if (conflict) {
             throw new apiError_1.ApiError("Khoảng thời gian này đã được đặt. Vui lòng chọn thời gian khác.", 409);

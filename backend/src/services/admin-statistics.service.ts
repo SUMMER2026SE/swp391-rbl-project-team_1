@@ -107,6 +107,7 @@ async function getAppointmentsBySpecialty(): Promise<AppointmentsBySpecialty[]> 
     const countMap = new Map<string, number>();
 
     for (const appt of appointments) {
+        if (!appt.doctor) continue;
         const specialtyName = appt.doctor.specialty.name;
         countMap.set(specialtyName, (countMap.get(specialtyName) ?? 0) + 1);
     }
@@ -212,8 +213,8 @@ export async function exportStatisticsCsv(): Promise<string> {
         appt.cancellationReason || "",
         appt.user.fullName || "",
         appt.user.email || "",
-        appt.doctor.name,
-        appt.doctor.specialty.name,
+        appt.doctor?.name || "N/A",
+        appt.doctor?.specialty.name || "N/A",
     ]);
 
     const escapeCsv = (str: string) => `"${String(str).replace(/"/g, '""')}"`;

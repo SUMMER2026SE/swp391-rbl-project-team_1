@@ -4,8 +4,10 @@ exports.getUsers = getUsers;
 exports.getAppointments = getAppointments;
 exports.updateUser = updateUser;
 exports.removeUser = removeUser;
+exports.lockUserHandler = lockUserHandler;
 exports.linkDoctorToUser = linkDoctorToUser;
 exports.updateAppointmentStatusHandler = updateAppointmentStatusHandler;
+exports.getPendingPaymentsHandler = getPendingPaymentsHandler;
 const client_1 = require("@prisma/client");
 const admin_service_1 = require("../services/admin.service");
 const user_service_1 = require("../services/user.service");
@@ -92,6 +94,29 @@ async function removeUser(req, res, next) {
     }
 }
 /**
+ * PATCH /api/admin/users/:id/lock
+ * Locks/unlocks a user. ADMIN only.
+ */
+async function lockUserHandler(req, res, next) {
+    try {
+        const id = req.params.id;
+        const { isLocked } = req.body;
+        if (!id) {
+            throw new apiError_1.ApiError("User ID is required", 400);
+        }
+        if (isLocked === undefined) {
+            throw new apiError_1.ApiError("isLocked boolean is required", 400);
+        }
+        await (0, admin_service_1.lockUser)(id, isLocked);
+        res.json({
+            message: `User ${isLocked ? "locked" : "unlocked"} successfully`,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
  * POST /api/admin/users/:userId/link-doctor/:doctorId
  * Links a User account (with DOCTOR role) to a Doctor record.
  * ADMIN only. Required for DOCTOR-role users to access /doctor/appointments.
@@ -131,6 +156,23 @@ async function updateAppointmentStatusHandler(req, res, next) {
         res.json({
             message: "Appointment status updated successfully",
             data: appointment,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/admin/appointments/pending-approval
+ * Returns all appointments with status PENDING and a paymentProof upload. ADMIN only.
+ */
+async function getPendingPaymentsHandler(_req, res, next) {
+    try {
+        const appointments = await (0, admin_service_1.getPendingPayments)();
+        res.json({
+            message: "Pending approval payments retrieved successfully",
+            count: appointments.length,
+            data: appointments,
         });
     }
     catch (error) {

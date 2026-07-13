@@ -14,14 +14,29 @@ export async function getAllDoctors(specialtySlug?: string, clinicId?: string) {
         whereClause.clinicId = clinicId;
     }
 
-    return prisma.doctor.findMany({
+    const doctors = await prisma.doctor.findMany({
         where: whereClause,
         include: {
             specialty: true,
             clinic: true,
+            certificates: true,
         },
         orderBy: { name: "asc" },
     });
+
+    // Check system verified status and appointments for all doctors
+    const doctorsWithVerification = await Promise.all(doctors.map(async (doc) => {
+        const hasVerifiedLicense = doc.certificates.some(c => c.type === 'PRACTICE_LICENSE' && c.verificationStatus === 'VERIFIED');
+        const hasCompletedAppointments = await prisma.appointment.count({
+            where: { doctorId: doc.id, status: 'COMPLETED' }
+        });
+        return {
+            ...doc,
+            isSystemVerified: doc.status === 'APPROVED' && hasVerifiedLicense && hasCompletedAppointments > 0
+        };
+    }));
+
+    return doctorsWithVerification;
 }
 
 export async function getAllSpecialties() {
@@ -35,11 +50,25 @@ export async function getAllSpecialties() {
     });
 }
 
-export async function getDoctorById(id: string): Promise<Doctor> {
+export async function getDoctorById(id: string) {
     const doctor = await prisma.doctor.findUnique({
         where: { id },
         include: {
-            certificates: true,
+            certificates: {
+                where: { verificationStatus: 'VERIFIED' }, // Only public verified certs
+                orderBy: { issuedYear: 'desc' }
+            },
+            specialty: true,
+            clinic: true,
+            doctorSchedules: true,
+            reviews: {
+                include: {
+                    user: {
+                        select: { fullName: true, avatar: true }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            }
         }
     });
 
@@ -47,7 +76,18 @@ export async function getDoctorById(id: string): Promise<Doctor> {
         throw new ApiError("Doctor not found", 404);
     }
 
-    return doctor;
+    // Determine verification status
+    // Need to fetch ALL certificates just to check PRACTICE_LICENSE if we only filtered VERIFIED above
+    // Actually, if we only fetched VERIFIED above, we just check if any is PRACTICE_LICENSE
+    const hasVerifiedLicense = doctor.certificates.some(c => c.type === 'PRACTICE_LICENSE');
+    const hasCompletedAppointments = await prisma.appointment.count({
+        where: { doctorId: doctor.id, status: 'COMPLETED' }
+    });
+
+    return {
+        ...doctor,
+        isSystemVerified: doctor.status === 'APPROVED' && hasVerifiedLicense && hasCompletedAppointments > 0
+    };
 }
 
 /**

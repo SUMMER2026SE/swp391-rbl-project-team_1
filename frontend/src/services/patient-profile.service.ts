@@ -24,17 +24,17 @@ export interface PatientProfile {
 export const patientProfileService = {
   async getMyProfiles(): Promise<PatientProfile[]> {
     const response = await api.get<{ profiles: PatientProfile[] }>("/patient-profiles");
-    return response.profiles;
+    return response.data.profiles;
   },
 
   async createProfile(data: Partial<PatientProfile>): Promise<PatientProfile> {
     const response = await api.post<{ profile: PatientProfile, message: string }>("/patient-profiles", data);
-    return response.profile;
+    return response.data.profile;
   },
 
   async updateProfile(id: string, data: Partial<PatientProfile>): Promise<PatientProfile> {
     const response = await api.put<{ profile: PatientProfile, message: string }>(`/patient-profiles/${id}`, data);
-    return response.profile;
+    return response.data.profile;
   },
 
   async deleteProfile(id: string): Promise<void> {

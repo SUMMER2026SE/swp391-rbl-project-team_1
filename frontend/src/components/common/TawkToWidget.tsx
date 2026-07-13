@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 declare global {
   interface Window {
@@ -10,7 +11,20 @@ declare global {
 }
 
 export default function TawkToWidget() {
+  const pathname = usePathname();
+
   useEffect(() => {
+    if (pathname.startsWith("/admin") || pathname.startsWith("/doctor/") || pathname === "/doctor") {
+      if (typeof window !== "undefined" && window.Tawk_API?.hide) {
+        window.Tawk_API.hide();
+      }
+      return;
+    } else {
+      if (typeof window !== "undefined" && window.Tawk_API?.show) {
+        window.Tawk_API.show();
+      }
+    }
+
     // Prevent multiple initializations
     if (typeof window !== "undefined" && window.Tawk_API) return;
 

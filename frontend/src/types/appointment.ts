@@ -86,7 +86,8 @@ export interface Appointment {
 }
 
 export interface CreateAppointmentRequest {
-  patientProfileId: string;
+  patientProfileId?: string;
+  newPatientProfile?: any;
   doctorId?: string;
   clinicId?: string;
   appointmentDate: string; // ISO String

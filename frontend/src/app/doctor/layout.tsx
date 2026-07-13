@@ -17,14 +17,26 @@ import {
   Menu,
   Activity,
   ArrowLeft,
-  Award
+  Award,
+  BarChart2,
+  CheckCircle2
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { doctorService } from "@/services/doctor.service";
 
 export default function DoctorLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSystemVerified, setIsSystemVerified] = React.useState(false);
+
+  React.useEffect(() => {
+    if (user?.doctorId) {
+      doctorService.getDoctor(user.doctorId).then(res => {
+        setIsSystemVerified(res.doctor?.isSystemVerified || false);
+      }).catch(console.error);
+    }
+  }, [user?.doctorId]);
 
   const menuItems = [
     { name: "Tổng quan", href: "/doctor/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
@@ -33,6 +45,7 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
     { name: "Lịch trực", href: "/doctor/schedules", icon: <Clock className="h-5 w-5" /> },
     { name: "Lịch khám", href: "/doctor/appointments", icon: <CalendarDays className="h-5 w-5" /> },
     { name: "Bệnh nhân", href: "/doctor/patients", icon: <Users className="h-5 w-5" /> },
+    { name: "Thống kê", href: "/doctor/statistics", icon: <BarChart2 className="h-5 w-5" /> },
     { name: "Khám trực tuyến", href: "/doctor/video-call", icon: <Video className="h-5 w-5" /> },
     { name: "Tin nhắn", href: "/doctor/chat", icon: <MessageCircle className="h-5 w-5" /> },
   ];
@@ -64,9 +77,10 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
                   user?.fullName?.charAt(0) || "D"
                 )}
               </div>
-              <div className="flex-1 overflow-hidden">
-                <h3 className="font-semibold text-slate-800 truncate" title={user?.fullName || "Bác sĩ"}>
+              <div className="flex-1 overflow-hidden text-left">
+                <h3 className="font-semibold text-slate-800 truncate flex items-center gap-1" title={user?.fullName || "Bác sĩ"}>
                   Dr. {user?.fullName?.split(" ").pop() || "Doctor"}
+                  {isSystemVerified && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />}
                 </h3>
                 <span className="text-xs font-medium text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
                   Bác sĩ

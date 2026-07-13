@@ -5,6 +5,7 @@ import path from "path";
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
 import { sendBookingConfirmationEmail } from "../utils/emailService";
+import { generateBookingCode } from "../utils/generateBookingCode";
 import { supabase } from "../config/supabase";
 
 async function saveFileLocally(appointmentId: string, fileName: string, fileBuffer: Buffer): Promise<string> {
@@ -110,6 +111,16 @@ export async function createAppointment(
         }
     }
 
+    // Generate unique booking code
+    let bookingCode = generateBookingCode();
+    let bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
+    let bcAttempts = 0;
+    while (bookingCodeConflict && bcAttempts < 10) {
+        bookingCode = generateBookingCode();
+        bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
+        bcAttempts++;
+    }
+
     const created = await prisma.appointment.create({
         data: {
             userId: params.userId,
@@ -120,6 +131,7 @@ export async function createAppointment(
             notes: params.notes,
             amount,
             transactionCode,
+            bookingCode,
             packageId: params.packageId,
         },
     });
@@ -215,6 +227,7 @@ export async function uploadPaymentProof(
             transactionCode: updated.transactionCode || undefined,
             paymentAt: updated.paymentAt,
             appointmentId: updated.id,
+            bookingCode: updated.bookingCode,
             paymentMethod: "Chuyển khoản ngân hàng",
             packageName: updated.medicalPackage?.name
         }).catch((err) => console.error("Error sending confirmation email:", err));

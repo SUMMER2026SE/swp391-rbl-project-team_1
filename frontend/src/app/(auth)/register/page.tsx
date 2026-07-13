@@ -62,9 +62,9 @@ export default function RegisterPage() {
     script.onload = () => {
       const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1055745812345-dummyclientid.apps.googleusercontent.com";
       
-      // @ts-ignore
+      // @ts-expect-error - Google OAuth global API not typed
       if (window.google && window.google.accounts) {
-        // @ts-ignore
+        // @ts-expect-error - Google OAuth global API not typed
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: handleGoogleLoginResponse,
@@ -72,7 +72,7 @@ export default function RegisterPage() {
 
         const googleBtn = document.getElementById("google-register-btn");
         if (googleBtn) {
-          // @ts-ignore
+          // @ts-expect-error - Google OAuth global API not typed
           window.google.accounts.id.renderButton(googleBtn, {
             theme: "outline",
             size: "large",

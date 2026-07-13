@@ -9,12 +9,27 @@ import { specialtyService } from "@/services/specialty.service";
 import { Specialty } from "@/types/doctor";
 import BookingSteps from "@/components/ui/BookingSteps";
 import Pagination from "@/components/common/Pagination";
+import { Star, ShieldCheck as VerifiedIcon } from "lucide-react";
+
+interface FeaturedDoctor {
+  id: string;
+  name: string;
+  avatar: string;
+  specialty: { name: string };
+  clinic: { name: string };
+  experience: number;
+  price: number;
+  avgRating: number;
+  reviewCount: number;
+}
 
 export default function HomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [featuredDoctors, setFeaturedDoctors] = useState<FeaturedDoctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [currentSpecialtyPage, setCurrentSpecialtyPage] = useState(1);
   const SPECIALTIES_PER_PAGE = 8;
 
@@ -29,7 +44,21 @@ export default function HomePage() {
         setLoading(false);
       }
     }
+    
+    async function loadFeaturedDoctors() {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/doctors/featured`);
+        const data = await response.json();
+        setFeaturedDoctors(data.doctors || []);
+      } catch (error) {
+        console.error("Failed to load featured doctors", error);
+      } finally {
+        setLoadingDoctors(false);
+      }
+    }
+
     loadSpecialties();
+    loadFeaturedDoctors();
   }, []);
 
   const getSpecialtyDescription = (slug: string) => {
@@ -217,6 +246,88 @@ export default function HomePage() {
               scrollTargetId="specialties-section"
             />
           )}
+        </div>
+      </section>
+
+      {/* Featured Doctors Section */}
+      <section className="py-20 bg-slate-50 border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-end mb-12">
+             <div className="max-w-2xl space-y-3">
+               <h2 className="text-xs uppercase font-extrabold tracking-widest text-teal-600 flex items-center gap-2">
+                  <VerifiedIcon className="w-4 h-4" /> Bác sĩ Nổi bật
+               </h2>
+               <p className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">Chuyên Gia Hàng Đầu</p>
+               <p className="text-slate-500 text-sm sm:text-base leading-relaxed">
+                 Đội ngũ bác sĩ chuyên khoa giỏi, nhiều năm kinh nghiệm, được hàng ngàn bệnh nhân đánh giá cao và tin tưởng lựa chọn.
+               </p>
+             </div>
+             <Link href="/doctors">
+                <Button variant="outline" className="hidden sm:flex shrink-0">Xem tất cả bác sĩ</Button>
+             </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loadingDoctors ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white border border-slate-100 rounded-3xl p-6 h-[250px] animate-pulse"></div>
+              ))
+            ) : featuredDoctors.length === 0 ? (
+              <div className="col-span-full text-center text-slate-400 py-10">Không có dữ liệu bác sĩ.</div>
+            ) : (
+              featuredDoctors.map(doctor => (
+                <div key={doctor.id} className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:border-teal-200 transition-all group">
+                   <div className="flex items-start gap-4 mb-6">
+                     <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 border border-slate-100 shadow-sm">
+                       {doctor.avatar ? (
+                         <img src={`${process.env.NEXT_PUBLIC_API_URL}${doctor.avatar}`} alt={doctor.name} className="w-full h-full object-cover" onError={(e: any) => { e.target.src = "https://via.placeholder.com/150"; }} />
+                       ) : (
+                         <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xl">
+                            {doctor.name.charAt(0)}
+                         </div>
+                       )}
+                       <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-0.5" title="Đã xác thực">
+                         <VerifiedIcon className="w-3 h-3" />
+                       </div>
+                     </div>
+                     <div>
+                       <h3 className="font-bold text-slate-900 text-lg group-hover:text-teal-600 transition-colors line-clamp-1">{doctor.name}</h3>
+                       <p className="text-sm font-semibold text-teal-600 mb-1">{doctor.specialty?.name}</p>
+                       <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded-md w-fit">
+                         <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400" />
+                         <span className="font-bold text-slate-700">{doctor.avgRating}</span>
+                         <span>({doctor.reviewCount} đánh giá)</span>
+                       </div>
+                     </div>
+                   </div>
+                   
+                   <div className="space-y-3 mb-6">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Kinh nghiệm:</span>
+                        <span className="font-semibold text-slate-800">{doctor.experience} năm</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Giá khám:</span>
+                        <span className="font-bold text-teal-600">
+                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(doctor.price || 0)}
+                        </span>
+                      </div>
+                   </div>
+
+                   <Link href={`/doctors/${doctor.id}`} className="block">
+                     <Button variant="primary" className="w-full justify-center group-hover:bg-teal-700 transition-colors py-2.5 rounded-xl">
+                       Đặt lịch khám
+                     </Button>
+                   </Link>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="mt-8 flex justify-center sm:hidden">
+             <Link href="/doctors">
+                <Button variant="outline">Xem tất cả bác sĩ</Button>
+             </Link>
+          </div>
         </div>
       </section>
 

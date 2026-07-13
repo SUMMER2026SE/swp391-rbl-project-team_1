@@ -13,6 +13,8 @@ export interface TimeSlot {
   startTime: string;
   endTime: string;
   isBooked?: boolean;
+  isTooClose?: boolean;
+  remaining?: number;
 }
 
 export interface Specialty {
@@ -30,12 +32,18 @@ export interface Specialty {
 export interface DoctorCertificate {
   id: string;
   doctorId: string;
+  type: 'MEDICAL_DEGREE' | 'PRACTICE_LICENSE' | 'SPECIALTY' | 'CLINIC_LICENSE' | 'ACHIEVEMENT' | 'OTHER';
   title: string;
   issuer?: string;
   issuedYear?: number;
+  expiryYear?: number;
+  certificateNumber?: string;
   description?: string;
   imageUrl?: string;
   fileUrl?: string;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  rejectionReason?: string;
+  verifiedAt?: string;
   createdAt: string;
 }
 
@@ -58,6 +66,8 @@ export interface Doctor {
   avatar: string;
   clinicId?: string;
   clinic?: Clinic;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  isSystemVerified?: boolean;
   createdAt: string;
   doctorSchedules?: DoctorSchedule[];
   certificates?: DoctorCertificate[];

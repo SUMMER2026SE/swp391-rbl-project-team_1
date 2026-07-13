@@ -34,11 +34,15 @@ class DoctorCertificateService {
             data: {
                 doctorId,
                 title: data.title,
+                type: data.type || 'OTHER',
                 issuer: data.issuer || null,
                 issuedYear: data.issuedYear || null,
+                expiryYear: data.expiryYear || null,
+                certificateNumber: data.certificateNumber || null,
                 description: data.description || null,
                 imageUrl,
                 fileUrl,
+                verificationStatus: 'PENDING',
             },
         });
         return certificate;
@@ -47,10 +51,7 @@ class DoctorCertificateService {
      * Update an existing certificate
      */
     async updateCertificate(certificateId, doctorId, data, file) {
-        // Verify ownership
-        const existing = await prisma.doctorCertificate.findUnique({
-            where: { id: certificateId },
-        });
+        const existing = await prisma.doctorCertificate.findUnique({ where: { id: certificateId } });
         if (!existing || existing.doctorId !== doctorId) {
             throw new Error("Chứng chỉ không tồn tại hoặc bạn không có quyền sửa.");
         }
@@ -60,7 +61,7 @@ class DoctorCertificateService {
             const { url, isPdf } = await this.uploadToSupabase(file, doctorId);
             if (isPdf) {
                 fileUrl = url;
-                imageUrl = null; // If changing file type, reset the other
+                imageUrl = null;
             }
             else {
                 imageUrl = url;
@@ -71,9 +72,15 @@ class DoctorCertificateService {
             where: { id: certificateId },
             data: {
                 title: data.title !== undefined ? data.title : existing.title,
+                type: data.type !== undefined ? data.type : existing.type,
                 issuer: data.issuer !== undefined ? data.issuer : existing.issuer,
                 issuedYear: data.issuedYear !== undefined ? data.issuedYear : existing.issuedYear,
+                expiryYear: data.expiryYear !== undefined ? data.expiryYear : existing.expiryYear,
+                certificateNumber: data.certificateNumber !== undefined ? data.certificateNumber : existing.certificateNumber,
                 description: data.description !== undefined ? data.description : existing.description,
+                verificationStatus: data.verificationStatus !== undefined ? data.verificationStatus : existing.verificationStatus,
+                rejectionReason: data.rejectionReason !== undefined ? data.rejectionReason : existing.rejectionReason,
+                verifiedAt: data.verifiedAt !== undefined ? data.verifiedAt : existing.verifiedAt,
                 imageUrl,
                 fileUrl,
             },

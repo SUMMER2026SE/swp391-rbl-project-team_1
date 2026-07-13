@@ -32,6 +32,7 @@ function PaymentContent({ id }: { id: string }) {
     const router = useRouter();
     const [appointment, setAppointment] = useState<Appointment | null>(null);
     const [bankDetails, setBankDetails] = useState<BankDetails | null>(null);
+    const [payosLink, setPayosLink] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [file, setFile] = useState<File | null>(null);
@@ -51,6 +52,16 @@ function PaymentContent({ id }: { id: string }) {
                     setBankDetails(res.bankDetails);
                 }
                 
+                // Also create PayOS link to get the exact virtual account info
+                if (res.appointment.status === "PENDING_PAYMENT") {
+                    try {
+                        const payosData = await appointmentService.createPayOSPaymentUrl(id);
+                        setPayosLink(payosData);
+                    } catch (payosErr) {
+                        console.error("Failed to create PayOS link", payosErr);
+                    }
+                }
+
                 // Calculate initial countdown time
                 const createdTime = new Date(res.appointment.createdAt).getTime();
                 const now = Date.now();
@@ -97,6 +108,25 @@ function PaymentContent({ id }: { id: string }) {
 
         return () => clearInterval(interval);
     }, [loading, isExpired, successPaid, timeLeft]);
+
+    // 3. Polling appointment status for automated webhook
+    useEffect(() => {
+        if (loading || isExpired || successPaid) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const res = await appointmentService.getAppointmentById(id);
+                if (res.appointment.status === "CONFIRMED" || res.appointment.status === "PENDING") {
+                    setSuccessPaid(true);
+                    clearInterval(pollInterval);
+                }
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }, 3000);
+
+        return () => clearInterval(pollInterval);
+    }, [loading, isExpired, successPaid, id]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -194,13 +224,17 @@ function PaymentContent({ id }: { id: string }) {
         );
     }
 
-    // Generate VietQR Url
-    const transferContent = `MEDBOOKING-${appointment?.transactionCode}`;
-    const amountVal = appointment?.amount || 2000;
-    const qrUrl = bankDetails
-        ? `https://img.vietqr.io/image/${bankDetails.bankName}-${bankDetails.bankAccount}-compact2.png?amount=${amountVal}&addInfo=${encodeURIComponent(
+    // Use PayOS data if available
+    const displayBankName = payosLink ? payosLink.bin : bankDetails?.bankName;
+    const displayBankAccount = payosLink ? payosLink.accountNumber : bankDetails?.bankAccount;
+    const displayBankOwner = payosLink ? payosLink.accountName : bankDetails?.bankOwner;
+    const transferContent = payosLink ? payosLink.description : `MEDBOOKING-${appointment?.transactionCode}`;
+    const amountVal = payosLink ? payosLink.amount : (appointment?.amount || 2000);
+
+    const qrUrl = displayBankName
+        ? `https://img.vietqr.io/image/${displayBankName}-${displayBankAccount}-compact2.png?amount=${amountVal}&addInfo=${encodeURIComponent(
               transferContent
-          )}&accountName=${encodeURIComponent(bankDetails.bankOwner)}`
+          )}&accountName=${encodeURIComponent(displayBankOwner || "")}`
         : "";
 
     return (
@@ -235,16 +269,16 @@ function PaymentContent({ id }: { id: string }) {
 
                     {/* Bank Transfer Details */}
                     <div className="md:col-span-7 space-y-3.5 text-xs text-slate-700">
-                        {bankDetails && (
+                        {displayBankName && (
                             <>
                                 {/* Bank Name */}
                                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
                                     <div>
                                         <p className="text-slate-500 text-[10px] uppercase font-bold">Ngân hàng</p>
-                                        <p className="font-bold text-slate-900 text-sm mt-0.5">{bankDetails.bankName}</p>
+                                        <p className="font-bold text-slate-900 text-sm mt-0.5">{displayBankName}</p>
                                     </div>
                                     <button
-                                        onClick={() => handleCopy(bankDetails.bankName, "bankName")}
+                                        onClick={() => handleCopy(displayBankName, "bankName")}
                                         className="text-slate-400 hover:text-teal-600 p-1.5 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-100 shadow-sm"
                                     >
                                         {copiedField === "bankName" ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
@@ -255,10 +289,10 @@ function PaymentContent({ id }: { id: string }) {
                                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
                                     <div>
                                         <p className="text-slate-500 text-[10px] uppercase font-bold">Số tài khoản</p>
-                                        <p className="font-bold text-slate-900 text-sm mt-0.5 tracking-wider">{bankDetails.bankAccount}</p>
+                                        <p className="font-bold text-slate-900 text-sm mt-0.5 tracking-wider">{displayBankAccount}</p>
                                     </div>
                                     <button
-                                        onClick={() => handleCopy(bankDetails.bankAccount, "bankAccount")}
+                                        onClick={() => handleCopy(displayBankAccount, "bankAccount")}
                                         className="text-slate-400 hover:text-teal-600 p-1.5 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-100 shadow-sm"
                                     >
                                         {copiedField === "bankAccount" ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
@@ -269,10 +303,10 @@ function PaymentContent({ id }: { id: string }) {
                                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
                                     <div>
                                         <p className="text-slate-500 text-[10px] uppercase font-bold">Chủ tài khoản</p>
-                                        <p className="font-bold text-slate-900 text-sm mt-0.5 uppercase">{bankDetails.bankOwner}</p>
+                                        <p className="font-bold text-slate-900 text-sm mt-0.5 uppercase">{displayBankOwner}</p>
                                     </div>
                                     <button
-                                        onClick={() => handleCopy(bankDetails.bankOwner, "bankOwner")}
+                                        onClick={() => handleCopy(displayBankOwner, "bankOwner")}
                                         className="text-slate-400 hover:text-teal-600 p-1.5 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-100 shadow-sm"
                                     >
                                         {copiedField === "bankOwner" ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
@@ -347,51 +381,17 @@ function PaymentContent({ id }: { id: string }) {
                     </div>
                 )}
 
-                {/* Upload Section */}
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 space-y-5">
-                    <h3 className="font-bold text-slate-800 text-sm">Xác nhận đã chuyển khoản</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                        Vui lòng chụp ảnh biên lai xác nhận giao dịch thành công từ ứng dụng ngân hàng của bạn và đăng tải tại đây để gửi Admin xác nhận.
-                    </p>
-
-                    {/* Drag and Drop Box */}
-                    <div className="relative border-2 border-dashed border-slate-200 hover:border-teal-500/50 hover:bg-teal-50/10 rounded-2xl p-5 text-center cursor-pointer transition-all">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                        />
-                        {previewUrl ? (
-                            <div className="space-y-2 flex flex-col items-center">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={previewUrl} alt="Receipt preview" className="max-h-36 object-contain rounded-xl shadow-sm border border-slate-100" />
-                                <p className="text-[10px] text-teal-600 font-semibold truncate max-w-xs">{file?.name}</p>
-                                <span className="text-[9px] text-slate-400 underline">Thay đổi ảnh khác</span>
-                            </div>
-                        ) : (
-                            <div className="space-y-3.5 py-4 flex flex-col items-center">
-                                <div className="p-3 bg-teal-50/50 text-teal-600 rounded-full border border-teal-100/30">
-                                    <Upload className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-800">Chọn hoặc Kéo biên lai vào đây</p>
-                                    <p className="text-[9px] text-slate-400 mt-1">Hỗ trợ các định dạng: JPG, PNG, WEBP</p>
-                                </div>
-                            </div>
-                        )}
+                {/* Auto Confirm Section */}
+                <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 space-y-5 flex flex-col items-center text-center">
+                    <div className="h-14 w-14 bg-teal-50 border border-teal-100 text-teal-600 rounded-full flex items-center justify-center">
+                        <LoadingSpinner className="h-6 w-6" />
                     </div>
-
-                    {/* Send Button */}
-                    <Button
-                        variant="teal"
-                        onClick={handleUploadProof}
-                        disabled={!file || uploading}
-                        className="w-full rounded-xl py-3 font-semibold flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/10 hover:scale-[1.02] transition-all disabled:scale-100 disabled:opacity-50"
-                    >
-                        {uploading ? <LoadingSpinner className="h-4 w-4" /> : null}
-                        <span>Tôi đã chuyển khoản</span>
-                    </Button>
+                    <div className="space-y-1.5">
+                        <h3 className="font-bold text-slate-800 text-sm">Hệ thống đang chờ nhận tiền...</h3>
+                        <p className="text-xs text-slate-500 leading-relaxed max-w-[240px] mx-auto">
+                            Khi bạn chuyển khoản thành công với đúng nội dung <strong className="text-teal-600">{transferContent}</strong>, hệ thống sẽ tự động xác nhận lịch khám trong vài giây. Bạn không cần làm gì thêm.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

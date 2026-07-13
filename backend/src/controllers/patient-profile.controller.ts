@@ -96,7 +96,7 @@ export async function updatePatientProfile(
 ): Promise<void> {
     try {
         const userId = req.user?.userId;
-        const profileId = req.params.id;
+        const profileId = req.params.id as string;
         if (!userId) throw new ApiError("Unauthorized", 401);
 
         const profile = await prisma.patientProfile.findUnique({ where: { id: profileId } });
@@ -155,7 +155,7 @@ export async function deletePatientProfile(
 ): Promise<void> {
     try {
         const userId = req.user?.userId;
-        const profileId = req.params.id;
+        const profileId = req.params.id as string;
         if (!userId) throw new ApiError("Unauthorized", 401);
 
         const profile = await prisma.patientProfile.findUnique({ where: { id: profileId } });

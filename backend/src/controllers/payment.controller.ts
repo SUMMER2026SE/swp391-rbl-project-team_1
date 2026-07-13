@@ -6,6 +6,9 @@ import {
     processPaymentSuccess,
     processPaymentFailed,
     processMockPayment,
+    createPayOSPaymentLink,
+    getPaymentStatusByOrderCode,
+    processPayOSWebhook
 } from "../services/payment.service";
 import { ApiError } from "../utils/apiError";
 import prisma from "../prisma/client";
@@ -215,5 +218,80 @@ export async function mockPayHandler(
         });
     } catch (error) {
         next(error);
+    }
+}
+
+/**
+ * POST /api/payment/payos
+ * Creates a PayOS payment link
+ */
+export async function createPayOSPaymentUrlHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        const { appointmentId } = req.body;
+        
+        if (!userId) {
+            throw new ApiError("Yêu cầu đăng nhập", 401);
+        }
+
+        if (!appointmentId) {
+            throw new ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
+        }
+
+        const result = await createPayOSPaymentLink(appointmentId);
+
+        res.status(200).json({
+            message: "Tạo link thanh toán PayOS thành công",
+            ...result
+        });
+    } catch (error) {
+        console.error("PayOS Create Error:", error);
+        next(error);
+    }
+}
+
+/**
+ * GET /api/payment/status/:orderCode
+ * Polling payment status
+ */
+export async function getPaymentStatusHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const orderCode = Number(req.params.orderCode);
+        if (!orderCode) {
+            throw new ApiError("Mã đơn hàng không hợp lệ", 400);
+        }
+
+        const result = await getPaymentStatusByOrderCode(orderCode);
+        res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/payment/payos-webhook
+ * PayOS Webhook Handler
+ */
+export async function payosWebhookHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const result = await processPayOSWebhook(req.body);
+        // PayOS requires webhook endpoints to always return 200 OK
+        res.status(200).json(result);
+    } catch (error) {
+        console.error("PayOS Webhook Error:", error);
+        // Still return 200 so PayOS stops retrying if it's our internal logic error
+        res.status(200).json({ error: "Internal processing error" });
     }
 }

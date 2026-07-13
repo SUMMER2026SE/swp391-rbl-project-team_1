@@ -9,6 +9,7 @@ exports.getDoctor = getDoctor;
 exports.getDoctorAppointmentsController = getDoctorAppointmentsController;
 exports.updateDoctorAvatar = updateDoctorAvatar;
 exports.batchUpdateAvatars = batchUpdateAvatars;
+exports.getFeaturedDoctors = getFeaturedDoctors;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const doctor_service_1 = require("../services/doctor.service");
@@ -23,8 +24,8 @@ const DOCTORS_DIR = path_1.default.join(process.cwd(), "public", "doctors");
  */
 async function listDoctors(req, res, next) {
     try {
-        const { specialty } = req.query;
-        const doctors = await (0, doctor_service_1.getAllDoctors)(specialty);
+        const { specialty, clinicId } = req.query;
+        const doctors = await (0, doctor_service_1.getAllDoctors)(specialty, clinicId);
         res.json({
             message: "Doctors fetched successfully",
             count: doctors.length,
@@ -202,6 +203,79 @@ async function batchUpdateAvatars(req, res, next) {
             updatedCount,
             results,
         });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/doctors/featured
+ * Public: Get featured doctors (rating >= 4.5, most appointments this month, approved status)
+ */
+async function getFeaturedDoctors(req, res, next) {
+    try {
+        const today = new Date();
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        // Fetch approved doctors with reviews and appointments this month
+        const doctors = await prisma.doctor.findMany({
+            where: { status: 'APPROVED' },
+            include: {
+                specialty: { select: { name: true, slug: true } },
+                clinic: { select: { name: true } },
+                reviews: { select: { rating: true } },
+                appointments: {
+                    where: { appointmentDate: { gte: startOfMonth } },
+                    select: { id: true }
+                }
+            }
+        });
+        const mappedDoctors = doctors.map(doctor => {
+            const avgRating = doctor.reviews.length > 0
+                ? doctor.reviews.reduce((sum, r) => sum + r.rating, 0) / doctor.reviews.length
+                : 0;
+            return {
+                ...doctor,
+                avgRating: Number(avgRating.toFixed(1)),
+                reviewCount: doctor.reviews.length,
+                appointmentsThisMonthCount: doctor.appointments.length,
+            };
+        });
+        // Filter: avgRating >= 4.5, then sort by appointments count (descending)
+        const featured = mappedDoctors
+            .filter(d => d.avgRating >= 4.5)
+            .sort((a, b) => b.appointmentsThisMonthCount - a.appointmentsThisMonthCount)
+            .slice(0, 6)
+            .map(d => ({
+            id: d.id,
+            name: d.name,
+            avatar: d.avatar,
+            specialty: d.specialty,
+            clinic: d.clinic,
+            experience: d.experience,
+            price: d.price,
+            avgRating: d.avgRating,
+            reviewCount: d.reviewCount,
+        }));
+        // If not enough doctors have >= 4.5 rating, just return the ones with most appointments
+        if (featured.length < 6) {
+            const others = mappedDoctors
+                .filter(d => d.avgRating < 4.5 && !featured.find(f => f.id === d.id))
+                .sort((a, b) => b.appointmentsThisMonthCount - a.appointmentsThisMonthCount)
+                .slice(0, 6 - featured.length)
+                .map(d => ({
+                id: d.id,
+                name: d.name,
+                avatar: d.avatar,
+                specialty: d.specialty,
+                clinic: d.clinic,
+                experience: d.experience,
+                price: d.price,
+                avgRating: d.avgRating,
+                reviewCount: d.reviewCount,
+            }));
+            featured.push(...others);
+        }
+        res.json({ message: "Featured doctors fetched successfully", doctors: featured });
     }
     catch (error) {
         next(error);

@@ -156,6 +156,7 @@ export async function sendBookingConfirmationEmail(
         transactionCode?: string;
         paymentAt?: Date | null;
         appointmentId?: string;
+        bookingCode?: string | null;
         packageName?: string | null;
     }
 ): Promise<void> {
@@ -211,8 +212,12 @@ export async function sendBookingConfirmationEmail(
                 </tr>
                 ` : ""}
                 <tr>
-                  <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Mã lịch hẹn:</td>
-                  <td style="padding: 6px 0; color: #0f172a;">${details.appointmentId || "N/A"}</td>
+                  <td colspan="2" style="padding: 15px 0;">
+                    <div style="background: #f0fdfa; border: 2px solid #0d9488; text-align: center; padding: 15px; border-radius: 8px;">
+                      <p style="margin: 0; color: #0d9488; font-size: 14px; font-weight: bold;">MÃ ĐẶT LỊCH</p>
+                      <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">${details.bookingCode || "N/A"}</p>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Trạng thái:</td>
@@ -416,6 +421,7 @@ export async function sendBookingReminderEmail(
         specialtyName: string;
         clinicName: string;
         appointmentDate: Date;
+        bookingCode?: string | null;
         packageName?: string | null;
     }
 ): Promise<void> {
@@ -465,12 +471,25 @@ export async function sendBookingReminderEmail(
                   <td style="padding: 6px 0; color: #0f172a;">${details.clinicName}</td>
                 </tr>
                 <tr>
+                  <td colspan="2" style="padding: 15px 0;">
+                    <div style="background: #f0fdfa; border: 2px solid #0d9488; text-align: center; padding: 15px; border-radius: 8px;">
+                      <p style="margin: 0; color: #0d9488; font-size: 14px; font-weight: bold;">MÃ ĐẶT LỊCH</p>
+                      <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">${details.bookingCode || "N/A"}</p>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
                   <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Trạng thái:</td>
                   <td style="padding: 6px 0;">
                     <span style="background: #dbeafe; color: #2563eb; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">Đã xác nhận</span>
                   </td>
                 </tr>
               </table>
+            </div>
+            
+            <div style="background: #fef9c3; border-left: 4px solid #eab308; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                <p style="margin: 0; color: #854d0e; font-weight: bold;">⚠️ Lưu ý quan trọng về việc hoàn cọc</p>
+                <p style="margin: 5px 0 0 0; color: #a16207; font-size: 14px;">Nếu bạn không thể đến, vui lòng hủy lịch TRƯỚC 24 giờ so với giờ khám để được hoàn lại 100% tiền cọc. Mọi trường hợp hủy sát giờ hoặc không đến khám sẽ không được hoàn cọc.</p>
             </div>
 
             <p style="color: #475569; font-size: 14px; line-height: 1.6;">
@@ -580,6 +599,126 @@ export async function sendBookingNotificationToDoctorEmail(
 let lastSentReminderDate = "";
 
 /**
+ * Send Cancellation Email
+ */
+export async function sendCancellationEmail(
+    email: string,
+    details: {
+        patientName: string;
+        bookingCode?: string | null;
+        appointmentDate: Date;
+        isRefundable: boolean;
+        amount: number;
+    }
+): Promise<void> {
+    if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
+
+    try {
+        const dateStr = details.appointmentDate.toLocaleDateString("vi-VN", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+        });
+        const timeStr = details.appointmentDate.toLocaleTimeString("vi-VN", {
+            hour: "2-digit", minute: "2-digit", hour12: false,
+        });
+
+        const subject = details.isRefundable 
+            ? "Đã hủy lịch khám - Hoàn tiền cọc đang xử lý" 
+            : "Đã hủy lịch khám - Tiền cọc không được hoàn";
+            
+        const refundBox = details.isRefundable
+            ? `<div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                <p style="margin: 0; color: #166534; font-weight: bold;">Hoàn tiền cọc đang được xử lý</p>
+                <p style="margin: 5px 0 0 0; color: #15803d; font-size: 14px;">Tiền cọc ${details.amount.toLocaleString("vi-VN")} VNĐ sẽ được hoàn về tài khoản của bạn trong vòng 3-5 ngày làm việc.</p>
+               </div>`
+            : `<div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                <p style="margin: 0; color: #991b1b; font-weight: bold;">Không hỗ trợ hoàn cọc</p>
+                <p style="margin: 5px 0 0 0; color: #b91c1c; font-size: 14px;">Do hủy trong vòng 24 giờ trước giờ khám, tiền cọc ${details.amount.toLocaleString("vi-VN")} VNĐ sẽ không được hoàn lại theo chính sách của chúng tôi.</p>
+               </div>`;
+
+        const mailOptions = {
+            from: process.env.MAIL_USER,
+            to: email,
+            subject: `[MedBooking] ${subject}`,
+            html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">MedBooking</h1>
+            <p style="color: #e2e8f0; margin: 5px 0 0 0;">Thông Báo Hủy Lịch Khám</p>
+          </div>
+          <div style="background: #ffffff; padding: 30px;">
+            <p>Xin chào <strong>${details.patientName}</strong>,</p>
+            <p>Bạn đã hủy thành công lịch khám vào lúc <strong>${timeStr} - ${dateStr}</strong>.</p>
+            
+            ${details.bookingCode ? `<p>Mã đặt lịch: <strong>${details.bookingCode}</strong></p>` : ''}
+            
+            ${refundBox}
+            
+            <p style="margin-top: 30px;">Bạn có thể đặt lại lịch khám mới bất cứ lúc nào qua hệ thống của chúng tôi.</p>
+          </div>
+        </div>`
+        };
+
+        await transporter.sendMail(mailOptions);
+    } catch (error) {
+        console.error("Failed to send cancellation email:", error);
+    }
+}
+
+/**
+ * Send Absence Email (Missed Appointment)
+ */
+export async function sendAbsenceEmail(
+    email: string,
+    details: {
+        patientName: string;
+        bookingCode?: string | null;
+        appointmentDate: Date;
+        amount: number;
+    }
+): Promise<void> {
+    if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
+
+    try {
+        const dateStr = details.appointmentDate.toLocaleDateString("vi-VN", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+        });
+        const timeStr = details.appointmentDate.toLocaleTimeString("vi-VN", {
+            hour: "2-digit", minute: "2-digit", hour12: false,
+        });
+
+        const mailOptions = {
+            from: process.env.MAIL_USER,
+            to: email,
+            subject: `[MedBooking] Thông báo: Bạn đã vắng mặt buổi khám`,
+            html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">MedBooking</h1>
+            <p style="color: #fecaca; margin: 5px 0 0 0;">Thông Báo Vắng Mặt</p>
+          </div>
+          <div style="background: #ffffff; padding: 30px;">
+            <p>Xin chào <strong>${details.patientName}</strong>,</p>
+            <p>Hệ thống ghi nhận bạn đã không đến buổi khám vào lúc <strong>${timeStr} - ${dateStr}</strong>.</p>
+            
+            ${details.bookingCode ? `<p>Mã đặt lịch: <strong>${details.bookingCode}</strong></p>` : ''}
+            
+            <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                <p style="margin: 0; color: #991b1b; font-weight: bold;">Tiền cọc ${details.amount.toLocaleString("vi-VN")} VNĐ đã bị giữ lại</p>
+                <p style="margin: 5px 0 0 0; color: #b91c1c; font-size: 14px;">Theo chính sách của MedBooking, tiền cọc sẽ không được hoàn nếu bệnh nhân vắng mặt mà không thông báo hoặc hủy lịch trước.</p>
+            </div>
+            
+            <p>Nếu bạn có lý do chính đáng hoặc sự cố bất khả kháng, vui lòng liên hệ bộ phận CSKH để được hỗ trợ xem xét.</p>
+          </div>
+        </div>`
+        };
+
+        await transporter.sendMail(mailOptions);
+    } catch (error) {
+        console.error("Failed to send absence email:", error);
+    }
+}
+
+/**
  * Perform tomorrow appointment reminders check.
  * Quets database for CONFIRMED appointments happening tomorrow and sends reminder emails.
  */
@@ -611,10 +750,11 @@ async function checkAndSendReminders(): Promise<void> {
         tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
         tomorrowEnd.setHours(23, 59, 59, 999);
 
-        // Fetch all confirmed appointments for tomorrow
+        // Fetch all confirmed appointments for tomorrow that haven't been reminded yet
         const appointments = await prisma.appointment.findMany({
             where: {
                 status: "CONFIRMED",
+                reminderSent: false,
                 appointmentDate: {
                     gte: tomorrowStart,
                     lte: tomorrowEnd,
@@ -631,7 +771,7 @@ async function checkAndSendReminders(): Promise<void> {
             },
         });
 
-        console.log(`[Scheduler] Found ${appointments.length} appointments for tomorrow.`);
+        console.log(`[Scheduler] Found ${appointments.length} appointments for tomorrow that need reminders.`);
 
         for (const appt of appointments) {
             if (appt.user.email) {
@@ -640,9 +780,15 @@ async function checkAndSendReminders(): Promise<void> {
                     patientName: appt.user.fullName || appt.user.email,
                     doctorName: appt.doctor?.name || "Hệ thống",
                     specialtyName: appt.doctor?.specialty?.name || "",
-                    clinicName: appt.doctor?.clinic?.name || appt.doctor?.hospital || appt.medicalPackage?.hospital || "Bệnh viện",
+                    clinicName: appt.doctor?.clinic?.name || appt.doctor?.hospital || "Bệnh viện",
                     appointmentDate: appt.appointmentDate,
-                    packageName: appt.medicalPackage?.name
+                    bookingCode: appt.bookingCode
+                });
+                
+                // Mark as sent
+                await prisma.appointment.update({
+                    where: { id: appt.id },
+                    data: { reminderSent: true }
                 });
             }
         }
@@ -658,15 +804,211 @@ export function initReminderScheduler(): void {
     console.log("[Scheduler] Initializing tomorrow appointment reminder scheduler...");
     // Run the check immediately on startup
     checkAndSendReminders().catch((err) =>
-        console.error("[Scheduler] Initial startup check failed:", err)
+        console.error("[Scheduler] Initial startup reminder check failed:", err)
+    );
+    checkAndProcessAbsences().catch((err) =>
+        console.error("[Scheduler] Initial startup absence check failed:", err)
     );
 
-    // Then run it every hour (3600000 milliseconds)
+    // Then run reminder every hour (3600000 milliseconds)
     setInterval(() => {
         checkAndSendReminders().catch((err) =>
-            console.error("[Scheduler] Scheduled check failed:", err)
+            console.error("[Scheduler] Scheduled reminder check failed:", err)
         );
     }, 60 * 60 * 1000);
+
+    // And run absence check every 30 minutes (1800000 milliseconds)
+    setInterval(() => {
+        checkAndProcessAbsences().catch((err) =>
+            console.error("[Scheduler] Scheduled absence check failed:", err)
+        );
+    }, 30 * 60 * 1000);
 }
 
+/**
+ * Perform absence check.
+ * Queries database for CONFIRMED appointments that have passed and marks them as EXPIRED and forfeits deposit.
+ */
+async function checkAndProcessAbsences(): Promise<void> {
+    try {
+        const now = new Date();
+        
+        // Find appointments that are past due and not processed
+        // We consider an appointment "missed" if 60 minutes have passed since the appointment time
+        const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000);
 
+        const missedAppointments = await prisma.appointment.findMany({
+            where: {
+                status: "CONFIRMED",
+                absenceProcessed: false,
+                appointmentDate: {
+                    lt: cutoffTime
+                }
+            },
+            include: { user: true }
+        });
+
+        if (missedAppointments.length > 0) {
+            console.log(`[Scheduler] Found ${missedAppointments.length} missed appointments.`);
+            
+            for (const appt of missedAppointments) {
+                // Update to EXPIRED and mark deposit forfeited
+                await prisma.appointment.update({
+                    where: { id: appt.id },
+                    data: {
+                        status: "EXPIRED",
+                        absenceProcessed: true,
+                        depositForfeited: true,
+                    }
+                });
+
+                if (appt.user.email) {
+                    await sendAbsenceEmail(appt.user.email, {
+                        patientName: appt.user.fullName || appt.user.email,
+                        bookingCode: appt.bookingCode,
+                        appointmentDate: appt.appointmentDate,
+                        amount: appt.amount
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error("[Scheduler] Error processing absences:", error);
+    }
+}
+
+/**
+ * Send completed examination email with prescription PDF
+ */
+export async function sendPrescriptionEmail(
+    email: string,
+    details: {
+        patientName: string;
+        doctorName: string;
+        appointmentDate: Date;
+    },
+    pdfBase64?: string
+): Promise<void> {
+    if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) return;
+
+    try {
+        const dateStr = details.appointmentDate.toLocaleDateString("vi-VN");
+        
+        const mailOptions: any = {
+            from: process.env.MAIL_USER,
+            to: email,
+            subject: "Kết quả khám bệnh & Đơn thuốc - MedBooking",
+            html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">MedBooking</h1>
+            <p style="color: #ccfbf1; margin: 5px 0 0 0;">Kết quả khám bệnh</p>
+          </div>
+          <div style="background: #ffffff; padding: 30px;">
+            <p>Xin chào ${details.patientName},</p>
+            <p>Cảm ơn bạn đã tin tưởng và sử dụng dịch vụ khám bệnh của hệ thống MedBooking.</p>
+            <p>Bác sĩ <strong>${details.doctorName}</strong> đã hoàn thành việc khám bệnh cho bạn vào ngày <strong>${dateStr}</strong>.</p>
+            <p>Bạn có thể xem thông tin đơn thuốc và kết luận khám ở file đính kèm (nếu có) hoặc đăng nhập vào hệ thống để xem chi tiết bệnh án.</p>
+            <p>Chúc bạn thật nhiều sức khỏe!</p>
+          </div>
+        </div>
+      `,
+        };
+
+        if (pdfBase64) {
+            // Remove data:application/pdf;base64, if present
+            const base64Data = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+            mailOptions.attachments = [
+                {
+                    filename: 'DonThuoc.pdf',
+                    content: base64Data,
+                    encoding: 'base64'
+                }
+            ];
+        }
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Prescription email sent successfully to: ${email}`);
+    } catch (error) {
+        console.error("Failed to send prescription email:", error);
+    }
+}
+
+/**
+ * Send certificate verification result email to doctor
+ */
+export async function sendCertificateVerificationEmail(
+    email: string,
+    doctorName: string,
+    certTitle: string,
+    status: 'VERIFIED' | 'REJECTED',
+    reason?: string
+): Promise<void> {
+    if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) {
+        console.log(`[DEV] Certificate ${status} email would be sent to: ${email} for cert: "${certTitle}"`);
+        return;
+    }
+
+    const isVerified = status === 'VERIFIED';
+    const subject = isVerified
+        ? `✅ Chứng chỉ của bạn đã được xác minh - MedBooking`
+        : `❌ Chứng chỉ của bạn chưa được xác minh - MedBooking`;
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">MedBooking</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Hệ thống Y tế Số Hàng đầu Việt Nam</p>
+      </div>
+      <div style="background: #f8fafc; padding: 32px; border-radius: 0 0 10px 10px; border: 1px solid #e2e8f0;">
+        <p style="color: #334155; font-size: 16px; margin-top: 0;">Kính gửi <strong>BS. ${doctorName}</strong>,</p>
+        
+        <div style="background: ${isVerified ? '#f0fdf4' : '#fff1f2'}; border: 1px solid ${isVerified ? '#bbf7d0' : '#fecdd3'}; border-radius: 12px; padding: 20px; margin: 20px 0;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 32px;">${isVerified ? '✅' : '❌'}</span>
+            <div>
+              <p style="font-weight: bold; color: ${isVerified ? '#166534' : '#991b1b'}; font-size: 18px; margin: 0;">
+                ${isVerified ? 'Chứng chỉ đã được XÁC MINH' : 'Chứng chỉ chưa được xác minh'}
+              </p>
+              <p style="color: #64748b; font-size: 14px; margin: 4px 0 0;">Chứng chỉ: <strong>${certTitle}</strong></p>
+            </div>
+          </div>
+        </div>
+
+        ${!isVerified && reason ? `
+        <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 16px; border-radius: 0 8px 8px 0; margin: 16px 0;">
+          <p style="color: #9a3412; font-weight: bold; margin: 0 0 6px;">Lý do từ chối:</p>
+          <p style="color: #7c2d12; margin: 0; font-size: 14px;">${reason}</p>
+        </div>
+        <p style="color: #475569; font-size: 14px;">Bạn có thể cập nhật lại thông tin và tải lại ảnh chứng chỉ trên cổng thông tin bác sĩ, sau đó hệ thống sẽ xem xét lại.</p>
+        ` : ''}
+
+        ${isVerified ? `
+        <p style="color: #475569; font-size: 14px;">Chứng chỉ này sẽ được hiển thị với badge <strong style="color: #059669;">✓ Đã xác minh</strong> trên trang hồ sơ công khai của bạn, giúp tăng độ tin cậy với bệnh nhân.</p>
+        ` : ''}
+
+        <div style="border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 16px;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/doctor/certificates" 
+             style="display: inline-block; background: #0d9488; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+            Xem quản lý chứng chỉ →
+          </a>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">
+          Email này được gửi tự động từ hệ thống MedBooking. Vui lòng không trả lời email này.
+        </p>
+      </div>
+    </div>`;
+
+    try {
+        await transporter.sendMail({
+            from: process.env.MAIL_USER,
+            to: email,
+            subject,
+            html,
+        });
+        console.log(`Certificate ${status} email sent to: ${email}`);
+    } catch (error) {
+        console.error('Failed to send certificate verification email:', error);
+    }
+}

@@ -189,4 +189,32 @@ export const adminService = {
     const response = await api.get<Blob>("/admin/statistics/export", { responseType: "blob" });
     return response.data;
   },
+
+  // ─── Audit Logs ────────────────────────────────────────────────
+  async getAuditLogs(params?: any): Promise<any> {
+    const response = await api.get("/admin/audit-logs", { params });
+    return response.data;
+  },
+
+  // ─── Notifications ─────────────────────────────────────────────
+  async getNotifications(unreadOnly = false): Promise<any> {
+    const response = await api.get("/admin/notifications", { params: { unread: unreadOnly } });
+    return response.data;
+  },
+
+  async markNotificationRead(id: string): Promise<any> {
+    const response = await api.put(`/admin/notifications/${id}/read`);
+    return response.data;
+  },
+
+  // ─── Certificate Verification ──────────────────────────────────
+  async getPendingCertificates(): Promise<any> {
+    const response = await api.get("/admin/certificates/pending");
+    return response.data;
+  },
+
+  async verifyCertificate(id: string, action: 'VERIFY' | 'REJECT', reason?: string): Promise<any> {
+    const response = await api.put(`/admin/certificates/${id}/verify`, { action, reason });
+    return response.data;
+  },
 };

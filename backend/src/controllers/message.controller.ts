@@ -7,8 +7,8 @@ const prisma = new PrismaClient();
 // Get all conversations for the logged in user/doctor
 export async function getConversations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const userId = req.user?.id;
-        const role = req.user?.role;
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+        const role = (req as any).user?.role;
 
         if (!userId) {
             throw new ApiError("Unauthorized", 401);
@@ -63,16 +63,16 @@ export async function getConversations(req: Request, res: Response, next: NextFu
 // Get messages for a conversation
 export async function getMessages(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const userId = req.user?.id;
-        const role = req.user?.role;
-        const { conversationId } = req.params;
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+        const role = (req as any).user?.role;
+        const conversationId = req.params.conversationId as string;
 
         if (!userId) {
             throw new ApiError("Unauthorized", 401);
         }
 
         const conversation = await prisma.conversation.findUnique({
-            where: { id: conversationId }
+            where: { id: conversationId as string }
         });
 
         if (!conversation) {
@@ -94,14 +94,14 @@ export async function getMessages(req: Request, res: Response, next: NextFunctio
         }
 
         const messages = await prisma.message.findMany({
-            where: { conversationId },
+            where: { conversationId: conversationId as string },
             orderBy: { createdAt: "asc" }
         });
 
         // Mark messages as read
         await prisma.message.updateMany({
             where: {
-                conversationId,
+                conversationId: conversationId as string,
                 senderId: { not: userId },
                 isRead: false
             },
@@ -117,10 +117,10 @@ export async function getMessages(req: Request, res: Response, next: NextFunctio
 // Start a conversation or get existing one by doctorId
 export async function getOrCreateConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const userId = req.user?.id;
+        const userId = (req as any).user?.id || (req as any).user?.userId;
         const { doctorId } = req.body;
 
-        if (!userId || req.user?.role !== "USER") {
+        if (!userId || (req as any).user?.role !== "USER") {
             throw new ApiError("Only patients can initiate conversations this way", 403);
         }
 
@@ -149,10 +149,10 @@ export async function getOrCreateConversation(req: Request, res: Response, next:
 }
 
 // Send a message
-export async function sendMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function sendMessage(req: any, res: Response, next: NextFunction): Promise<void> {
     try {
         const userId = req.user?.id;
-        const { conversationId } = req.params;
+        const conversationId = req.params.conversationId as string;
         const { content } = req.body;
 
         if (!userId) {

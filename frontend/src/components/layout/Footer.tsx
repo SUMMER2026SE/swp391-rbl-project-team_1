@@ -1,9 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Calendar, Phone, Mail, MapPin, Heart } from "lucide-react";
 import LocationMap from "@/components/common/LocationMap";
 
 export default function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/doctor/") || pathname === "/doctor") {
+    return null;
+  }
 
   return (
     <footer className="bg-slate-900 text-slate-400 mt-auto border-t border-slate-800">

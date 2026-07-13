@@ -4,18 +4,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getStatistics = getStatistics;
+exports.exportStatisticsCsv = exportStatisticsCsv;
 const client_1 = __importDefault(require("../prisma/client"));
 /**
  * Returns comprehensive admin dashboard statistics.
  */
 async function getStatistics() {
     // Run all count queries in parallel
-    const [totalUsers, totalDoctors, totalAppointments, statusCounts, specialtyCounts,] = await Promise.all([
+    const [totalUsers, totalDoctors, totalAppointments, statusCounts, specialtyCounts, cancellationStats,] = await Promise.all([
         client_1.default.user.count(),
         client_1.default.doctor.count(),
         client_1.default.appointment.count(),
         getAppointmentsByStatus(),
         getAppointmentsBySpecialty(),
+        getCancellationStats(),
     ]);
     const appointmentsByMonth = await getAppointmentsByMonth();
     return {
@@ -25,6 +27,7 @@ async function getStatistics() {
         appointmentsByStatus: statusCounts,
         appointmentsBySpecialty: specialtyCounts,
         appointmentsByMonth,
+        cancellationStats,
     };
 }
 async function getAppointmentsByStatus() {
@@ -33,10 +36,12 @@ async function getAppointmentsByStatus() {
         _count: { status: true },
     });
     const result = {
+        PENDING_PAYMENT: 0,
         PENDING: 0,
         CONFIRMED: 0,
         COMPLETED: 0,
         CANCELLED: 0,
+        EXPIRED: 0,
     };
     for (const item of counts) {
         result[item.status] = item._count.status;
@@ -57,6 +62,8 @@ async function getAppointmentsBySpecialty() {
     });
     const countMap = new Map();
     for (const appt of appointments) {
+        if (!appt.doctor)
+            continue;
         const specialtyName = appt.doctor.specialty.name;
         countMap.set(specialtyName, (countMap.get(specialtyName) ?? 0) + 1);
     }
@@ -97,4 +104,64 @@ async function getAppointmentsByMonth() {
         month,
         count,
     }));
+}
+async function getCancellationStats() {
+    const cancelledAppointments = await client_1.default.appointment.findMany({
+        where: {
+            status: "CANCELLED",
+        },
+        select: {
+            cancellationReason: true,
+        },
+    });
+    const reasonMap = new Map();
+    for (const appt of cancelledAppointments) {
+        const reason = appt.cancellationReason || "Không có lý do";
+        reasonMap.set(reason, (reasonMap.get(reason) ?? 0) + 1);
+    }
+    return Array.from(reasonMap.entries())
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count);
+}
+/**
+ * Export appointments statistics to CSV string.
+ */
+async function exportStatisticsCsv() {
+    const appointments = await client_1.default.appointment.findMany({
+        include: {
+            doctor: {
+                include: {
+                    specialty: true,
+                }
+            },
+            user: true,
+        },
+        orderBy: { appointmentDate: 'desc' }
+    });
+    const headers = [
+        "Mã Lịch Hẹn",
+        "Ngày Khám",
+        "Trạng Thái",
+        "Lý Do Hủy",
+        "Bệnh Nhân",
+        "Email Bệnh Nhân",
+        "Bác Sĩ",
+        "Chuyên Khoa",
+    ];
+    const rows = appointments.map(appt => [
+        appt.id,
+        appt.appointmentDate.toISOString(),
+        appt.status,
+        appt.cancellationReason || "",
+        appt.user.fullName || "",
+        appt.user.email || "",
+        appt.doctor?.name || "N/A",
+        appt.doctor?.specialty.name || "N/A",
+    ]);
+    const escapeCsv = (str) => `"${String(str).replace(/"/g, '""')}"`;
+    const csvContent = [
+        headers.map(escapeCsv).join(","),
+        ...rows.map(row => row.map(escapeCsv).join(","))
+    ].join("\n");
+    return csvContent;
 }

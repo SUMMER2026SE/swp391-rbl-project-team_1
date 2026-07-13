@@ -206,7 +206,7 @@ export async function updateAppointmentStatus(
         },
     });
 
-    if (updated.user?.email && (status === "CONFIRMED" || status === "CANCELLED")) {
+    if (updated.user?.email && updated.doctor && (status === "CONFIRMED" || status === "CANCELLED")) {
         sendBookingStatusUpdateEmail(updated.user.email, {
             patientName: updated.user.fullName || updated.user.email,
             doctorName: updated.doctor.name,

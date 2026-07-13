@@ -2,6 +2,7 @@ import { NextFunction, Response, Request } from "express";
 
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import { createAppointment, getAppointmentsByUser, getAppointmentById, uploadPaymentProof } from "../services/appointment.service";
+import { sendBookingStatusUpdateEmail, sendCancellationEmail } from "../utils/emailService";
 import { ApiError } from "../utils/apiError";
 import prisma from "../prisma/client";
 
@@ -29,9 +30,31 @@ export async function createAppointmentHandler(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate, notes, packageId, patientProfileId } = req.body as CreateAppointmentRequestBody;
+        const { doctorId, appointmentDate, notes, packageId, patientProfileId, newPatientProfile } = req.body as any;
 
-        if (!patientProfileId) {
+        let finalProfileId = patientProfileId;
+
+        if (!finalProfileId && newPatientProfile) {
+            const fullAddress = [newPatientProfile.address, newPatientProfile.ward, newPatientProfile.province]
+                .filter(Boolean)
+                .join(", ");
+
+            const profile = await prisma.patientProfile.create({
+                data: {
+                    userId,
+                    fullName: newPatientProfile.fullName,
+                    phoneNumber: newPatientProfile.phoneNumber,
+                    gender: newPatientProfile.gender,
+                    dateOfBirth: new Date(newPatientProfile.dateOfBirth),
+                    cccd: newPatientProfile.cccd || "",
+                    address: fullAddress || "",
+                    isPrimary: false
+                }
+            });
+            finalProfileId = profile.id;
+        }
+
+        if (!finalProfileId) {
             throw new ApiError("Vui lòng chọn hồ sơ người khám", 400);
         }
         if (!doctorId && !packageId) {
@@ -56,7 +79,7 @@ export async function createAppointmentHandler(
 
         const appointment = await createAppointment({
             userId,
-            patientProfileId,
+            patientProfileId: finalProfileId,
             doctorId,
             appointmentDate: date,
             notes,
@@ -156,9 +179,9 @@ export async function getAppointmentByIdHandler(
 
         if (appointment.status === "PENDING_PAYMENT") {
             responseData.bankDetails = {
-                bankName: process.env.BANK_NAME || "MBBank",
-                bankAccount: process.env.BANK_ACCOUNT || "123456789",
-                bankOwner: process.env.BANK_OWNER || "NGUYEN MINH TRUNG",
+                bankName: "BIDV",
+                bankAccount: "5624715454",
+                bankOwner: "NGUYEN DAC DUNG",
             };
         }
 
@@ -344,14 +367,12 @@ export async function cancelAppointmentHandler(
         const diffMs = appointmentDate.getTime() - now.getTime();
         const diffHours = diffMs / (1000 * 60 * 60);
 
-        if (diffHours < 24) {
-            throw new ApiError("Bạn chỉ được huỷ lịch hẹn trước 24 tiếng khi khám", 400);
-        }
+        const isRefundable = diffHours >= 24;
 
         // Handle refund if payment was already PAID
         let finalReason = reason || "Người bệnh yêu cầu huỷ";
         
-        if (appointment.payment && appointment.payment.status === "PAID") {
+        if (appointment.payment && appointment.payment.status === "PAID" && isRefundable) {
             // Update Payment status to REFUNDED
             await prisma.payment.update({
                 where: { id: appointment.payment.id },
@@ -364,6 +385,8 @@ export async function cancelAppointmentHandler(
                 where: { id: appointment.payment.id },
                 data: { status: "FAILED" } // Or CANCELLED if enum existed
             });
+        } else if (!isRefundable) {
+            finalReason += " (Hủy trong vòng 24h, không hoàn cọc)";
         }
 
         const updatedAppointment = await prisma.appointment.update({
@@ -371,8 +394,20 @@ export async function cancelAppointmentHandler(
             data: {
                 status: "CANCELLED",
                 cancellationReason: finalReason,
-            }
+                depositForfeited: !isRefundable
+            },
+            include: { user: true }
         });
+
+        if (updatedAppointment.user?.email) {
+            sendCancellationEmail(updatedAppointment.user.email, {
+                patientName: updatedAppointment.user.fullName || updatedAppointment.user.email,
+                bookingCode: updatedAppointment.bookingCode,
+                appointmentDate: updatedAppointment.appointmentDate,
+                isRefundable: isRefundable,
+                amount: updatedAppointment.amount
+            }).catch(console.error);
+        }
 
         res.json({
             message: "Huỷ lịch hẹn thành công",

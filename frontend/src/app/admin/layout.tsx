@@ -18,7 +18,9 @@ import {
   MessageSquare,
   BarChart3,
   Landmark,
+  History,
 } from "lucide-react";
+import AdminNotificationBell from "@/components/admin/AdminNotificationBell";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -77,6 +79,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       name: "Thống kê & Báo cáo",
       href: "/admin/statistics",
       icon: <BarChart3 className="h-5 w-5" />,
+    },
+    {
+      name: "Nhật ký Hoạt động",
+      href: "/admin/audit-log",
+      icon: <History className="h-5 w-5" />,
     },
   ];
 
@@ -171,9 +178,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </Link>
             </div>
 
-            <div className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
-              <ShieldCheck className="h-4 w-4 text-teal-400 shrink-0" />
-              <span>Quyền hạn: <strong>ADMINISTRATOR</strong></span>
+            <div className="hidden md:flex items-center gap-4">
+              <AdminNotificationBell />
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
+                <ShieldCheck className="h-4 w-4 text-teal-400 shrink-0" />
+                <span>Quyền hạn: <strong>ADMINISTRATOR</strong></span>
+              </div>
             </div>
           </header>
 

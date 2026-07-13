@@ -14,7 +14,7 @@ exports.resetPassword = resetPassword;
 exports.googleLogin = googleLogin;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const axios_1 = __importDefault(require("axios"));
+const google_auth_library_1 = require("google-auth-library");
 const client_1 = require("@prisma/client");
 const client_2 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
@@ -23,6 +23,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     throw new Error("JWT_SECRET environment variable is required");
 }
+const googleClient = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 /**
  * Step 1: Send OTP to email
  */
@@ -168,6 +169,12 @@ async function findUserById(id) {
             gender: true,
             address: true,
             dateOfBirth: true,
+            bloodType: true,
+            allergies: true,
+            chronicDiseases: true,
+            personalHistory: true,
+            familyHistory: true,
+            isLocked: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -271,10 +278,13 @@ async function resetPassword(email, otp, newPassword) {
  */
 async function googleLogin(idToken) {
     try {
-        // Verify token with Google API
-        const response = await axios_1.default.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-        const payload = response.data;
-        if (!payload.email) {
+        // Verify token with Google Auth Library
+        const ticket = await googleClient.verifyIdToken({
+            idToken: idToken,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) {
             throw new apiError_1.ApiError("Google login failed: Email not provided in token", 400);
         }
         const normalizedEmail = payload.email.toLowerCase();
@@ -323,7 +333,8 @@ async function googleLogin(idToken) {
         if (error instanceof apiError_1.ApiError) {
             throw error;
         }
-        console.error("Google authentication error:", error);
-        throw new apiError_1.ApiError("Invalid Google ID Token or network error", 401);
+        console.error("Google authentication error:", error?.response?.data || error);
+        const errorMessage = error?.response?.data?.error_description || error?.response?.data?.error || "Invalid Google ID Token or network error";
+        throw new apiError_1.ApiError(errorMessage, 401);
     }
 }

@@ -48,6 +48,11 @@ export const appointmentService = {
     return response.data;
   },
 
+  async createPayOSPaymentUrl(appointmentId: string): Promise<{ checkoutUrl: string, qrCode: string }> {
+    const response = await api.post<{ checkoutUrl: string, qrCode: string }>("/payment/payos", { appointmentId });
+    return response.data;
+  },
+
   async getPendingPaymentsForAdmin(): Promise<{ message: string; data: Appointment[] }> {
     const response = await api.get<{ message: string; data: Appointment[] }>("/admin/appointments/pending-approval");
     return response.data;
