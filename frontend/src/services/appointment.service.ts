@@ -48,8 +48,33 @@ export const appointmentService = {
     return response.data;
   },
 
-  async createPayOSPaymentUrl(appointmentId: string): Promise<{ checkoutUrl: string, qrCode: string }> {
-    const response = await api.post<{ checkoutUrl: string, qrCode: string }>("/payment/payos", { appointmentId });
+  async createPayOSPaymentUrl(appointmentId: string): Promise<{
+    checkoutUrl: string;
+    qrCode: string;
+    accountNumber: string;
+    accountName: string;
+    bin: string;
+    amount: number;
+    description: string;
+    orderCode: number;
+    expiredAt: string;
+  }> {
+    const response = await api.post<{
+      checkoutUrl: string;
+      qrCode: string;
+      accountNumber: string;
+      accountName: string;
+      bin: string;
+      amount: number;
+      description: string;
+      orderCode: number;
+      expiredAt: string;
+    }>("/payment/payos", { appointmentId });
+    return response.data;
+  },
+
+  async getPaymentStatus(orderCode: number): Promise<{ status: string; appointmentId: string }> {
+    const response = await api.get<{ status: string; appointmentId: string }>(`/payments/status/${orderCode}`);
     return response.data;
   },
 
@@ -75,6 +100,11 @@ export const appointmentService = {
 
   async cancelAppointment(id: string, reason: string): Promise<{ message: string; appointment: Appointment }> {
     const response = await api.post<{ message: string; appointment: Appointment }>(`/appointments/${id}/cancel`, { reason });
+    return response.data;
+  },
+
+  async getAllPaymentsForAdmin(): Promise<{ message: string; count: number; data: Appointment[] }> {
+    const response = await api.get<{ message: string; count: number; data: Appointment[] }>("/admin/payments");
     return response.data;
   },
 };

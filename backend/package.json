@@ -21,7 +21,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@payos/node": "^2.0.5",
+    "@payos/node": "^1.0.7",
     "@prisma/client": "^6.19.3",
     "@supabase/supabase-js": "^2.106.2",
     "axios": "^1.16.1",

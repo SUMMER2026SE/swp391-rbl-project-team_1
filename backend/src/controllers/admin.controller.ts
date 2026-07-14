@@ -9,6 +9,7 @@ import {
     linkDoctorToUser as linkDoctorToUserService,
     updateAppointmentStatus,
     getPendingPayments,
+    getAllPayments,
     lockUser,
 } from "../services/admin.service";
 import { updateUserRole } from "../services/user.service";
@@ -230,6 +231,27 @@ export async function getPendingPaymentsHandler(
             message: "Pending approval payments retrieved successfully",
             count: appointments.length,
             data: appointments,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/admin/payments
+ * Returns all payment records (all statuses), sorted by newest.
+ */
+export async function getAllPaymentsHandler(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const payments = await getAllPayments();
+        res.json({
+            message: "All payments retrieved successfully",
+            count: payments.length,
+            data: payments,
         });
     } catch (error) {
         next(error);

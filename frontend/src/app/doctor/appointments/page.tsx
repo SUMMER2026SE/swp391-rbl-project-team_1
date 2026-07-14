@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { io, Socket } from "socket.io-client";
 import api from "@/services/api";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import toast from "react-hot-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Search, Calendar, User, Clock, CheckCircle2, XCircle, FileText, Video, List, CreditCard, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { removeVietnameseTones } from "@/utils/stringUtils";
 import Link from "next/link";
@@ -49,10 +51,12 @@ interface Appointment {
 }
 
 export default function DoctorAppointmentsPage() {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,7 +82,7 @@ export default function DoctorAppointmentsPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelType, setCancelType] = useState<"REJECT" | "CANCEL_CONFIRMED">("REJECT");
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       const res = await api.get("/doctor/appointments");
       setAppointments(res.data);
@@ -87,11 +91,43 @@ export default function DoctorAppointmentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+  }, [fetchAppointments]);
+
+  // Socket.io: Listen for new appointments in real-time
+  useEffect(() => {
+    if (!user?.doctorId) return;
+
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL
+      ? process.env.NEXT_PUBLIC_API_URL.replace("/api", "")
+      : "http://localhost:5000";
+
+    const socket = io(backendUrl, {
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("join", `doctor_${user.doctorId}`);
+    });
+
+    socket.on("new_appointment", (data: { appointmentId: string; message: string }) => {
+      toast.success(`🔔 ${data.message || "Bạn có lịch hẹn mới đã thanh toán!"}`, {
+        duration: 6000,
+        icon: "📅",
+      });
+      fetchAppointments();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user?.doctorId, fetchAppointments]);
+
 
   const handleUpdateStatus = async (id: string, newStatus: string, reason?: string) => {
     setUpdatingId(id);

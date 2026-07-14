@@ -264,3 +264,37 @@ export async function getPendingPayments() {
         orderBy: { paymentAt: "asc" },
     });
 }
+
+/**
+ * Returns all appointments that have a payment record or a payment proof, sorted by newest.
+ */
+export async function getAllPayments() {
+    return prisma.appointment.findMany({
+        where: {
+            OR: [
+                { payment: { isNot: null } },
+                { paymentProof: { not: null } }
+            ]
+        },
+        include: {
+            payment: true,
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    fullName: true,
+                    avatar: true,
+                },
+            },
+            doctor: {
+                select: {
+                    id: true,
+                    name: true,
+                    specialty: true,
+                    hospital: true,
+                },
+            },
+        },
+        orderBy: { createdAt: "desc" },
+    });
+}

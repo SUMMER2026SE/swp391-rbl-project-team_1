@@ -54,7 +54,8 @@ app.use("/api", adminRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", articleRoutes);
 app.use("/api", reviewRoutes);
-app.use("/api", paymentRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/api/payments", paymentRoutes); // /api/payments/status/:orderCode (public polling)
 app.use("/api", packageRoutes);
 app.use("/api/patient-profiles", patientProfileRoutes);
 app.use("/api/messages", messageRoutes);
@@ -86,10 +87,10 @@ httpServer.listen(PORT, () => {
     console.error("[Scheduler] Expired payments cleanup failed on startup:", err)
   );
 
-  // Run expired payment check every 5 minutes (300000 ms)
+  // Run expired payment check every 1 minute (60000 ms)
   setInterval(() => {
     autoCancelExpiredAppointments().catch((err) =>
       console.error("[Scheduler] Scheduled expired payments cleanup failed:", err)
     );
-  }, 5 * 60 * 1000);
+  }, 1 * 60 * 1000);
 });

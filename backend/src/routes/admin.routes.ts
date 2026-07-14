@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Role } from "@prisma/client";
 
-import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler, getPendingPaymentsHandler, lockUserHandler } from "../controllers/admin.controller";
+import { getUsers, getAppointments, updateUser, removeUser, linkDoctorToUser, updateAppointmentStatusHandler, getPendingPaymentsHandler, lockUserHandler, getAllPaymentsHandler } from "../controllers/admin.controller";
 import { getDoctors, moderateDoctorHandler, getPendingDoctorsHandler, approveDoctorHandler, rejectDoctorHandler, lockDoctorHandler } from "../controllers/admin-doctors.controller";
 import { getSpecialties, createSpecialtyHandler, updateSpecialtyHandler, deleteSpecialtyHandler } from "../controllers/admin-specialties.controller";
 import { getClinics, createClinicHandler, updateClinicHandler, deleteClinicHandler } from "../controllers/admin-clinics.controller";
@@ -106,6 +106,17 @@ router.get(
     verifyToken,
     verifyAdmin,
     getPendingPaymentsHandler
+);
+
+/**
+ * GET /api/admin/payments
+ * Returns all payment records (all statuses), sorted newest first.
+ */
+router.get(
+    "/admin/payments",
+    verifyToken,
+    verifyAdmin,
+    getAllPaymentsHandler
 );
 
 /**

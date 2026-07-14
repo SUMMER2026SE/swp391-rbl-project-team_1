@@ -50,11 +50,13 @@ export interface Review {
 export interface Payment {
   id: string;
   amount: number;
-  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
-  method: "VNPAY" | "MOCK";
+  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "EXPIRED";
+  method: "VNPAY" | "MOCK" | "PAYOS";
   transactionId?: string | null;
   paymentGateway?: string | null;
   payDate?: string | null;
+  orderCode?: string | null;
+  expiredAt?: string | null;
   createdAt: string;
 }
 
