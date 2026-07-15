@@ -17,7 +17,7 @@ export async function getMyPatientProfiles(
         if (!userId) throw new ApiError("Unauthorized", 401);
 
         const profiles = await prisma.patientProfile.findMany({
-            where: { userId },
+            where: { userId, isTemporary: false },
             orderBy: { createdAt: "asc" }
         });
 

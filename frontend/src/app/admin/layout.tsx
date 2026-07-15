@@ -51,19 +51,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: <Landmark className="h-5 w-5" />,
     },
     {
-      name: "Kiểm duyệt Bác sĩ",
+      name: "Quản lý Bác sĩ & Chuyên khoa",
       href: "/admin/doctors",
       icon: <Stethoscope className="h-5 w-5" />,
-    },
-    {
-      name: "Quản lý Chuyên khoa",
-      href: "/admin/specialties",
-      icon: <BookOpen className="h-5 w-5" />,
-    },
-    {
-      name: "Quản lý Phòng khám",
-      href: "/admin/clinics",
-      icon: <Building2 className="h-5 w-5" />,
     },
     {
       name: "Quản lý Bài viết",
@@ -157,12 +147,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </Link>
               <Link href="/admin/doctors" className="text-slate-400 hover:text-teal-400">
                 <Stethoscope className="h-5 w-5" />
-              </Link>
-              <Link href="/admin/specialties" className="text-slate-400 hover:text-teal-400">
-                <BookOpen className="h-5 w-5" />
-              </Link>
-              <Link href="/admin/clinics" className="text-slate-400 hover:text-teal-400">
-                <Building2 className="h-5 w-5" />
               </Link>
               <Link href="/admin/articles" className="text-slate-400 hover:text-teal-400">
                 <FileText className="h-5 w-5" />

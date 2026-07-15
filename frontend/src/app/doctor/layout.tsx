@@ -41,10 +41,8 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
   const menuItems = [
     { name: "Tổng quan", href: "/doctor/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
     { name: "Hồ sơ cá nhân", href: "/doctor/profile", icon: <UserCircle className="h-5 w-5" /> },
-    { name: "Chứng chỉ", href: "/doctor/certificates", icon: <Award className="h-5 w-5" /> },
     { name: "Lịch trực", href: "/doctor/schedules", icon: <Clock className="h-5 w-5" /> },
     { name: "Lịch khám", href: "/doctor/appointments", icon: <CalendarDays className="h-5 w-5" /> },
-    { name: "Bệnh nhân", href: "/doctor/patients", icon: <Users className="h-5 w-5" /> },
     { name: "Thống kê", href: "/doctor/statistics", icon: <BarChart2 className="h-5 w-5" /> },
     { name: "Khám trực tuyến", href: "/doctor/video-call", icon: <Video className="h-5 w-5" /> },
     { name: "Tin nhắn", href: "/doctor/chat", icon: <MessageCircle className="h-5 w-5" /> },

@@ -295,6 +295,7 @@ model PatientProfile {
   personalHistory String?
   familyHistory   String?
   isPrimary       Boolean         @default(false)
+  isTemporary     Boolean         @default(false)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   appointments    Appointment[]
@@ -517,3 +518,5 @@ enum SeverityLevel {
   SEVERE
   EMERGENCY
 }
+
+

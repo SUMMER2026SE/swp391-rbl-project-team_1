@@ -19,7 +19,8 @@ import {
     createPrescription,
     getAvailableSpecialtiesAndClinics,
     getDoctorStatistics,
-    getDoctorReviews
+    getDoctorReviews,
+    getPatientDetail
 } from "../controllers/doctor-dashboard.controller";
 import { doctorCertificateController } from "../controllers/doctor-certificate.controller";
 import multer from "multer";
@@ -54,6 +55,7 @@ router.put("/appointments/:id/status", updateAppointmentStatus);
 
 // Patients & Medical Records
 router.get("/patients", getDoctorPatients);
+router.get("/patients/:userId", getPatientDetail);
 router.get("/patients/:userId/records", getPatientMedicalRecords);
 router.post("/medical-records", createMedicalRecord);
 router.post("/prescriptions", createPrescription);

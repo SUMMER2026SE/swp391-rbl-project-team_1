@@ -103,13 +103,13 @@ export async function createAppointment(
         attempts++;
     }
 
-    let amount = 50000;
-    if (params.packageId) {
-        const pkg = await prisma.medicalPackage.findUnique({ where: { id: params.packageId } });
-        if (pkg) {
-            amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
-        }
-    }
+    let amount = 5000;
+    // if (params.packageId) {
+    //     const pkg = await prisma.medicalPackage.findUnique({ where: { id: params.packageId } });
+    //     if (pkg) {
+    //         amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+    //     }
+    // }
 
     // Generate unique booking code
     let bookingCode = generateBookingCode();

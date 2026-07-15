@@ -22,12 +22,18 @@ import medicineRoutes from "./routes/medicine.routes";
 import medicalRecordRoutes from "./routes/medical-record.routes";
 import videoCallRoutes from "./routes/video-call.routes";
 import { initReminderScheduler } from "./utils/emailService";
+import { startReminderJob } from "./jobs/reminderJob";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { getProfile } from "./controllers/auth.controller";
 import { autoCancelExpiredAppointments } from "./services/appointment.service";
 
 dotenv.config();
+
+// Patch BigInt to be serialized as string in JSON responses
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
 
 const app = express();
 
@@ -80,6 +86,7 @@ initSocket(httpServer, allowedOrigins);
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   initReminderScheduler();
+  startReminderJob();
   
   // Run expired payment check immediately on startup
   console.log("[Scheduler] Initializing auto-cancellation scheduler for expired payments...");

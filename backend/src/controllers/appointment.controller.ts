@@ -48,7 +48,8 @@ export async function createAppointmentHandler(
                     dateOfBirth: new Date(newPatientProfile.dateOfBirth),
                     cccd: newPatientProfile.cccd || "",
                     address: fullAddress || "",
-                    isPrimary: false
+                    isPrimary: false,
+                    isTemporary: newPatientProfile.isTemporary || false
                 }
             });
             finalProfileId = profile.id;

@@ -11,7 +11,7 @@ import { KeyRound, User, Activity } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
-  const { login, googleLogin } = useAuth();
+  const { login, googleLogin, isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -19,6 +19,19 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already authenticated — prevents session overwrite via browser auto-fill
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      if (user.role === 'DOCTOR') {
+        router.replace('/doctor/dashboard');
+      } else if (user.role === 'ADMIN') {
+        router.replace('/admin');
+      } else {
+        router.replace('/my-appointments');
+      }
+    }
+  }, [isAuthenticated, isLoading, user, router]);
 
   const handleGoogleLoginResponse = async (response: { credential?: string }) => {
     if (!response.credential) {
@@ -170,17 +183,19 @@ export default function LoginPage() {
         {error && <Alert type="error" message={error} />}
         {success && <Alert type="success" message={success} />}
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit} autoComplete="on">
           <div className="relative">
             <User className="absolute left-3.5 top-9.5 h-4 w-4 text-slate-400 z-10" />
             <Input
               id="email"
               type="email"
+              name="email"
               label="Email"
               placeholder="Nhập email của bạn"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-10"
+              autoComplete="username"
               required
             />
           </div>
@@ -190,11 +205,13 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
+              name="password"
               label="Mật khẩu"
               placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10"
+              autoComplete="current-password"
               required
             />
           </div>

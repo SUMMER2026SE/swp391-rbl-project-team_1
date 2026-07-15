@@ -797,3 +797,47 @@ export const getDoctorReviews = async (req: AuthenticatedRequest, res: Response)
         res.status(500).json({ message: "Server error", error });
     }
 };
+
+export const getPatientDetail = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const doctor = await getDoctor(req.user!.userId);
+        if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
+
+        const userId = req.params.userId as string;
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true, fullName: true, email: true, gender: true,
+                dateOfBirth: true, avatar: true, bloodType: true,
+                allergies: true, chronicDiseases: true, personalHistory: true
+            }
+        });
+
+        if (!user) return res.status(404).json({ message: "Patient not found" });
+
+        const patientProfile = await prisma.patientProfile.findFirst({
+            where: { userId, isPrimary: true }
+        });
+
+        const pastAppointments = await prisma.appointment.findMany({
+            where: { userId, doctorId: doctor.id, status: 'COMPLETED' },
+            include: {
+                patientProfile: true,
+                medicalRecord: { select: { id: true, status: true } }
+            },
+            orderBy: { appointmentDate: 'desc' }
+        });
+
+        res.json({
+            user: {
+                ...user,
+                phone: patientProfile?.phoneNumber || null,
+                cccd: patientProfile?.cccd || null,
+            },
+            pastAppointments
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+};

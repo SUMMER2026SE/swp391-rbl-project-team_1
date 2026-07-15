@@ -163,13 +163,15 @@ export default function DoctorBookingPage({ params }: PageProps) {
     setGlobalSlot(null);
     setBookingMessage(null);
     const slotsForDay = schedules.filter(sch => sch.dayOfWeek === dayOfWeek && sch.isAvailable);
+    const isQuick = doctor?.specialty?.name?.toLowerCase().includes("mắt") || false;
+    const capacity = isQuick ? 3 : 1;
     const hourlySlots = generateHourlySlots(slotsForDay);
     const now = new Date();
     const mappedSlots = hourlySlots.map(slot => {
       const slotDateTime = new Date(`${dateString}T${slot.startTime}:00`);
       const isTooClose = slotDateTime.getTime() <= now.getTime() + 2 * 60 * 60 * 1000;
       const count = bookedCounts[slotDateTime.toISOString()] || 0;
-      return { ...slot, isBooked: count >= 20, isTooClose, remaining: 20 - count };
+      return { ...slot, isBooked: count >= capacity, isTooClose, remaining: capacity - count, capacity };
     });
     setAvailableTimeSlots(mappedSlots);
   };
@@ -539,21 +541,27 @@ export default function DoctorBookingPage({ params }: PageProps) {
                             type="button"
                             disabled={isDisabled}
                             onClick={() => { setSelectedSlot(slot); setGlobalSlot(slot); setBookingMessage(null); }}
-                            className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border text-xs transition-all ${
+                            className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-sm font-semibold transition-all ${
                               isDisabled
-                                ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                                ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-50"
                                 : selectedSlot?.id === slot.id
-                                ? "bg-teal-600 border-teal-600 text-white shadow-md shadow-teal-600/10"
-                                : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-400 hover:bg-white"
+                                ? "bg-teal-600 border-teal-600 text-white shadow-lg shadow-teal-600/20"
+                                : "bg-teal-50 border-teal-200 text-teal-700 hover:border-teal-400 hover:bg-teal-100 hover:shadow-md"
                             }`}
                           >
-                            <div className="flex items-center gap-1.5 font-semibold">
-                              <Clock className="h-3.5 w-3.5 shrink-0" />
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-4 w-4 shrink-0" />
                               <span>{slot.startTime} - {slot.endTime}</span>
                             </div>
-                            <span className="text-[10px] opacity-90">
-                              {slot.isTooClose ? "Quá gần" : slot.isBooked ? "Hết chỗ" : `Còn ${slot.remaining} chỗ`}
-                            </span>
+                            {isDisabled ? (
+                              <span className="text-[10px] font-bold opacity-80 uppercase tracking-widest">
+                                {slot.isTooClose ? "Quá gần" : "Đã kín chỗ"}
+                              </span>
+                            ) : slot.capacity > 1 ? (
+                              <span className="text-[10px] opacity-90">
+                                Còn {slot.remaining} chỗ
+                              </span>
+                            ) : null}
                           </button>
                         );
                       })}

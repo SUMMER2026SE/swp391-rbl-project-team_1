@@ -124,7 +124,7 @@ export default function PatientProfilesTab() {
       <div className="flex justify-between items-center mb-6 pb-3 border-b border-slate-100">
         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
           <UserIcon className="h-5 w-5 text-teal-600" />
-          <span>Ho so nguoi kham</span>
+          <span>Hồ sơ người khám (Dành cho người thân)</span>
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${profiles.length >= 3 ? "bg-orange-100 text-orange-600" : "bg-teal-100 text-teal-600"}`}>
             {profiles.length}/3
           </span>

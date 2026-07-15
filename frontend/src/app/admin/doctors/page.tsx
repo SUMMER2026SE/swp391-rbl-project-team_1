@@ -31,6 +31,8 @@ const statusBadgeStyles: Record<DoctorStatus, string> = {
   REJECTED: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
+import SpecialtiesTab from "./SpecialtiesTab";
+
 export default function AdminDoctorsPage() {
   const [doctors, setDoctors] = useState<AdminDoctor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ export default function AdminDoctorsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Main Tabs
-  const [mainTab, setMainTab] = useState<"ACCOUNTS" | "CERTIFICATES">("ACCOUNTS");
+  const [mainTab, setMainTab] = useState<"ACCOUNTS" | "CERTIFICATES" | "SPECIALTIES">("ACCOUNTS");
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -235,9 +237,9 @@ export default function AdminDoctorsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-black text-white">Kiểm duyệt Bác sĩ</h1>
+        <h1 className="text-2xl font-black text-white">Quản lý Bác sĩ & Chuyên khoa</h1>
         <p className="text-sm text-slate-400">
-          Quản lý danh sách bác sĩ đăng ký, phê duyệt, từ chối hoặc khóa tài khoản.
+          Quản lý danh sách bác sĩ, phê duyệt, từ chối hoặc khóa tài khoản và quản lý chuyên khoa.
         </p>
       </div>
 
@@ -260,6 +262,12 @@ export default function AdminDoctorsPage() {
           {pendingCertificates.length > 0 && (
             <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full">{pendingCertificates.length}</span>
           )}
+        </button>
+        <button
+          onClick={() => setMainTab("SPECIALTIES")}
+          className={`px-6 py-3 font-bold text-sm tracking-wide uppercase transition-colors ${mainTab === "SPECIALTIES" ? "text-teal-400 border-b-2 border-teal-400" : "text-slate-500 hover:text-slate-300"}`}
+        >
+          Chuyên khoa
         </button>
       </div>
 
@@ -423,7 +431,7 @@ export default function AdminDoctorsPage() {
         </div>
       </div>
       </>
-      ) : (
+      ) : mainTab === "CERTIFICATES" ? (
       <>
         {/* CERTIFICATES TAB */}
         <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-sm">
@@ -491,6 +499,8 @@ export default function AdminDoctorsPage() {
           )}
         </div>
       </>
+      ) : (
+        <SpecialtiesTab />
       )}
 
       {/* Reject Reason Modal */}

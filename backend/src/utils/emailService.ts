@@ -431,7 +431,7 @@ export async function sendBookingReminderEmail(
         const dateStr = details.appointmentDate.toLocaleDateString("vi-VN", {
             weekday: "long",
             year: "numeric",
-            month: "long",
+            month: "numeric",
             day: "numeric",
         });
         const timeStr = details.appointmentDate.toLocaleTimeString("vi-VN", {
@@ -439,24 +439,24 @@ export async function sendBookingReminderEmail(
             minute: "2-digit",
             hour12: false,
         });
+        const frontEndUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
         const mailOptions = {
             from: process.env.MAIL_USER,
             to: email,
-            subject: "Nhắc nhở: Lịch khám bệnh của bạn vào ngày mai - MedBooking",
+            subject: "[MedBooking] Nhắc nhở: Lịch khám của bạn vào ngày mai ⏰",
             html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">MedBooking</h1>
-            <p style="color: #ccfbf1; margin: 5px 0 0 0; font-size: 14px;">Nhắc Lịch Hẹn Khám Ngày Mai</p>
+          <div style="background: #0d9488; padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">Đừng quên lịch khám ngày mai!</h1>
           </div>
           <div style="background: #ffffff; padding: 30px;">
             <p style="color: #334155; font-size: 16px; font-weight: bold; margin-top: 0;">Xin chào ${details.patientName},</p>
             <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-              Đây là email nhắc nhở bạn có một lịch hẹn khám sức khỏe đã được xác nhận vào **ngày mai**. Vui lòng sắp xếp thời gian đến đúng hẹn:
+              Đây là email nhắc nhở bạn có một lịch hẹn khám sức khỏe đã được xác nhận vào ngày mai. Vui lòng sắp xếp thời gian đến đúng hẹn.
             </p>
             
-            <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+            <div style="background: #f0fdfa; border-left: 4px solid #0d9488; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
                 <tr>
                   <td style="padding: 6px 0; font-weight: bold; width: 120px; vertical-align: top;">${details.packageName ? 'Gói khám:' : 'Bác sĩ:'}</td>
@@ -472,32 +472,34 @@ export async function sendBookingReminderEmail(
                 </tr>
                 <tr>
                   <td colspan="2" style="padding: 15px 0;">
-                    <div style="background: #f0fdfa; border: 2px solid #0d9488; text-align: center; padding: 15px; border-radius: 8px;">
+                    <div style="background: #e6fffa; border: 2px solid #0d9488; text-align: center; padding: 15px; border-radius: 8px;">
                       <p style="margin: 0; color: #0d9488; font-size: 14px; font-weight: bold;">MÃ ĐẶT LỊCH</p>
                       <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">${details.bookingCode || "N/A"}</p>
                     </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Trạng thái:</td>
-                  <td style="padding: 6px 0;">
-                    <span style="background: #dbeafe; color: #2563eb; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">Đã xác nhận</span>
                   </td>
                 </tr>
               </table>
             </div>
             
             <div style="background: #fef9c3; border-left: 4px solid #eab308; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-                <p style="margin: 0; color: #854d0e; font-weight: bold;">⚠️ Lưu ý quan trọng về việc hoàn cọc</p>
-                <p style="margin: 5px 0 0 0; color: #a16207; font-size: 14px;">Nếu bạn không thể đến, vui lòng hủy lịch TRƯỚC 24 giờ so với giờ khám để được hoàn lại 100% tiền cọc. Mọi trường hợp hủy sát giờ hoặc không đến khám sẽ không được hoàn cọc.</p>
+                <p style="margin: 0; color: #854d0e; font-weight: bold;">⚠️ Nếu bạn không thể đến, vui lòng hủy lịch TRƯỚC 24 giờ để được hoàn tiền cọc 100%</p>
             </div>
 
-            <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-              Vui lòng mang theo căn cước công dân hoặc thẻ bảo hiểm (nếu có) khi đến khám. Hẹn gặp lại bạn ngày mai!
-            </p>
+            <div style="margin: 20px 0; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 13px; color: #475569;">
+              <strong>Hướng dẫn tham gia:</strong>
+              <ul style="margin-top: 5px; margin-bottom: 0; padding-left: 20px;">
+                <li>Khám trực tiếp: Vui lòng đến trước 15 phút, mang theo CCCD.</li>
+                <li>Khám trực tuyến: Chuẩn bị camera, microphone và đăng nhập đúng giờ để tham gia phòng khám.</li>
+              </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 15px;">
+              <a href="${frontEndUrl}/my-appointments" style="display: inline-block; background-color: #0d9488; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">Xem lịch hẹn</a>
+              <a href="${frontEndUrl}/my-appointments" style="display: inline-block; background-color: #f1f5f9; color: #475569; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">Hủy lịch hẹn</a>
+            </div>
           </div>
           <div style="background: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9; color: #94a3b8; font-size: 12px;">
-            <p style="margin: 0;">© 2026 MedBooking. All rights reserved.</p>
+            <p style="margin: 0;">© 2026 MedBooking. All rights reserved. Hotline: 1900-xxxx</p>
           </div>
         </div>
       `,
@@ -507,6 +509,7 @@ export async function sendBookingReminderEmail(
         console.log(`Booking reminder email sent successfully to: ${email}`);
     } catch (error) {
         console.error("Failed to send booking reminder email:", error);
+        throw error;
     }
 }
 
@@ -718,30 +721,11 @@ export async function sendAbsenceEmail(
     }
 }
 
-/**
- * Perform tomorrow appointment reminders check.
- * Quets database for CONFIRMED appointments happening tomorrow and sends reminder emails.
- */
-async function checkAndSendReminders(): Promise<void> {
+export async function checkAndSendReminders(): Promise<void> {
     try {
-        const today = new Date();
-        const todayStr = today.toISOString().split("T")[0]; // YYYY-MM-DD
-
-        // We run the check once a day, specifically during the 8:00 AM hour
-        const currentHour = today.getHours();
-        if (currentHour !== 8) {
-            return; // Not 8 AM yet, skip
-        }
-
-        // If we already sent reminders for today's check, skip
-        if (lastSentReminderDate === todayStr) {
-            return;
-        }
-
         console.log(`[Scheduler] Checking for tomorrow's appointments to send reminders...`);
-        lastSentReminderDate = todayStr; // Update sentinel
 
-        // Calculate time range for "tomorrow"
+        // Fetch ALL confirmed appointments for tomorrow
         const tomorrowStart = new Date();
         tomorrowStart.setDate(tomorrowStart.getDate() + 1);
         tomorrowStart.setHours(0, 0, 0, 0);
@@ -750,7 +734,6 @@ async function checkAndSendReminders(): Promise<void> {
         tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
         tomorrowEnd.setHours(23, 59, 59, 999);
 
-        // Fetch all confirmed appointments for tomorrow that haven't been reminded yet
         const appointments = await prisma.appointment.findMany({
             where: {
                 status: "CONFIRMED",
@@ -771,27 +754,42 @@ async function checkAndSendReminders(): Promise<void> {
             },
         });
 
-        console.log(`[Scheduler] Found ${appointments.length} appointments for tomorrow that need reminders.`);
+        let remindersSent = 0;
 
         for (const appt of appointments) {
-            if (appt.user.email) {
-                // Send reminder email
-                await sendBookingReminderEmail(appt.user.email, {
-                    patientName: appt.user.fullName || appt.user.email,
-                    doctorName: appt.doctor?.name || "Hệ thống",
-                    specialtyName: appt.doctor?.specialty?.name || "",
-                    clinicName: appt.doctor?.clinic?.name || appt.doctor?.hospital || "Bệnh viện",
-                    appointmentDate: appt.appointmentDate,
-                    bookingCode: appt.bookingCode
-                });
-                
-                // Mark as sent
+            // Check condition: appointment_datetime - created_at >= 48 hours
+            const diffHours = (appt.appointmentDate.getTime() - appt.createdAt.getTime()) / (1000 * 60 * 60);
+            
+            if (diffHours >= 48 && appt.user.email) {
+                try {
+                    await sendBookingReminderEmail(appt.user.email, {
+                        patientName: appt.user.fullName || appt.user.email,
+                        doctorName: appt.doctor?.name || "Hệ thống",
+                        specialtyName: appt.doctor?.specialty?.name || "",
+                        clinicName: appt.doctor?.clinic?.name || appt.doctor?.hospital || "Bệnh viện",
+                        appointmentDate: appt.appointmentDate,
+                        bookingCode: appt.bookingCode
+                    });
+                    
+                    // Mark as sent immediately after successful email send
+                    await prisma.appointment.update({
+                        where: { id: appt.id },
+                        data: { reminderSent: true }
+                    });
+                    remindersSent++;
+                } catch (emailError) {
+                    // Log error, don't update reminderSent so it can retry later
+                    console.error(`[Scheduler] Failed to send reminder for appointment ${appt.id}:`, emailError);
+                }
+            } else if (diffHours < 48) {
+                // If it was created within 48h of the appointment, we just mark it as sent so we don't process it again
                 await prisma.appointment.update({
                     where: { id: appt.id },
                     data: { reminderSent: true }
                 });
             }
         }
+        console.log(`[Scheduler] Finished sending ${remindersSent} reminders.`);
     } catch (error) {
         console.error("[Scheduler] Error checking/sending reminders:", error);
     }
@@ -801,21 +799,12 @@ async function checkAndSendReminders(): Promise<void> {
  * Initialize background reminder check task (runs every hour)
  */
 export function initReminderScheduler(): void {
-    console.log("[Scheduler] Initializing tomorrow appointment reminder scheduler...");
-    // Run the check immediately on startup
-    checkAndSendReminders().catch((err) =>
-        console.error("[Scheduler] Initial startup reminder check failed:", err)
-    );
+    // We will use node-cron for the reminder check instead
+    // But we still need to run absence checks via interval here
+    
     checkAndProcessAbsences().catch((err) =>
         console.error("[Scheduler] Initial startup absence check failed:", err)
     );
-
-    // Then run reminder every hour (3600000 milliseconds)
-    setInterval(() => {
-        checkAndSendReminders().catch((err) =>
-            console.error("[Scheduler] Scheduled reminder check failed:", err)
-        );
-    }, 60 * 60 * 1000);
 
     // And run absence check every 30 minutes (1800000 milliseconds)
     setInterval(() => {

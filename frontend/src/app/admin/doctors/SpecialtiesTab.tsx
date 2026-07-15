@@ -366,7 +366,7 @@ function DeleteConfirm({ target, submitting, onConfirm, onCancel }: DeleteConfir
 }
 
 // ── Main Page ─────────────────────────────────────────────────────
-export default function AdminSpecialtiesPage() {
+export default function SpecialtiesTab() {
   const [specialties, setSpecialties] = useState<ExtendedSpecialty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -629,9 +629,9 @@ export default function AdminSpecialtiesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl font-black text-white">Quản lý Chuyên khoa</h1>
+            <h2 className="text-xl font-bold text-white">Danh sách Chuyên khoa</h2>
             <p className="text-sm text-slate-400">
-              Quản lý {specialties.length} chuyên khoa — {specialties.filter(s => s.isActive).length} đang hoạt động.
+              Có {specialties.length} chuyên khoa ({specialties.filter(s => s.isActive).length} đang hoạt động).
             </p>
           </div>
           <button

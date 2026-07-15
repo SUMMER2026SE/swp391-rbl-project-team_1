@@ -15,6 +15,8 @@ import {
     Package,
     ExternalLink,
     RotateCcw,
+    ZoomIn,
+    X,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import { appointmentService } from "@/services/appointment.service";
@@ -49,6 +51,7 @@ function PaymentContent({ id }: { id: string }) {
     const [isExpired, setIsExpired] = useState(false);
     const [successPaid, setSuccessPaid] = useState(false);
     const [payOSError, setPayOSError] = useState(false);
+    const [qrModalOpen, setQrModalOpen] = useState(false);
 
     const socketRef = useRef<Socket | null>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -350,6 +353,41 @@ function PaymentContent({ id }: { id: string }) {
         : [];
 
     return (
+        <>
+        {/* QR Modal Fullscreen */}
+        {qrModalOpen && qrUrl && (
+            <div
+                className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                onClick={() => setQrModalOpen(false)}
+            >
+                <div
+                    className="relative bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full flex flex-col items-center gap-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <button
+                        onClick={() => setQrModalOpen(false)}
+                        className="absolute top-3 right-3 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Quét để thanh toán</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={qrUrl}
+                        alt="VietQR Code"
+                        className="w-full max-w-[320px] aspect-square object-contain bg-white rounded-2xl border border-slate-100"
+                    />
+                    {payosInfo && (
+                        <div className="w-full bg-teal-50 border border-teal-100 rounded-2xl px-4 py-3 text-center">
+                            <p className="text-[10px] font-bold text-teal-700 uppercase tracking-wider">Nội dung chuyển khoản</p>
+                            <p className="font-extrabold text-teal-900 text-sm tracking-wider mt-1">{payosInfo.description}</p>
+                        </div>
+                    )}
+                    <p className="text-[10px] text-slate-400 font-semibold">Nhấn ra ngoài để đóng</p>
+                </div>
+            </div>
+        )}
+
         <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: QR + Bank Details */}
             <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden flex flex-col p-6 sm:p-8 space-y-6">
@@ -372,66 +410,82 @@ function PaymentContent({ id }: { id: string }) {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                    {/* QR Code */}
-                    <div className="md:col-span-5 flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                        {qrUrl ? (
-                            <>
+                {/* QR Code — Large & Prominent */}
+                <div className="flex flex-col items-center gap-3">
+                    {qrUrl ? (
+                        <>
+                            <div
+                                className="relative group cursor-pointer"
+                                onClick={() => setQrModalOpen(true)}
+                                title="Nhấn để phóng to"
+                            >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={qrUrl} alt="VietQR Code" className="w-44 h-44 object-contain" />
-                                <p className="text-[10px] text-slate-500 font-semibold mt-2 select-none">Quét QR chuyển nhanh 24/7</p>
+                                <img
+                                    src={qrUrl}
+                                    alt="VietQR Code"
+                                    className="w-full max-w-[280px] sm:max-w-[320px] aspect-square object-contain bg-white rounded-2xl shadow-md border border-slate-200 p-2 transition-transform group-hover:scale-[1.02]"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/0 group-hover:bg-black/10 transition-all">
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-2 shadow-lg">
+                                        <ZoomIn className="h-4 w-4 text-teal-600" />
+                                        <span className="text-xs font-bold text-slate-700">Nhấn để phóng to</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-center gap-1">
+                                <p className="text-xs text-slate-500 font-semibold select-none">Quét QR chuyển nhanh 24/7</p>
                                 {payosInfo?.checkoutUrl && (
                                     <a
                                         href={payosInfo.checkoutUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="mt-2 flex items-center gap-1 text-[10px] font-bold text-teal-600 hover:text-teal-700 underline"
+                                        className="flex items-center gap-1 text-[11px] font-bold text-teal-600 hover:text-teal-700 underline"
                                     >
                                         Mở trang thanh toán <ExternalLink className="h-3 w-3" />
                                     </a>
                                 )}
-                            </>
-                        ) : (
-                            <div className="w-44 h-44 flex items-center justify-center">
-                                <LoadingSpinner className="h-8 w-8 text-teal-600" />
                             </div>
-                        )}
-                    </div>
+                        </>
+                    ) : (
+                        <div className="w-64 h-64 flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-100">
+                            <LoadingSpinner className="h-8 w-8 text-teal-600" />
+                        </div>
+                    )}
+                </div>
 
-                    {/* Bank Transfer Details */}
-                    <div className="md:col-span-7 space-y-3 text-xs text-slate-700">
-                        {bankFields.map(({ label, value, field }) => (
-                            <div key={field} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-2">
-                                <div>
-                                    <p className="text-slate-500 text-[10px] uppercase font-bold">{label}</p>
-                                    <p className="font-bold text-slate-900 text-sm mt-0.5">{value}</p>
-                                </div>
-                                <button
-                                    onClick={() => handleCopy(value, field)}
-                                    className="text-slate-400 hover:text-teal-600 p-1.5 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-100 shadow-sm shrink-0"
-                                    title="Sao chép"
-                                >
-                                    {copiedField === field ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                                </button>
+                {/* Bank Transfer Details */}
+                <div className="space-y-3 text-xs text-slate-700">
+                    {bankFields.map(({ label, value, field }) => (
+                        <div key={field} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-2">
+                            <div>
+                                <p className="text-slate-500 text-[10px] uppercase font-bold">{label}</p>
+                                <p className="font-bold text-slate-900 text-sm mt-0.5">{value}</p>
                             </div>
-                        ))}
+                            <button
+                                onClick={() => handleCopy(value, field)}
+                                className="text-slate-400 hover:text-teal-600 p-1.5 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-100 shadow-sm shrink-0"
+                                title="Sao chép"
+                            >
+                                {copiedField === field ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    ))}
 
-                        {payosInfo && (
-                            <div className="p-3 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-between gap-2">
-                                <div>
-                                    <p className="text-teal-700 text-[10px] uppercase font-bold">Nội dung chuyển khoản</p>
-                                    <p className="font-bold text-teal-900 text-sm mt-0.5 tracking-wider">{payosInfo.description}</p>
-                                </div>
-                                <button
-                                    onClick={() => handleCopy(payosInfo.description, "description")}
-                                    className="text-teal-600 hover:text-teal-800 p-1.5 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-teal-100 shadow-sm shrink-0"
-                                    title="Sao chép"
-                                >
-                                    {copiedField === "description" ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                                </button>
+                    {payosInfo && (
+                        <div className="p-3 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-between gap-2">
+                            <div>
+                                <p className="text-teal-700 text-[10px] uppercase font-bold">Nội dung chuyển khoản</p>
+                                <p className="font-bold text-teal-900 text-sm mt-0.5 tracking-wider">{payosInfo.description}</p>
                             </div>
-                        )}
-                    </div>
+                            <button
+                                onClick={() => handleCopy(payosInfo.description, "description")}
+                                className="text-teal-600 hover:text-teal-800 p-1.5 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-teal-100 shadow-sm shrink-0"
+                                title="Sao chép"
+                            >
+                                {copiedField === "description" ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -498,6 +552,7 @@ function PaymentContent({ id }: { id: string }) {
                 </div>
             </div>
         </div>
+        </>
     );
 }
 

@@ -3,6 +3,7 @@ import { PaymentStatus, PaymentMethod, AppointmentStatus } from "@prisma/client"
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
 import { getIO } from "../utils/socket";
+import { sendBookingConfirmationEmail } from "../utils/emailService";
 const PayOS = require("@payos/node");
 
 const payos = new PayOS(
@@ -346,6 +347,62 @@ export async function getPaymentStatusByOrderCode(orderCode: number) {
         throw new ApiError("Không tìm thấy giao dịch", 404);
     }
 
+    // Try to sync with PayOS if local status is still PENDING (useful for localhost without webhook)
+    if (payment.status === PaymentStatus.PENDING) {
+        try {
+            const payosInfo = await payos.getPaymentLinkInformation(orderCode);
+            if (payosInfo.status === "PAID" || payosInfo.status === "Success") {
+                await prisma.$transaction([
+                    prisma.payment.update({
+                        where: { id: payment.id, status: PaymentStatus.PENDING },
+                        data: {
+                            status: PaymentStatus.PAID,
+                            payDate: new Date(),
+                            transactionId: "PAYOS-SYNC-" + Date.now(),
+                        }
+                    }),
+                    prisma.appointment.update({
+                        where: { id: payment.appointmentId },
+                        data: {
+                            status: AppointmentStatus.CONFIRMED,
+                            paymentAt: new Date(),
+                        }
+                    })
+                ]);
+                payment.status = PaymentStatus.PAID;
+
+                // Send booking confirmation email after polling sync
+                const fullAppointment = await prisma.appointment.findUnique({
+                    where: { id: payment.appointmentId },
+                    include: {
+                        user: true,
+                        doctor: { include: { specialty: true, clinic: true } },
+                        medicalPackage: true,
+                        patientProfile: true,
+                    }
+                });
+                if (fullAppointment?.user?.email) {
+                    sendBookingConfirmationEmail(fullAppointment.user.email, {
+                        patientName: fullAppointment.user.fullName || fullAppointment.user.email,
+                        doctorName: fullAppointment.doctor?.name || "Hệ thống",
+                        specialtyName: fullAppointment.doctor?.specialty?.name || "",
+                        clinicName: fullAppointment.doctor?.clinic?.name || fullAppointment.doctor?.hospital || "Bệnh viện",
+                        appointmentDate: fullAppointment.appointmentDate,
+                        amount: fullAppointment.amount,
+                        paymentMethod: "PAYOS",
+                        transactionCode: fullAppointment.transactionCode || undefined,
+                        appointmentId: fullAppointment.id,
+                        bookingCode: fullAppointment.bookingCode,
+                        packageName: fullAppointment.medicalPackage?.name || null,
+                        status: "CONFIRMED",
+                    }).catch(console.error);
+                }
+            }
+        } catch (e) {
+            console.error("PayOS status sync error:", e);
+        }
+    }
+
     return {
         status: payment.status,
         appointmentId: payment.appointmentId,
@@ -426,6 +483,36 @@ export async function processPayOSWebhook(body: any) {
         });
     } catch (error) {
         console.error("Socket notification error:", error);
+    }
+
+    // Send booking confirmation email — wrapped in .catch so it never crashes the webhook
+    if (updatedAppointment.user?.email) {
+        // Reload appointment with full relations for email
+        prisma.appointment.findUnique({
+            where: { id: updatedAppointment.id },
+            include: {
+                doctor: { include: { specialty: true, clinic: true } },
+                medicalPackage: true,
+                patientProfile: true,
+            }
+        }).then((fullAppt) => {
+            if (!fullAppt) return;
+            sendBookingConfirmationEmail(updatedAppointment.user!.email!, {
+                patientName: updatedAppointment.user!.fullName || updatedAppointment.user!.email || "Bệnh nhân",
+                doctorName: fullAppt.doctor?.name || "Hệ thống",
+                specialtyName: (fullAppt.doctor as any)?.specialty?.name || "",
+                clinicName: (fullAppt.doctor as any)?.clinic?.name || (fullAppt.doctor as any)?.hospital || "Bệnh viện",
+                appointmentDate: updatedAppointment.appointmentDate,
+                amount: updatedPayment.amount,
+                paymentMethod: "PayOS",
+                transactionCode: updatedPayment.transactionId || undefined,
+                paymentAt: updatedPayment.payDate || undefined,
+                appointmentId: updatedAppointment.id,
+                bookingCode: updatedAppointment.bookingCode,
+                packageName: fullAppt.medicalPackage?.name || null,
+                status: "CONFIRMED",
+            });
+        }).catch(console.error);
     }
 
     return { message: "Webhook processed successfully" };
