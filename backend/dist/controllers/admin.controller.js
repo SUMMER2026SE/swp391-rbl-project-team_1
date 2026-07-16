@@ -8,6 +8,7 @@ exports.lockUserHandler = lockUserHandler;
 exports.linkDoctorToUser = linkDoctorToUser;
 exports.updateAppointmentStatusHandler = updateAppointmentStatusHandler;
 exports.getPendingPaymentsHandler = getPendingPaymentsHandler;
+exports.getAllPaymentsHandler = getAllPaymentsHandler;
 const client_1 = require("@prisma/client");
 const admin_service_1 = require("../services/admin.service");
 const user_service_1 = require("../services/user.service");
@@ -173,6 +174,23 @@ async function getPendingPaymentsHandler(_req, res, next) {
             message: "Pending approval payments retrieved successfully",
             count: appointments.length,
             data: appointments,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/admin/payments
+ * Returns all payment records (all statuses), sorted by newest.
+ */
+async function getAllPaymentsHandler(_req, res, next) {
+    try {
+        const payments = await (0, admin_service_1.getAllPayments)();
+        res.json({
+            message: "All payments retrieved successfully",
+            count: payments.length,
+            data: payments,
         });
     }
     catch (error) {

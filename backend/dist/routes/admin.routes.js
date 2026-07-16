@@ -59,6 +59,11 @@ router.get("/admin/appointments", auth_middleware_1.verifyToken, authorization_m
  */
 router.get("/admin/appointments/pending-approval", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_controller_1.getPendingPaymentsHandler);
 /**
+ * GET /api/admin/payments
+ * Returns all payment records (all statuses), sorted newest first.
+ */
+router.get("/admin/payments", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, admin_controller_1.getAllPaymentsHandler);
+/**
  * PUT /api/admin/appointments/:id/status
  * Updates an appointment's status.
  */

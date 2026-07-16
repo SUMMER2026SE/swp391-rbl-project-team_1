@@ -23,8 +23,28 @@ async function createAppointmentHandler(req, res, next) {
         if (!userId) {
             throw new apiError_1.ApiError("Authentication required", 401);
         }
-        const { doctorId, appointmentDate, notes, packageId, patientProfileId } = req.body;
-        if (!patientProfileId) {
+        const { doctorId, appointmentDate, notes, packageId, patientProfileId, newPatientProfile } = req.body;
+        let finalProfileId = patientProfileId;
+        if (!finalProfileId && newPatientProfile) {
+            const fullAddress = [newPatientProfile.address, newPatientProfile.ward, newPatientProfile.province]
+                .filter(Boolean)
+                .join(", ");
+            const profile = await client_1.default.patientProfile.create({
+                data: {
+                    userId,
+                    fullName: newPatientProfile.fullName,
+                    phoneNumber: newPatientProfile.phoneNumber,
+                    gender: newPatientProfile.gender,
+                    dateOfBirth: new Date(newPatientProfile.dateOfBirth),
+                    cccd: newPatientProfile.cccd || "",
+                    address: fullAddress || "",
+                    isPrimary: false,
+                    isTemporary: newPatientProfile.isTemporary || false
+                }
+            });
+            finalProfileId = profile.id;
+        }
+        if (!finalProfileId) {
             throw new apiError_1.ApiError("Vui lòng chọn hồ sơ người khám", 400);
         }
         if (!doctorId && !packageId) {
@@ -44,7 +64,7 @@ async function createAppointmentHandler(req, res, next) {
         }
         const appointment = await (0, appointment_service_1.createAppointment)({
             userId,
-            patientProfileId,
+            patientProfileId: finalProfileId,
             doctorId,
             appointmentDate: date,
             notes,
@@ -124,9 +144,9 @@ async function getAppointmentByIdHandler(req, res, next) {
         };
         if (appointment.status === "PENDING_PAYMENT") {
             responseData.bankDetails = {
-                bankName: process.env.BANK_NAME || "MBBank",
-                bankAccount: process.env.BANK_ACCOUNT || "123456789",
-                bankOwner: process.env.BANK_OWNER || "NGUYEN MINH TRUNG",
+                bankName: "BIDV",
+                bankAccount: "5624715454",
+                bankOwner: "NGUYEN DAC DUNG",
             };
         }
         res.json(responseData);

@@ -90,8 +90,15 @@ async function createAppointment(params) {
         codeConflict = await client_1.default.appointment.findFirst({ where: { transactionCode } });
         attempts++;
     }
-    let amount = 50000;
-    if (params.packageId) {
+    // Lấy giá tiền từ bác sỹ hoặc gói khám
+    let amount = 5000;
+    if (params.doctorId) {
+        const doc = await client_1.default.doctor.findUnique({ where: { id: params.doctorId } });
+        if (doc?.price) {
+            amount = doc.price;
+        }
+    }
+    else if (params.packageId) {
         const pkg = await client_1.default.medicalPackage.findUnique({ where: { id: params.packageId } });
         if (pkg) {
             amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;

@@ -8,6 +8,7 @@ import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
 import Alert from "@/components/common/Alert";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import AddressInput from "@/components/common/AddressInput";
 import { User, Activity, MapPin, Calendar, Mail, Shield, UserSquare, KeyRound, Lock, Sparkles, Camera } from "lucide-react";
 
 type ProfileTab = "info" | "password";
@@ -416,13 +417,10 @@ function ProfileContent() {
                     <label htmlFor="address" className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Địa Chỉ Cư Trú
                     </label>
-                    <textarea
-                      id="address"
-                      placeholder="Nhập địa chỉ hiện tại (Số nhà, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố)"
+                    <AddressInput
                       value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      rows={3}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-sm resize-none placeholder:text-slate-400"
+                      onChange={setAddress}
+                      existingAddress={user.address || undefined}
                     />
                   </div>
 

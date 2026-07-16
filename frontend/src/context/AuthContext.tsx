@@ -39,9 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profileResponse = await authService.getProfile();
             setUser(profileResponse.user);
             localStorage.setItem("user", JSON.stringify(profileResponse.user));
-          } catch (profileError) {
-            console.error("Token verification failed:", profileError);
-            // Token is invalid/expired
+          } catch {
+            // Token invalid/expired or backend unreachable - clear auth silently
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             setToken(null);

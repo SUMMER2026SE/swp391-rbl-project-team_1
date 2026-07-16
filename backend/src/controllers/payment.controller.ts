@@ -266,13 +266,16 @@ export async function getPaymentStatusHandler(
     try {
         const orderCode = Number(req.params.orderCode);
         if (!orderCode) {
-            throw new ApiError("Mã đơn hàng không hợp lệ", 400);
+            res.status(200).json({ status: "PENDING", appointmentId: null });
+            return;
         }
 
         const result = await getPaymentStatusByOrderCode(orderCode);
         res.status(200).json(result);
     } catch (error) {
-        next(error);
+        // Polling endpoint: always return 200 with PENDING to avoid frontend console errors
+        console.error("Payment status polling error:", error);
+        res.status(200).json({ status: "PENDING", appointmentId: null });
     }
 }
 

@@ -15,6 +15,7 @@ export interface TimeSlot {
   isBooked?: boolean;
   isTooClose?: boolean;
   remaining?: number;
+  capacity?: number;
 }
 
 export interface Specialty {

@@ -19,7 +19,7 @@ async function getMyPatientProfiles(req, res, next) {
         if (!userId)
             throw new apiError_1.ApiError("Unauthorized", 401);
         const profiles = await client_1.default.patientProfile.findMany({
-            where: { userId },
+            where: { userId, isTemporary: false },
             orderBy: { createdAt: "asc" }
         });
         res.json({ profiles });

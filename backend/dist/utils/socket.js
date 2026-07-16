@@ -1,9 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getIO = getIO;
 exports.initSocket = initSocket;
 const socket_io_1 = require("socket.io");
+// Global io instance - used by services to emit events
+let io;
+function getIO() {
+    if (!io)
+        throw new Error("Socket.io not initialized");
+    return io;
+}
 function initSocket(httpServer, allowedOrigins) {
-    const io = new socket_io_1.Server(httpServer, {
+    io = new socket_io_1.Server(httpServer, {
         cors: {
             origin: allowedOrigins,
             methods: ["GET", "POST"],
@@ -12,11 +20,23 @@ function initSocket(httpServer, allowedOrigins) {
     });
     io.on("connection", (socket) => {
         console.log(`Socket connected: ${socket.id}`);
-        // Join room for a specific appointment
+        // --- Payment notification rooms ---
+        socket.on("join_user_room", ({ userId }) => {
+            socket.join(`user_${userId}`);
+            console.log(`Socket ${socket.id} joined user_${userId}`);
+        });
+        socket.on("join_doctor_room", ({ doctorId }) => {
+            socket.join(`doctor_${doctorId}`);
+            console.log(`Socket ${socket.id} joined doctor_${doctorId}`);
+        });
+        socket.on("join_admin_room", () => {
+            socket.join("admin");
+            console.log(`Socket ${socket.id} joined admin room`);
+        });
+        // --- Video Call / Appointment rooms ---
         socket.on("join-room", ({ appointmentId, role, name, avatar }) => {
             socket.join(appointmentId);
             console.log(`User ${name} (${role}) joined room ${appointmentId}`);
-            // Broadcast to other users in room that a user has connected
             socket.to(appointmentId).emit("user-connected", {
                 socketId: socket.id,
                 role,
@@ -58,7 +78,6 @@ function initSocket(httpServer, allowedOrigins) {
             socket.to(`chat_${data.conversationId}`).emit("video_call_declined", data);
         });
         socket.on("disconnecting", () => {
-            // Find all rooms this socket is in
             const rooms = Array.from(socket.rooms);
             rooms.forEach((room) => {
                 if (room !== socket.id) {

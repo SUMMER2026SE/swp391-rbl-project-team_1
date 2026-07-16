@@ -11,7 +11,8 @@ const getRecordByAppointment = async (req, res) => {
             where: { id: appointmentId },
             include: {
                 user: true,
-                patientProfile: true
+                patientProfile: true,
+                doctor: true
             }
         });
         if (!appointment) {

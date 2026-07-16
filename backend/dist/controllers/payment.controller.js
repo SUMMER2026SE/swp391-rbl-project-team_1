@@ -7,6 +7,9 @@ exports.createPaymentUrlHandler = createPaymentUrlHandler;
 exports.vnpayReturnHandler = vnpayReturnHandler;
 exports.vnpayIpnHandler = vnpayIpnHandler;
 exports.mockPayHandler = mockPayHandler;
+exports.createPayOSPaymentUrlHandler = createPayOSPaymentUrlHandler;
+exports.getPaymentStatusHandler = getPaymentStatusHandler;
+exports.payosWebhookHandler = payosWebhookHandler;
 const payment_service_1 = require("../services/payment.service");
 const apiError_1 = require("../utils/apiError");
 const client_1 = __importDefault(require("../prisma/client"));
@@ -172,5 +175,66 @@ async function mockPayHandler(req, res, next) {
     }
     catch (error) {
         next(error);
+    }
+}
+/**
+ * POST /api/payment/payos
+ * Creates a PayOS payment link
+ */
+async function createPayOSPaymentUrlHandler(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+        const { appointmentId } = req.body;
+        if (!userId) {
+            throw new apiError_1.ApiError("Yêu cầu đăng nhập", 401);
+        }
+        if (!appointmentId) {
+            throw new apiError_1.ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
+        }
+        const result = await (0, payment_service_1.createPayOSPaymentLink)(appointmentId);
+        res.status(200).json({
+            message: "Tạo link thanh toán PayOS thành công",
+            ...result
+        });
+    }
+    catch (error) {
+        console.error("PayOS Create Error:", error);
+        next(error);
+    }
+}
+/**
+ * GET /api/payment/status/:orderCode
+ * Polling payment status
+ */
+async function getPaymentStatusHandler(req, res, next) {
+    try {
+        const orderCode = Number(req.params.orderCode);
+        if (!orderCode) {
+            res.status(200).json({ status: "PENDING", appointmentId: null });
+            return;
+        }
+        const result = await (0, payment_service_1.getPaymentStatusByOrderCode)(orderCode);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        // Polling endpoint: always return 200 with PENDING to avoid frontend console errors
+        console.error("Payment status polling error:", error);
+        res.status(200).json({ status: "PENDING", appointmentId: null });
+    }
+}
+/**
+ * POST /api/payment/payos-webhook
+ * PayOS Webhook Handler
+ */
+async function payosWebhookHandler(req, res, next) {
+    try {
+        const result = await (0, payment_service_1.processPayOSWebhook)(req.body);
+        // PayOS requires webhook endpoints to always return 200 OK
+        res.status(200).json(result);
+    }
+    catch (error) {
+        console.error("PayOS Webhook Error:", error);
+        // Still return 200 so PayOS stops retrying if it's our internal logic error
+        res.status(200).json({ error: "Internal processing error" });
     }
 }

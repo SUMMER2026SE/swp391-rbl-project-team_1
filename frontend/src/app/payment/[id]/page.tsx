@@ -165,8 +165,12 @@ function PaymentContent({ id }: { id: string }) {
                 } else if (statusRes.status === "EXPIRED" || statusRes.status === "FAILED") {
                     markExpired();
                 }
-            } catch (e) {
-                console.error("Polling error:", e);
+            } catch (e: any) {
+                // Silently ignore 404 errors (payment not yet synced)
+                // Only log non-404 errors as warnings to avoid triggering Next.js error overlay
+                if (e?.status !== 404) {
+                    console.warn("Polling error:", e?.message || e);
+                }
             }
         }, 3000);
 
@@ -180,9 +184,9 @@ function PaymentContent({ id }: { id: string }) {
     useEffect(() => {
         if (loading || resolvedRef.current || !user) return;
 
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL
+const backendUrl = process.env.NEXT_PUBLIC_API_URL
             ? process.env.NEXT_PUBLIC_API_URL.replace("/api", "")
-            : "http://localhost:5000";
+            : "http://127.0.0.1:5000";
 
         const socket = io(backendUrl, {
             withCredentials: true,

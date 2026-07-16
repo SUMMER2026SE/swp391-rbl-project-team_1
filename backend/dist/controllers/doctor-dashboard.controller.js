@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDoctorReviews = exports.getDoctorStatistics = exports.updateBulkAppointmentStatus = exports.getDashboardCharts = exports.createPrescription = exports.createMedicalRecord = exports.getPatientMedicalRecords = exports.getDoctorPatients = exports.updateAppointmentStatus = exports.getDoctorAppointments = exports.deleteDoctorSchedule = exports.updateDoctorSchedule = exports.createDoctorSchedule = exports.getDoctorSchedules = exports.updateDoctorProfile = exports.getAvailableSpecialtiesAndClinics = exports.getDoctorProfile = exports.getDashboardStats = void 0;
+exports.getPatientDetail = exports.getDoctorReviews = exports.getDoctorStatistics = exports.updateBulkAppointmentStatus = exports.getDashboardCharts = exports.createPrescription = exports.createMedicalRecord = exports.getPatientMedicalRecords = exports.getDoctorPatients = exports.updateAppointmentStatus = exports.getDoctorAppointments = exports.deleteDoctorSchedule = exports.updateDoctorSchedule = exports.createDoctorSchedule = exports.getDoctorSchedules = exports.updateDoctorProfile = exports.getAvailableSpecialtiesAndClinics = exports.getDoctorProfile = exports.getDashboardStats = void 0;
 const client_1 = require("@prisma/client");
 const emailService_1 = require("../utils/emailService");
 const prisma = new client_1.PrismaClient();
@@ -750,3 +750,44 @@ const getDoctorReviews = async (req, res) => {
     }
 };
 exports.getDoctorReviews = getDoctorReviews;
+const getPatientDetail = async (req, res) => {
+    try {
+        const doctor = await getDoctor(req.user.userId);
+        if (!doctor)
+            return res.status(404).json({ message: "Doctor profile not found" });
+        const userId = req.params.userId;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true, fullName: true, email: true, gender: true,
+                dateOfBirth: true, avatar: true, bloodType: true,
+                allergies: true, chronicDiseases: true, personalHistory: true
+            }
+        });
+        if (!user)
+            return res.status(404).json({ message: "Patient not found" });
+        const patientProfile = await prisma.patientProfile.findFirst({
+            where: { userId, isPrimary: true }
+        });
+        const pastAppointments = await prisma.appointment.findMany({
+            where: { userId, doctorId: doctor.id, status: 'COMPLETED' },
+            include: {
+                patientProfile: true,
+                medicalRecord: { select: { id: true, status: true } }
+            },
+            orderBy: { appointmentDate: 'desc' }
+        });
+        res.json({
+            user: {
+                ...user,
+                phone: patientProfile?.phoneNumber || null,
+                cccd: patientProfile?.cccd || null,
+            },
+            pastAppointments
+        });
+    }
+    catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+};
+exports.getPatientDetail = getPatientDetail;

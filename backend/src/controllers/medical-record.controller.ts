@@ -12,7 +12,8 @@ export const getRecordByAppointment = async (req: Request, res: Response): Promi
       where: { id: appointmentId as string },
       include: {
         user: true,
-        patientProfile: true
+        patientProfile: true,
+        doctor: true
       }
     });
 

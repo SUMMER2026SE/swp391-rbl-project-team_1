@@ -73,9 +73,14 @@ export const appointmentService = {
     return response.data;
   },
 
-  async getPaymentStatus(orderCode: number): Promise<{ status: string; appointmentId: string }> {
-    const response = await api.get<{ status: string; appointmentId: string }>(`/payments/status/${orderCode}`);
-    return response.data;
+  async getPaymentStatus(orderCode: number): Promise<{ status: string; appointmentId: string | null }> {
+    try {
+      const response = await api.get<{ status: string; appointmentId: string }>(`/payments/status/${orderCode}`);
+      return response.data;
+    } catch {
+      // Polling endpoint: treat errors as PENDING (payment may not be synced yet)
+      return { status: "PENDING", appointmentId: null };
+    }
   },
 
   async getPendingPaymentsForAdmin(): Promise<{ message: string; data: Appointment[] }> {

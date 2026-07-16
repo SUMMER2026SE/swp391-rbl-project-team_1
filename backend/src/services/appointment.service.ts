@@ -103,13 +103,19 @@ export async function createAppointment(
         attempts++;
     }
 
+    // Lấy giá tiền từ bác sỹ hoặc gói khám
     let amount = 5000;
-    // if (params.packageId) {
-    //     const pkg = await prisma.medicalPackage.findUnique({ where: { id: params.packageId } });
-    //     if (pkg) {
-    //         amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
-    //     }
-    // }
+    if (params.doctorId) {
+        const doc = await prisma.doctor.findUnique({ where: { id: params.doctorId } });
+        if (doc?.price) {
+            amount = doc.price;
+        }
+    } else if (params.packageId) {
+        const pkg = await prisma.medicalPackage.findUnique({ where: { id: params.packageId } });
+        if (pkg) {
+            amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+    }
 
     // Generate unique booking code
     let bookingCode = generateBookingCode();

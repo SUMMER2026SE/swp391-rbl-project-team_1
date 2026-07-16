@@ -10,6 +10,7 @@ exports.lockUser = lockUser;
 exports.linkDoctorToUser = linkDoctorToUser;
 exports.updateAppointmentStatus = updateAppointmentStatus;
 exports.getPendingPayments = getPendingPayments;
+exports.getAllPayments = getAllPayments;
 const client_1 = __importDefault(require("../prisma/client"));
 const client_2 = require("@prisma/client");
 const apiError_1 = require("../utils/apiError");
@@ -208,5 +209,38 @@ async function getPendingPayments() {
             },
         },
         orderBy: { paymentAt: "asc" },
+    });
+}
+/**
+ * Returns all appointments that have a payment record or a payment proof, sorted by newest.
+ */
+async function getAllPayments() {
+    return client_1.default.appointment.findMany({
+        where: {
+            OR: [
+                { payment: { isNot: null } },
+                { paymentProof: { not: null } }
+            ]
+        },
+        include: {
+            payment: true,
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    fullName: true,
+                    avatar: true,
+                },
+            },
+            doctor: {
+                select: {
+                    id: true,
+                    name: true,
+                    specialty: true,
+                    hospital: true,
+                },
+            },
+        },
+        orderBy: { createdAt: "desc" },
     });
 }

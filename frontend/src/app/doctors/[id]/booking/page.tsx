@@ -557,7 +557,7 @@ export default function DoctorBookingPage({ params }: PageProps) {
                               <span className="text-[10px] font-bold opacity-80 uppercase tracking-widest">
                                 {slot.isTooClose ? "Quá gần" : "Đã kín chỗ"}
                               </span>
-                            ) : slot.capacity > 1 ? (
+                            ) : (slot.capacity || 0) > 1 ? (
                               <span className="text-[10px] opacity-90">
                                 Còn {slot.remaining} chỗ
                               </span>

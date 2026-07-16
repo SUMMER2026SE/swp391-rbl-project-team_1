@@ -266,6 +266,7 @@ export async function processMockPayment(appointmentId: string) {
 export async function createPayOSPaymentLink(appointmentId: string) {
     const appointment = await prisma.appointment.findUnique({
         where: { id: appointmentId },
+        include: { doctor: true },
     });
 
     if (!appointment) {
@@ -278,7 +279,8 @@ export async function createPayOSPaymentLink(appointmentId: string) {
 
     // Generate a numeric order code < 9007199254740991
     const orderCode = Number(String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 1000)));
-    const amount = appointment.amount || 50000;
+    // Sử dụng giá tiền của bác sỹ, fallback sang appointment.amount
+    const amount = appointment.doctor?.price || appointment.amount || 5000;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);
     
     // Set expired time = now + 5 minutes
@@ -344,7 +346,12 @@ export async function getPaymentStatusByOrderCode(orderCode: number) {
     });
 
     if (!payment) {
-        throw new ApiError("Không tìm thấy giao dịch", 404);
+        // Polling endpoint: return PENDING instead of throwing 404
+        // Payment record may not exist yet due to timing/race conditions
+        return {
+            status: "PENDING" as const,
+            appointmentId: null,
+        };
     }
 
     // Try to sync with PayOS if local status is still PENDING (useful for localhost without webhook)

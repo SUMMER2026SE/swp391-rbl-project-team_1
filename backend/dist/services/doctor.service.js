@@ -26,17 +26,30 @@ async function getAllDoctors(specialtySlug, clinicId) {
         },
         orderBy: { name: "asc" },
     });
+    // Batch fetch completed appointments count to avoid connection pool exhaustion (N+1 problem)
+    const completedCounts = await client_1.default.appointment.groupBy({
+        by: ['doctorId'],
+        where: {
+            doctorId: { in: doctors.map(d => d.id) },
+            status: 'COMPLETED'
+        },
+        _count: {
+            id: true
+        }
+    });
+    const countsMap = new Map();
+    for (const c of completedCounts) {
+        countsMap.set(c.doctorId, c._count.id);
+    }
     // Check system verified status and appointments for all doctors
-    const doctorsWithVerification = await Promise.all(doctors.map(async (doc) => {
+    const doctorsWithVerification = doctors.map((doc) => {
         const hasVerifiedLicense = doc.certificates.some(c => c.type === 'PRACTICE_LICENSE' && c.verificationStatus === 'VERIFIED');
-        const hasCompletedAppointments = await client_1.default.appointment.count({
-            where: { doctorId: doc.id, status: 'COMPLETED' }
-        });
+        const completedAppointments = countsMap.get(doc.id) || 0;
         return {
             ...doc,
-            isSystemVerified: doc.status === 'APPROVED' && hasVerifiedLicense && hasCompletedAppointments > 0
+            isSystemVerified: doc.status === 'APPROVED' && hasVerifiedLicense && completedAppointments > 0
         };
-    }));
+    });
     return doctorsWithVerification;
 }
 async function getAllSpecialties() {

@@ -26,11 +26,16 @@ const medicine_routes_1 = __importDefault(require("./routes/medicine.routes"));
 const medical_record_routes_1 = __importDefault(require("./routes/medical-record.routes"));
 const video_call_routes_1 = __importDefault(require("./routes/video-call.routes"));
 const emailService_1 = require("./utils/emailService");
+const reminderJob_1 = require("./jobs/reminderJob");
 const auth_middleware_1 = require("./middleware/auth.middleware");
 const error_middleware_1 = require("./middleware/error.middleware");
 const auth_controller_1 = require("./controllers/auth.controller");
 const appointment_service_1 = require("./services/appointment.service");
 dotenv_1.default.config();
+// Patch BigInt to be serialized as string in JSON responses
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
 const app = (0, express_1.default)();
 // Production CORS Configuration
 const corsOrigin = process.env.CORS_ORIGIN;
@@ -51,7 +56,8 @@ app.use("/api", admin_routes_1.default);
 app.use("/api", chat_routes_1.default);
 app.use("/api", article_routes_1.default);
 app.use("/api", review_routes_1.default);
-app.use("/api", payment_routes_1.default);
+app.use("/api/payment", payment_routes_1.default);
+app.use("/api/payments", payment_routes_1.default); // /api/payments/status/:orderCode (public polling)
 app.use("/api", package_routes_1.default);
 app.use("/api/patient-profiles", patient_profile_routes_1.default);
 app.use("/api/messages", message_routes_1.default);
@@ -70,11 +76,12 @@ const httpServer = (0, http_1.createServer)(app);
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     (0, emailService_1.initReminderScheduler)();
+    (0, reminderJob_1.startReminderJob)();
     // Run expired payment check immediately on startup
     console.log("[Scheduler] Initializing auto-cancellation scheduler for expired payments...");
     (0, appointment_service_1.autoCancelExpiredAppointments)().catch((err) => console.error("[Scheduler] Expired payments cleanup failed on startup:", err));
-    // Run expired payment check every 5 minutes (300000 ms)
+    // Run expired payment check every 1 minute (60000 ms)
     setInterval(() => {
         (0, appointment_service_1.autoCancelExpiredAppointments)().catch((err) => console.error("[Scheduler] Scheduled expired payments cleanup failed:", err));
-    }, 5 * 60 * 1000);
+    }, 1 * 60 * 1000);
 });

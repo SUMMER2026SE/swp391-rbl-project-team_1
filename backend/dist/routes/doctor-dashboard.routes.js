@@ -33,6 +33,7 @@ router.put("/appointments/bulk-status", doctor_dashboard_controller_1.updateBulk
 router.put("/appointments/:id/status", doctor_dashboard_controller_1.updateAppointmentStatus);
 // Patients & Medical Records
 router.get("/patients", doctor_dashboard_controller_1.getDoctorPatients);
+router.get("/patients/:userId", doctor_dashboard_controller_1.getPatientDetail);
 router.get("/patients/:userId/records", doctor_dashboard_controller_1.getPatientMedicalRecords);
 router.post("/medical-records", doctor_dashboard_controller_1.createMedicalRecord);
 router.post("/prescriptions", doctor_dashboard_controller_1.createPrescription);
