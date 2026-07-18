@@ -74,7 +74,7 @@ export function initSocket(httpServer: any, allowedOrigins: string[]) {
         });
 
         socket.on("send-direct-message", ({ conversationId, message }) => {
-            socket.to(`chat_${conversationId}`).emit("receive-direct-message", message);
+            socket.to(`chat_${conversationId}`).emit("receive-direct-message", { conversationId, message });
         });
 
         // --- Video Call Invite Flow ---
