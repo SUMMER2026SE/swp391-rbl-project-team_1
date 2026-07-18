@@ -43,6 +43,12 @@ export default function MessagesPage() {
     const socketRef = useRef<Socket | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inviteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const activeConvIdRef = useRef<string | null>(null);
+
+    // Keep activeConvIdRef updated
+    useEffect(() => {
+        activeConvIdRef.current = activeConversation?.id || null;
+    }, [activeConversation]);
 
     // Fetch conversations
     useEffect(() => {
@@ -98,21 +104,25 @@ export default function MessagesPage() {
 
         socketRef.current = socket;
 
-        socket.on("receive-direct-message", (msg: Message) => {
+        socket.on("receive-direct-message", (data: { conversationId: string, message: Message }) => {
+            const { conversationId, message: msg } = data;
+            
             // If the message is for the currently active conversation, append it
             setMessages((prev) => {
+                if (conversationId !== activeConvIdRef.current) return prev;
                 // Prevent duplicate
                 if (prev.find(m => m.id === msg.id)) return prev;
-                return [...prev, msg];
+                return [...prev, msg]; 
             });
 
             // Update conversations list (latest message)
             setConversations((prevConvs) => {
                 return prevConvs.map(conv => {
-                    // We don't have conversationId in the socket payload easily, 
-                    // but we can just refetch conversations or rely on user action.
+                    if (conv.id === conversationId) {
+                        return { ...conv, messages: [msg], updatedAt: new Date().toISOString() };
+                    }
                     return conv; 
-                });
+                }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
             });
         });
 
