@@ -14,11 +14,10 @@ import {
   Stethoscope,
   BookOpen,
   Building2,
-  FileText,
   MessageSquare,
   BarChart3,
   Landmark,
-  History,
+  Ticket,
 } from "lucide-react";
 import AdminNotificationBell from "@/components/admin/AdminNotificationBell";
 
@@ -56,11 +55,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: <Stethoscope className="h-5 w-5" />,
     },
     {
-      name: "Quản lý Bài viết",
-      href: "/admin/articles",
-      icon: <FileText className="h-5 w-5" />,
-    },
-    {
       name: "Phản hồi & Khiếu nại",
       href: "/admin/complaints",
       icon: <MessageSquare className="h-5 w-5" />,
@@ -71,9 +65,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: <BarChart3 className="h-5 w-5" />,
     },
     {
-      name: "Nhật ký Hoạt động",
-      href: "/admin/audit-log",
-      icon: <History className="h-5 w-5" />,
+      name: "Quản lý Voucher",
+      href: "/admin/vouchers",
+      icon: <Ticket className="h-5 w-5" />,
     },
   ];
 
@@ -134,7 +128,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </span>
             </div>
             
-            {/* Mobile Header Nav Trigger */}
             <div className="md:hidden flex gap-4 overflow-x-auto">
               <Link href="/admin" className="text-slate-400 hover:text-teal-400">
                 <LayoutDashboard className="h-5 w-5" />
@@ -145,17 +138,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Link href="/admin/appointments" className="text-slate-400 hover:text-teal-400">
                 <CalendarRange className="h-5 w-5" />
               </Link>
+              <Link href="/admin/payments" className="text-slate-400 hover:text-teal-400">
+                <Landmark className="h-5 w-5" />
+              </Link>
               <Link href="/admin/doctors" className="text-slate-400 hover:text-teal-400">
                 <Stethoscope className="h-5 w-5" />
-              </Link>
-              <Link href="/admin/articles" className="text-slate-400 hover:text-teal-400">
-                <FileText className="h-5 w-5" />
               </Link>
               <Link href="/admin/complaints" className="text-slate-400 hover:text-teal-400">
                 <MessageSquare className="h-5 w-5" />
               </Link>
               <Link href="/admin/statistics" className="text-slate-400 hover:text-teal-400">
                 <BarChart3 className="h-5 w-5" />
+              </Link>
+              <Link href="/admin/vouchers" className="text-slate-400 hover:text-teal-400">
+                <Ticket className="h-5 w-5" />
               </Link>
               <Link href="/" className="text-slate-400 hover:text-teal-400">
                 <ArrowLeft className="h-5 w-5" />

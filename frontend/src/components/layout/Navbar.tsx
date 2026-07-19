@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Menu, X, Calendar, LogOut, User as UserIcon, ShieldAlert, LayoutDashboard } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import Button from "../common/Button";
 import OnboardingSurveyModal from "../ui/OnboardingSurveyModal";
 
@@ -46,7 +47,7 @@ export default function Navbar() {
     { name: "Tin Tức", href: "/news" },
   ];
 
-  if (isAuthenticated && (user?.role === "USER" || user?.role === "DOCTOR")) {
+  if (isAuthenticated && user?.role === "DOCTOR") {
     navLinks.push({ name: "Lịch Hẹn Của Tôi", href: "/my-appointments" });
   }
 
@@ -93,11 +94,13 @@ export default function Navbar() {
           {/* Desktop Action Buttons */}
           <div className="hidden md:flex items-center gap-4">
             {isAuthenticated && user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-xl px-3.5 py-1.5 text-slate-700 text-sm transition-all focus:outline-none cursor-pointer"
-                >
+              <div className="flex items-center gap-4">
+                <NotificationBell />
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-xl px-3.5 py-1.5 text-slate-700 text-sm transition-all focus:outline-none cursor-pointer"
+                  >
                   {user.avatar ? (
                     <img
                       src={user.avatar.startsWith("http") ? user.avatar : (user.avatar.startsWith("/public/") ? `http://localhost:5000${user.avatar}` : user.avatar)}
@@ -131,7 +134,17 @@ export default function Navbar() {
                         <UserIcon className="h-4 w-4 text-teal-600" />
                         <span>Trang cá nhân</span>
                       </Link>
-                      {(user.role === "USER" || user.role === "DOCTOR") && (
+                      {(user.role === "USER") && (
+                        <Link
+                          href="/profile#appointments"
+                          onClick={() => setShowDropdown(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <Calendar className="h-4 w-4 text-teal-600" />
+                          <span>Lịch hẹn của tôi</span>
+                        </Link>
+                      )}
+                      {(user.role === "DOCTOR") && (
                         <Link
                           href="/my-appointments"
                           onClick={() => setShowDropdown(false)}
@@ -175,6 +188,7 @@ export default function Navbar() {
                     </div>
                   </>
                 )}
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -192,8 +206,9 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile hamburger menu */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile actions */}
+          <div className="md:hidden flex items-center gap-2">
+            {isAuthenticated && user && <NotificationBell />}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-slate-500 hover:text-slate-700 focus:outline-none p-2 rounded-lg hover:bg-slate-50"

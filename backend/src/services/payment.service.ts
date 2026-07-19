@@ -3,6 +3,7 @@ import { PaymentStatus, PaymentMethod, AppointmentStatus } from "@prisma/client"
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
 import { getIO } from "../utils/socket";
+import { createNotification } from "./notificationService";
 import { sendBookingConfirmationEmail } from "../utils/emailService";
 const PayOS = require("@payos/node");
 
@@ -263,7 +264,7 @@ export async function processMockPayment(appointmentId: string) {
 /**
  * PayOS: Create Payment Link
  */
-export async function createPayOSPaymentLink(appointmentId: string) {
+export async function createPayOSPaymentLink(appointmentId: string, voucherCode?: string, discountAmount?: number) {
     const appointment = await prisma.appointment.findUnique({
         where: { id: appointmentId },
         include: { doctor: true },
@@ -279,8 +280,10 @@ export async function createPayOSPaymentLink(appointmentId: string) {
 
     // Generate a numeric order code < 9007199254740991
     const orderCode = Number(String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 1000)));
-    // Sử dụng giá tiền của bác sỹ, fallback sang appointment.amount
-    const amount = appointment.doctor?.price || appointment.amount || 5000;
+    // Use doctor price or appointment amount as base
+    const baseAmount = appointment.doctor?.price || appointment.amount || 5000;
+    // Apply voucher discount if provided
+    const amount = discountAmount ? Math.max(baseAmount - discountAmount, 1000) : baseAmount;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);
     
     // Set expired time = now + 5 minutes
@@ -300,6 +303,18 @@ export async function createPayOSPaymentLink(appointmentId: string) {
     };
 
     const paymentLink = await payos.createPaymentLink(requestData);
+
+    // Save voucher info to appointment if applicable
+    if (voucherCode && discountAmount) {
+        await prisma.appointment.update({
+            where: { id: appointmentId },
+            data: {
+                voucherCode: voucherCode.toUpperCase(),
+                discountAmount: discountAmount,
+                amount: amount,
+            }
+        });
+    }
 
     // Save to DB
     await prisma.payment.upsert({
@@ -463,33 +478,81 @@ export async function processPayOSWebhook(body: any) {
         })
     ]);
 
-    // Socket.io Notifications
+    // Notifications
     try {
-        const io = getIO();
         const userId = updatedAppointment.userId;
         const doctorId = updatedAppointment.doctorId;
 
         // Notify User
-        io.to(`user_${userId}`).emit("payment_confirmed", {
-            appointmentId: updatedAppointment.id,
-            transactionCode: updatedAppointment.transactionCode
+        await createNotification({
+            userId: userId,
+            type: "APPOINTMENT_CONFIRMED",
+            title: "Xác nhận lịch hẹn",
+            message: "Lịch khám của bạn đã được xác nhận.",
+            data: { appointmentId: updatedAppointment.id, transactionCode: updatedAppointment.transactionCode }
         });
 
         // Notify Doctor
         if (doctorId) {
-            io.to(`doctor_${doctorId}`).emit("new_appointment", {
-                appointmentId: updatedAppointment.id,
-                message: "Bạn có lịch hẹn mới đã thanh toán."
-            });
+            const doctorUser = await prisma.user.findFirst({ where: { doctorId } });
+            if (doctorUser) {
+                await createNotification({
+                    userId: doctorUser.id,
+                    type: "NEW_APPOINTMENT",
+                    title: "Lịch hẹn mới",
+                    message: `Bạn có lịch hẹn mới đã thanh toán.`,
+                    data: { appointmentId: updatedAppointment.id }
+                });
+            }
         }
 
         // Notify Admin
-        io.to("admin").emit("payment_updated", {
-            appointmentId: updatedAppointment.id,
-            status: "PAID"
-        });
+        const admins = await prisma.user.findMany({ where: { role: "ADMIN" } });
+        for (const admin of admins) {
+            await createNotification({
+                userId: admin.id,
+                type: "PAYMENT_RECEIVED",
+                title: "Thanh toán mới",
+                message: `Giao dịch mới từ lịch hẹn ${updatedAppointment.transactionCode}.`,
+                data: { appointmentId: updatedAppointment.id }
+            });
+        }
     } catch (error) {
-        console.error("Socket notification error:", error);
+        console.error("Notification error:", error);
+    }
+
+    // Apply voucher if one was used for this appointment
+    if (updatedAppointment.voucherCode && updatedAppointment.discountAmount) {
+        try {
+            const voucher = await prisma.voucher.findUnique({ where: { code: updatedAppointment.voucherCode } });
+            if (voucher) {
+                const existingUsage = await prisma.voucherUsage.findFirst({
+                    where: { voucherId: voucher.id, appointmentId: updatedAppointment.id }
+                });
+                if (!existingUsage) {
+                    const originalDeposit = updatedAppointment.amount + updatedAppointment.discountAmount;
+                    await prisma.$transaction([
+                        prisma.voucherUsage.create({
+                            data: {
+                                voucherId: voucher.id,
+                                userId: updatedAppointment.userId,
+                                appointmentId: updatedAppointment.id,
+                                originalDeposit: originalDeposit,
+                                discountAmount: updatedAppointment.discountAmount,
+                                finalDeposit: updatedAppointment.amount,
+                            }
+                        }),
+                        prisma.voucher.update({
+                            where: { id: voucher.id },
+                            data: { usedCount: { increment: 1 } }
+                        })
+                    ]);
+                    console.log(`[Voucher] Applied voucher ${voucher.code} for appointment ${updatedAppointment.id}`);
+                }
+            }
+        } catch (voucherError) {
+            console.error("[Voucher] Failed to record voucher usage:", voucherError);
+        }
     }
 
     // Send booking confirmation email — wrapped in .catch so it never crashes the webhook

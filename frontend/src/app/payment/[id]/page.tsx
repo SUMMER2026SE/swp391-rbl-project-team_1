@@ -26,6 +26,8 @@ import Button from "@/components/common/Button";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { voucherService, ValidateVoucherResult } from "@/services/voucher.service";
+import { Tag, X as XIcon } from "lucide-react";
 
 interface PayOSPaymentInfo {
     checkoutUrl: string;
@@ -52,6 +54,13 @@ function PaymentContent({ id }: { id: string }) {
     const [successPaid, setSuccessPaid] = useState(false);
     const [payOSError, setPayOSError] = useState(false);
     const [qrModalOpen, setQrModalOpen] = useState(false);
+
+    // Voucher state
+    const [voucherCode, setVoucherCode] = useState("");
+    const [voucherInput, setVoucherInput] = useState("");
+    const [voucherResult, setVoucherResult] = useState<ValidateVoucherResult | null>(null);
+    const [voucherLoading, setVoucherLoading] = useState(false);
+    const [voucherError, setVoucherError] = useState("");
 
     const socketRef = useRef<Socket | null>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -85,40 +94,16 @@ function PaymentContent({ id }: { id: string }) {
                 const appt = res.appointment;
                 setAppointment(appt);
 
-                // If already paid or confirmed
-                if (appt.status === "CONFIRMED" || appt.status === "PENDING") {
-                    markSuccess();
-                    return;
-                }
-                if (appt.status === "CANCELLED" || appt.status === "EXPIRED") {
-                    markExpired();
-                    return;
-                }
-
-                // Create PayOS payment link if still PENDING_PAYMENT
-                if (appt.status === "PENDING_PAYMENT") {
-                    try {
-                        const payosData = await appointmentService.createPayOSPaymentUrl(id);
-                        setPayosInfo(payosData);
-
-                        // Calculate countdown from server expiredAt
-                        const expiredAtMs = new Date(payosData.expiredAt).getTime();
-                        const remaining = Math.max(0, Math.floor((expiredAtMs - Date.now()) / 1000));
-                        if (remaining <= 0) {
-                            markExpired();
-                        } else {
-                            setTimeLeft(remaining);
-                        }
-                    } catch (payosErr: any) {
-                        console.error("Failed to create PayOS link:", payosErr);
-                        setPayOSError(true);
-                        // Fall back to appointment-based countdown
-                        const createdMs = new Date(appt.createdAt).getTime();
-                        const remaining = Math.max(0, 300 - Math.floor((Date.now() - createdMs) / 1000));
-                        if (remaining <= 0) markExpired();
-                        else setTimeLeft(remaining);
+                    if (appt.status !== "PENDING_PAYMENT") {
+                        markSuccess();
+                        return;
                     }
-                }
+
+                    // Create PayOS payment link if still PENDING_PAYMENT
+                    if (appt.status === "PENDING_PAYMENT") {
+                        // Do NOT auto-create link here; wait for user to optionally add a voucher first
+                        // (will be triggered when user clicks "Tạo link thanh toán")
+                    }
             } catch (err: any) {
                 toast.error(err.message || "Không thể tải thông tin lịch hẹn.");
             } finally {
@@ -148,6 +133,58 @@ function PaymentContent({ id }: { id: string }) {
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, timeLeft]);
+
+    // Handle voucher apply
+    const handleApplyVoucher = async () => {
+        if (!voucherInput.trim() || !appointment) return;
+        setVoucherLoading(true);
+        setVoucherError("");
+        try {
+            const depositAmount = appointment.doctor?.price || appointment.amount || 5000;
+            const specialtyId = appointment.doctor?.specialtyId;
+            const res = await voucherService.validateVoucher(voucherInput.trim(), depositAmount, specialtyId || undefined);
+            if (res.valid) {
+                setVoucherResult(res);
+                setVoucherCode(voucherInput.trim().toUpperCase());
+                toast.success("Áp dụng mã giảm giá thành công!");
+            } else {
+                setVoucherError(res.message);
+                toast.error(res.message);
+            }
+        } catch (err: any) {
+            setVoucherError(err.message || "Lỗi khi kiểm tra mã giảm giá");
+        } finally {
+            setVoucherLoading(false);
+        }
+    };
+
+    // Handle create payment link
+    const handleCreatePayment = async () => {
+        if (!appointment) return;
+        setLoading(true);
+        setPayOSError(false);
+        try {
+            const voucher = voucherResult?.valid ? voucherCode : undefined;
+            const discount = voucherResult?.valid ? voucherResult.discountAmount : undefined;
+            
+            const payosData = await appointmentService.createPayOSPaymentUrl(id, voucher, discount);
+            setPayosInfo(payosData);
+
+            const expiredAtMs = new Date(payosData.expiredAt).getTime();
+            const remaining = Math.max(0, Math.floor((expiredAtMs - Date.now()) / 1000));
+            if (remaining <= 0) {
+                markExpired();
+            } else {
+                setTimeLeft(remaining);
+            }
+        } catch (payosErr: any) {
+            console.error("Failed to create PayOS link:", payosErr);
+            setPayOSError(true);
+            toast.error(payosErr.message || "Không thể tạo link thanh toán");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // 3. Polling every 3s
     useEffect(() => {
@@ -416,7 +453,21 @@ const backendUrl = process.env.NEXT_PUBLIC_API_URL
 
                 {/* QR Code — Large & Prominent */}
                 <div className="flex flex-col items-center gap-3">
-                    {qrUrl ? (
+                    {!payosInfo ? (
+                        <div className="w-full flex flex-col items-center justify-center p-8 bg-slate-50 border border-slate-100 rounded-2xl gap-4">
+                            <p className="text-sm text-slate-500 text-center max-w-xs">
+                                Vui lòng kiểm tra lại thông tin lịch khám và mã giảm giá (nếu có) trước khi tạo link thanh toán.
+                            </p>
+                            <Button
+                                variant="teal"
+                                onClick={handleCreatePayment}
+                                disabled={loading}
+                                className="px-8 py-3 rounded-xl font-bold text-sm shadow-md"
+                            >
+                                {loading ? "Đang tạo..." : "Tạo Mã QR Thanh Toán"}
+                            </Button>
+                        </div>
+                    ) : qrUrl ? (
                         <>
                             <div
                                 className="relative group cursor-pointer"
@@ -532,29 +583,145 @@ const backendUrl = process.env.NEXT_PUBLIC_API_URL
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100 pt-3 flex items-center justify-between text-xs">
-                            <span className="text-slate-500 font-medium">Tổng phí:</span>
-                            <span className="font-extrabold text-teal-600 text-base">
-                                {(payosInfo?.amount || appointment.amount || 0).toLocaleString("vi-VN")} VND
-                            </span>
+                        <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
+                            {/* Package booking breakdown */}
+                            {appointment.medicalPackage && (() => {
+                                const pkgPrice = (appointment.medicalPackage as any).price || 0;
+                                const depositPct = (appointment.medicalPackage as any).depositPercentage || 20;
+                                const defaultDeposit = Math.round((pkgPrice * depositPct) / 100);
+                                const discountAmt = voucherResult?.valid ? (voucherResult.discountAmount || 0) : 0;
+                                const finalDeposit = Math.max(0, defaultDeposit - discountAmt);
+                                return (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-slate-500">Giá gói khám:</span>
+                                            <span className="font-semibold text-slate-700">{pkgPrice.toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                        {discountAmt > 0 && (
+                                            <>
+                                                <div className="flex items-center justify-between text-emerald-600 font-bold">
+                                                    <span>Voucher ({(voucherResult as any)?.voucher?.code}):</span>
+                                                    <span>- {discountAmt.toLocaleString("vi-VN")}đ</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500">Giá sau giảm:</span>
+                                                    <span className="font-semibold">{(pkgPrice - discountAmt).toLocaleString("vi-VN")}đ</span>
+                                                </div>
+                                            </>
+                                        )}
+                                        <div className="flex items-center justify-between font-bold border-t border-teal-100 pt-2">
+                                            <span className="text-teal-800">Tiền cọc ({depositPct}%):</span>
+                                            <span className="text-teal-900 italic text-[11px]">{finalDeposit.toLocaleString("vi-VN")}đ (thu tại quầy)</span>
+                                        </div>
+                                        <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                                            <span className="text-slate-600 font-bold">Thanh toán ngay (demo):</span>
+                                            <span className="font-extrabold text-teal-600 text-base">5,000đ</span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Doctor booking breakdown */}
+                            {!appointment.medicalPackage && (() => {
+                                const baseFee = 5000;
+                                const discountAmt = voucherResult?.valid ? Math.min(voucherResult.discountAmount || 0, baseFee - 1000) : 0;
+                                const finalFee = baseFee - discountAmt;
+                                return (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-slate-500">Phí đặt lịch:</span>
+                                            <span className="font-semibold text-slate-700">{baseFee.toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                        {discountAmt > 0 && (
+                                            <div className="flex items-center justify-between text-emerald-600 font-bold">
+                                                <span>Voucher ({(voucherResult as any)?.voucher?.code}):</span>
+                                                <span>- {discountAmt.toLocaleString("vi-VN")}đ</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-between font-bold border-t border-teal-100 pt-2">
+                                            <span className="text-teal-800">Thanh toán ngay:</span>
+                                            <span className="font-extrabold text-teal-600 text-base">{finalFee.toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 )}
 
-                {/* Auto-confirm Indicator */}
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 space-y-4 flex flex-col items-center text-center">
-                    <div className="h-14 w-14 bg-teal-50 border border-teal-100 text-teal-600 rounded-full flex items-center justify-center">
-                        <LoadingSpinner className="h-6 w-6" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <h3 className="font-bold text-slate-800 text-sm">Hệ thống đang chờ nhận tiền...</h3>
-                        <p className="text-xs text-slate-500 leading-relaxed max-w-[240px] mx-auto">
-                            Chuyển khoản đúng nội dung{" "}
-                            <strong className="text-teal-600">{payosInfo?.description}</strong>. Lịch khám sẽ tự động xác nhận trong vài giây sau khi nhận được tiền.
-                        </p>
-                    </div>
+
+                {/* Voucher Section */}
+                <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 space-y-3">
+                    <h3 className="font-bold text-slate-800 text-sm border-b border-slate-100 pb-3 flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-teal-500" />
+                        Mã giảm giá
+                    </h3>
+
+                    {voucherResult?.valid ? (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-green-600">✓</span>
+                                    <span className="text-green-700 font-bold text-sm font-mono">{voucherCode}</span>
+                                </div>
+                                <button
+                                    onClick={() => { setVoucherResult(null); setVoucherCode(""); setVoucherInput(""); setVoucherError(""); }}
+                                    className="text-green-500 hover:text-red-500 transition-colors"
+                                >
+                                    <XIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <div className="flex justify-between text-xs text-slate-600 px-1">
+                                <span>Giảm:</span>
+                                <span className="text-red-500 font-semibold">-{voucherResult.discountAmount?.toLocaleString("vi-VN")}đ</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={voucherInput}
+                                    onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+                                    placeholder="Nhập mã voucher..."
+                                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:normal-case uppercase"
+                                    onKeyDown={(e) => e.key === "Enter" && handleApplyVoucher()}
+                                />
+                                <button
+                                    onClick={handleApplyVoucher}
+                                    disabled={voucherLoading || !voucherInput.trim()}
+                                    className="bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors"
+                                >
+                                    {voucherLoading ? "..." : "Áp dụng"}
+                                </button>
+                            </div>
+                            {voucherError && (
+                                <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    {voucherError}
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
+
+                {/* Auto-confirm Indicator */}
+                {payosInfo && (
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 space-y-4 flex flex-col items-center text-center">
+                        <div className="h-14 w-14 bg-teal-50 border border-teal-100 text-teal-600 rounded-full flex items-center justify-center">
+                            <LoadingSpinner className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <h3 className="font-bold text-slate-800 text-sm">Hệ thống đang chờ nhận tiền...</h3>
+                            <p className="text-xs text-slate-500 leading-relaxed max-w-[240px] mx-auto">
+                                Chuyển khoản đúng nội dung{" "}
+                                <strong className="text-teal-600">{payosInfo?.description}</strong>. Lịch khám sẽ tự động xác nhận trong vài giây sau khi nhận được tiền.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
+
         </div>
         </>
     );

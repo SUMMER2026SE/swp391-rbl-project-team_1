@@ -28,7 +28,8 @@ async function saveFileLocally(appointmentId: string, fileName: string, fileBuff
 
 export interface CreateAppointmentParams {
     userId: string;
-    patientProfileId: string;
+    patientProfileType: "SELF" | "OTHER";
+    patientProfileName?: string;
     doctorId?: string;
     appointmentDate: Date;
     notes?: string;
@@ -126,19 +127,25 @@ export async function createAppointment(
         bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
         bcAttempts++;
     }
-
+    
     const created = await prisma.appointment.create({
         data: {
             userId: params.userId,
-            patientProfileId: params.patientProfileId,
+            patientProfileType: params.patientProfileType,
+            patientProfileName: params.patientProfileName || null,
             doctorId: params.doctorId,
+            packageId: params.packageId,
             appointmentDate: params.appointmentDate,
             status: "PENDING_PAYMENT",
             notes: params.notes,
-            amount,
-            transactionCode,
-            bookingCode,
-            packageId: params.packageId,
+            amount: amount,
+            transactionCode: transactionCode,
+            bookingCode: bookingCode,
+        },
+        include: {
+            doctor: { include: { userAccount: true } },
+            medicalPackage: true,
+            user: true,
         },
     });
 
@@ -152,6 +159,7 @@ export async function uploadPaymentProof(
 ): Promise<Appointment> {
     const appointment = await prisma.appointment.findUnique({
         where: { id: appointmentId },
+        include: { user: true, doctor: true, medicalPackage: true }
     });
 
     if (!appointment) {
@@ -221,8 +229,12 @@ export async function uploadPaymentProof(
 
     // Send confirmation email asynchronously
     if (updated.user?.email) {
+        const patientName = updated.patientProfileType === 'OTHER' 
+            ? updated.patientProfileName 
+            : updated.user?.fullName || "Bệnh nhân";
+
         sendBookingConfirmationEmail(updated.user.email, {
-            patientName: updated.user.fullName || updated.user.email,
+            patientName: patientName || "Bệnh nhân",
             doctorName: updated.doctor?.name || "Hệ thống",
             specialtyName: updated.doctor?.specialty?.name || "",
             clinicName: updated.doctor?.clinic?.name || updated.doctor?.hospital || updated.medicalPackage?.hospital || "Bệnh viện",
@@ -233,7 +245,7 @@ export async function uploadPaymentProof(
             transactionCode: updated.transactionCode || undefined,
             paymentAt: updated.paymentAt,
             appointmentId: updated.id,
-            bookingCode: updated.bookingCode,
+            bookingCode: updated.bookingCode || "N/A",
             paymentMethod: "Chuyển khoản ngân hàng",
             packageName: updated.medicalPackage?.name
         }).catch((err) => console.error("Error sending confirmation email:", err));

@@ -15,7 +15,7 @@ import {
   Award, ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
-import { patientProfileService, PatientProfile } from "@/services/patient-profile.service";
+import { bookingProfileService, BookingProfile } from "@/services/booking-profile.service";
 import BookingProgress from "@/components/ui/BookingProgress";
 import { useBooking } from "@/hooks/useBooking";
 
@@ -41,20 +41,14 @@ export default function DoctorBookingPage({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Patient Profiles
-  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
+  const [profiles, setProfiles] = useState<BookingProfile[]>([]);
+  const [isBookingForMyself, setIsBookingForMyself] = useState<boolean>(true);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [bookingErrors, setBookingErrors] = useState<Record<string, string>>({});
   const [newProfileData, setNewProfileData] = useState({
-    fullName: "",
-    email: "",
-    phoneNumber: "",
-    gender: "Nam",
-    dateOfBirth: "",
-    cccd: "",
-    province: "",
-    ward: "",
-    address: ""
+    fullName: ""
   });
 
   // Booking states
@@ -67,36 +61,13 @@ export default function DoctorBookingPage({ params }: PageProps) {
 
   const validateBookingForm = (data: typeof newProfileData): Record<string, string> => {
     const errors: Record<string, string> = {};
-    if (!data.fullName.trim()) errors.fullName = "Họ và tên không được để trống.";
-    else if (!/^[\p{L}\s]+$/u.test(data.fullName.trim())) errors.fullName = "Họ và tên không được chứa số hoặc ký hiệu đặc biệt.";
-    else if (data.fullName.trim().length < 2) errors.fullName = "Họ và tên phải có ít nhất 2 ký tự.";
-    if (!data.email.trim()) errors.email = "Email không được để trống.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) errors.email = "Email không hợp lệ.";
-    if (!data.phoneNumber.trim()) errors.phoneNumber = "Số điện thoại không được để trống.";
-    else if (!/^0[0-9]{9}$/.test(data.phoneNumber.trim())) errors.phoneNumber = "Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).";
-    if (!data.dateOfBirth) errors.dateOfBirth = "Ngày sinh không được để trống.";
-    else {
-      const dob = new Date(data.dateOfBirth);
-      const minDate = new Date(); minDate.setFullYear(new Date().getFullYear() - 120);
-      if (isNaN(dob.getTime())) errors.dateOfBirth = "Ngày sinh không hợp lệ.";
-      else if (dob > new Date()) errors.dateOfBirth = "Không được chọn ngày tương lai.";
-      else if (dob < minDate) errors.dateOfBirth = "Tuổi tối đa là 120.";
+    if (!isBookingForMyself && isCreatingNew) {
+      if (!data.fullName.trim()) errors.fullName = "Họ và tên không được để trống.";
     }
-    if (!data.gender) errors.gender = "Vui lòng chọn giới tính.";
-    if (data.cccd && data.cccd.trim() && !/^[0-9]{9}$|^[0-9]{12}$/.test(data.cccd.trim())) errors.cccd = "CCCD/CMND không hợp lệ (9 hoặc 12 số).";
+    if (!isBookingForMyself && !isCreatingNew && !selectedProfileId) {
+      errors.profile = "Vui lòng chọn hồ sơ người thân.";
+    }
     return errors;
-  };
-
-  const handleAutofill = (p: PatientProfile) => {
-    setSelectedProfileId(p.id);
-    setNewProfileData(prev => ({
-      ...prev,
-      fullName: p.fullName || "",
-      phoneNumber: p.phoneNumber || "",
-      gender: p.gender || "Nam",
-      dateOfBirth: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : "",
-      cccd: p.cccd || ""
-    }));
   };
 
   useEffect(() => {
@@ -111,11 +82,13 @@ export default function DoctorBookingPage({ params }: PageProps) {
         if (scheduleRes.bookedCounts) setBookedCounts(scheduleRes.bookedCounts);
 
         if (isAuthenticated && user?.role === "USER") {
-          const myProfiles = await patientProfileService.getMyProfiles();
-          setProfiles(myProfiles);
-          const primary = myProfiles.find(p => p.isPrimary);
-          if (primary) setSelectedProfileId(primary.id);
-          else if (myProfiles.length > 0) setSelectedProfileId(myProfiles[0].id);
+          try {
+            const myProfiles = await bookingProfileService.getMyProfiles();
+            setProfiles(myProfiles);
+            if (myProfiles.length > 0) setSelectedProfileId(myProfiles[0].id);
+          } catch (profileErr) {
+            console.error("Failed to load profiles", profileErr);
+          }
         }
       } catch (err: unknown) {
         const msg = err && typeof err === "object" && "message" in err
@@ -211,8 +184,9 @@ export default function DoctorBookingPage({ params }: PageProps) {
         clinicId: doctor.clinicId,
         appointmentDate: appointmentDateTime.toISOString(),
         notes: notes.trim() || undefined,
-        patientProfileId: selectedProfileId || undefined,
-        newPatientProfile: !selectedProfileId ? { ...newProfileData, isTemporary: true } : undefined,
+        isBookingForMyself,
+        relativeProfileId: !isBookingForMyself && !isCreatingNew ? selectedProfileId : undefined,
+        otherProfileName: !isBookingForMyself && isCreatingNew ? newProfileData.fullName : undefined,
       });
       setBookingMessage({ type: "success", text: "Đặt lịch thành công! Đang chuyển tới trang thanh toán..." });
       resetBooking();
@@ -318,181 +292,104 @@ export default function DoctorBookingPage({ params }: PageProps) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-sm font-bold text-slate-800">
-                    Bước 1: Thông tin người đi khám
+                    Bước 1: Người đi khám
                   </label>
                 </div>
 
-                {/* Quick-select profile chips */}
-                {profiles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-3 rounded-xl bg-teal-50/70 border border-teal-100">
-                    <span className="text-xs font-semibold text-slate-500 my-auto mr-1 shrink-0">Chọn nhanh từ hồ sơ:</span>
-                    {profiles.map(p => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => handleAutofill(p)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${selectedProfileId === p.id ? 'bg-teal-600 text-white border-teal-600 shadow-sm' : 'bg-white text-slate-600 border-slate-300 hover:border-teal-400 hover:text-teal-700'}`}
-                      >
-                        {p.fullName}
-                      </button>
-                    ))}
-                    <Link href="/profile/patients" className="ml-auto text-xs font-semibold text-teal-600 hover:underline my-auto whitespace-nowrap">
-                      Quản lý hồ sơ
-                    </Link>
+                {/* Toggle: myself or relative */}
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={isBookingForMyself} onChange={() => { setIsBookingForMyself(true); setIsCreatingNew(false); }} className="accent-teal-600 w-4 h-4" />
+                    <span className="text-sm font-semibold text-slate-700">Cho bản thân</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={!isBookingForMyself} onChange={() => setIsBookingForMyself(false)} className="accent-teal-600 w-4 h-4" />
+                    <span className="text-sm font-semibold text-slate-700">Cho người thân</span>
+                  </label>
+                </div>
+
+                {isBookingForMyself && (
+                  <div className="p-4 rounded-xl border border-teal-200 bg-teal-50 flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                      {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
+                    </div>
+                    <div>
+                      <p className="font-bold text-teal-900">{user?.fullName}</p>
+                      <p className="text-xs text-teal-700">Hồ sơ chính của bạn</p>
+                    </div>
                   </div>
                 )}
 
-                {/* Detail form */}
-                <div className="space-y-3 p-4 rounded-xl border border-slate-200 bg-slate-50/40">
-                  {/* Họ và tên */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Họ và tên <span className="text-red-500">*</span></label>
-                    <Input
-                      value={newProfileData.fullName}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewProfileData({...newProfileData, fullName: e.target.value}); setBookingErrors(prev => ({...prev, fullName: ""})); setSelectedProfileId(""); }}
-                      placeholder="Nguyễn Văn An"
-                      className={`!py-2.5 !text-sm ${bookingErrors.fullName ? '!border-red-400' : ''}`}
-                    />
-                    {bookingErrors.fullName && <p className="text-xs text-red-500 mt-1">{bookingErrors.fullName}</p>}
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email <span className="text-red-500">*</span></label>
-                    <Input
-                      type="email"
-                      value={newProfileData.email}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewProfileData({...newProfileData, email: e.target.value}); setBookingErrors(prev => ({...prev, email: ""})); setSelectedProfileId(""); }}
-                      placeholder="example@gmail.com"
-                      className={`!py-2.5 !text-sm ${bookingErrors.email ? '!border-red-400' : ''}`}
-                    />
-                    {bookingErrors.email && <p className="text-xs text-red-500 mt-1">{bookingErrors.email}</p>}
-                  </div>
-
-                  {/* Số điện thoại */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Số điện thoại <span className="text-red-500">*</span></label>
-                    <Input
-                      value={newProfileData.phoneNumber}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        setNewProfileData({...newProfileData, phoneNumber: val});
-                        setBookingErrors(prev => ({...prev, phoneNumber: ""}));
-                        setSelectedProfileId("");
-                      }}
-                      placeholder="0987654321"
-                      maxLength={10}
-                      className={`!py-2.5 !text-sm ${bookingErrors.phoneNumber ? '!border-red-400' : ''}`}
-                    />
-                    {bookingErrors.phoneNumber && <p className="text-xs text-red-500 mt-1">{bookingErrors.phoneNumber}</p>}
-                  </div>
-
-                  {/* Ngày sinh + Giới tính */}
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1">
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ngày sinh <span className="text-red-500">*</span></label>
-                      <Input
-                        type="date"
-                        value={newProfileData.dateOfBirth}
-                        max={new Date().toISOString().split('T')[0]}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewProfileData({...newProfileData, dateOfBirth: e.target.value}); setBookingErrors(prev => ({...prev, dateOfBirth: ""})); setSelectedProfileId(""); }}
-                        className={`!py-2.5 !text-sm ${bookingErrors.dateOfBirth ? '!border-red-400' : ''}`}
-                      />
-                      {bookingErrors.dateOfBirth && <p className="text-xs text-red-500 mt-1">{bookingErrors.dateOfBirth}</p>}
+                {!isBookingForMyself && (
+                  <div className="space-y-3 p-4 border border-slate-200 rounded-xl bg-slate-50">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-slate-700">Chọn hồ sơ người thân:</span>
+                      {!isCreatingNew && (
+                        <button type="button" onClick={() => { setIsCreatingNew(true); setSelectedProfileId(""); }} className="text-xs font-semibold text-teal-600 hover:underline flex items-center gap-1">
+                          + Nhập tên mới
+                        </button>
+                      )}
                     </div>
-                    <div className="flex items-center gap-4 pb-2.5">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" name="doctor_booking_gender" value="Nam" checked={newProfileData.gender === "Nam"} onChange={() => { setNewProfileData({...newProfileData, gender: "Nam"}); setSelectedProfileId(""); }} className="accent-teal-600 w-4 h-4" />
-                        <span className="text-sm font-medium text-slate-700">Nam</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" name="doctor_booking_gender" value="Nữ" checked={newProfileData.gender === "Nữ"} onChange={() => { setNewProfileData({...newProfileData, gender: "Nữ"}); setSelectedProfileId(""); }} className="accent-teal-600 w-4 h-4" />
-                        <span className="text-sm font-medium text-slate-700">Nữ</span>
-                      </label>
-                    </div>
-                  </div>
 
-                  {/* CCCD */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">CCCD/CMND</label>
-                    <Input
-                      value={newProfileData.cccd}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        setNewProfileData({...newProfileData, cccd: val});
-                        setBookingErrors(prev => ({...prev, cccd: ""}));
-                        setSelectedProfileId("");
-                      }}
-                      maxLength={12}
-                      placeholder="9 hoặc 12 chữ số"
-                      className={`!py-2.5 !text-sm ${bookingErrors.cccd ? '!border-red-400' : ''}`}
-                    />
-                    {bookingErrors.cccd && <p className="text-xs text-red-500 mt-1">{bookingErrors.cccd}</p>}
+                    {isCreatingNew ? (
+                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-slate-700">Họ và tên người bệnh *</label>
+                          <Input
+                            value={newProfileData.fullName}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewProfileData({ fullName: e.target.value }); setBookingErrors(prev => ({...prev, fullName: ""})); }}
+                            placeholder="Nguyễn Văn A"
+                            className={`!py-2.5 !text-sm ${bookingErrors.fullName ? '!border-red-400' : ''}`}
+                          />
+                          {bookingErrors.fullName && <p className="text-xs text-red-500 mt-1">{bookingErrors.fullName}</p>}
+                        </div>
+                        <button type="button" onClick={() => setIsCreatingNew(false)} className="text-xs text-slate-500 hover:text-teal-600 font-medium">← Chọn từ danh sách</button>
+                      </div>
+                    ) : (
+                      profiles.length === 0 ? (
+                        <div className="text-center py-4 border border-dashed border-slate-300 rounded-lg">
+                          <p className="text-sm text-slate-500 mb-2">Chưa có hồ sơ người thân</p>
+                          <button type="button" onClick={() => { setIsCreatingNew(true); }} className="text-xs font-semibold text-teal-600 hover:underline">
+                            Nhập tên người thân
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {profiles.map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setSelectedProfileId(p.id)}
+                              className={`p-3 rounded-xl border text-left transition-all ${selectedProfileId === p.id ? "border-teal-500 bg-teal-50 shadow-sm" : "border-slate-200 bg-white hover:border-teal-300"}`}
+                            >
+                              <p className="font-bold text-sm text-slate-800">{p.fullName}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">Quan hệ: {p.relationship || "Người thân"}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    )}
+                    {bookingErrors.profile && <p className="text-xs text-red-500">{bookingErrors.profile}</p>}
                   </div>
+                )}
+              </div>
 
-                  {/* Tỉnh thành + Phường/Xã */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tỉnh/Thành phố</label>
-                      <select
-                        className="w-full border border-slate-200 px-3 py-2.5 rounded-xl text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                        value={newProfileData.province}
-                        onChange={e => { setNewProfileData({...newProfileData, province: e.target.value, ward: ""}); setSelectedProfileId(""); }}
-                      >
-                        <option value="">Chọn tỉnh thành</option>
-                        <option value="Hà Nội">Hà Nội</option>
-                        <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                        <option value="Đà Nẵng">Đà Nẵng</option>
-                        <option value="Cần Thơ">Cần Thơ</option>
-                        <option value="Hải Phòng">Hải Phòng</option>
-                        <option value="Bình Dương">Bình Dương</option>
-                        <option value="Đồng Nai">Đồng Nai</option>
-                        <option value="Khánh Hòa">Khánh Hòa</option>
-                        <option value="Thừa Thiên Huế">Thừa Thiên Huế</option>
-                        <option value="Quảng Nam">Quảng Nam</option>
-                        <option value="Khác">Khác</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phường/Xã</label>
-                      <Input
-                        value={newProfileData.ward}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewProfileData({...newProfileData, ward: e.target.value}); setSelectedProfileId(""); }}
-                        placeholder="Nhập phường/xã"
-                        className="!py-2.5 !text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Địa chỉ */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Địa chỉ</label>
-                    <Input
-                      value={newProfileData.address}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewProfileData({...newProfileData, address: e.target.value}); setSelectedProfileId(""); }}
-                      placeholder="Số nhà, tên đường..."
-                      className="!py-2.5 !text-sm"
-                    />
-                  </div>
-
-                  {/* Policy checkbox */}
-                  <div className="pt-1">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={agreedToPolicy}
-                        onChange={e => setAgreedToPolicy(e.target.checked)}
-                        className="mt-0.5 accent-teal-600 w-4 h-4 shrink-0"
-                      />
-                      <span className="text-xs text-slate-500 leading-relaxed">
-                        Tôi xác nhận đã đọc và đồng ý với{" "}
-                        <Link href="/privacy" className="text-teal-600 font-semibold hover:underline">
-                          chính sách bảo mật.
-                        </Link>
-                      </span>
-                    </label>
-                  </div>
-                </div>
+              {/* Policy checkbox */}
+              <div className="pt-1">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedToPolicy}
+                    onChange={e => setAgreedToPolicy(e.target.checked)}
+                    className="mt-0.5 accent-teal-600 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-xs text-slate-500 leading-relaxed">
+                    Tôi xác nhận đã đọc và đồng ý với{" "}
+                    <Link href="/privacy" className="text-teal-600 font-semibold hover:underline">
+                      chính sách bảo mật.
+                    </Link>
+                  </span>
+                </label>
               </div>
 
               {/* Bước 2: Chọn ngày */}

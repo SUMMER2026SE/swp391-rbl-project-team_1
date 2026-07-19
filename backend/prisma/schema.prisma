@@ -33,11 +33,14 @@ model User {
   conversations                            Conversation[]
   medicalRecords                           MedicalRecord[]
   messagesSent                             Message[]
-  patientProfiles                          PatientProfile[]
   reviews                                  Review[]
   doctor                                   Doctor?          @relation(fields: [doctorId], references: [id])
   calleeVideoCallLogs                      VideoCallLog[]   @relation("VideoCallLog_calleeIdToUser")
   callerVideoCallLogs                      VideoCallLog[]   @relation("VideoCallLog_callerIdToUser")
+  notifications                            Notification[]
+  voucherUsages                            VoucherUsage[]
+  bookingProfiles                          BookingProfile[]
+  savedVouchers                            SavedVoucher[]
 }
 
 model OTP {
@@ -58,6 +61,7 @@ model Specialty {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   doctors     Doctor[]
+  vouchers    Voucher[]
 }
 
 model Doctor {
@@ -146,19 +150,22 @@ model Appointment {
   paymentProof       String?
   paymentAt          DateTime?
   packageId          String?
-  patientProfileId   String?
+  patientProfileType PatientProfileType @default(SELF)
+  patientProfileName String?
+  voucherCode        String?
+  discountAmount     Int?
   absenceProcessed   Boolean           @default(false)
   bookingCode        String?           @unique
   depositForfeited   Boolean           @default(false)
   reminderSent       Boolean           @default(false)
   doctor             Doctor?           @relation(fields: [doctorId], references: [id])
   medicalPackage     MedicalPackage?   @relation(fields: [packageId], references: [id])
-  patientProfile     PatientProfile?   @relation(fields: [patientProfileId], references: [id])
   user               User              @relation(fields: [userId], references: [id])
   complaints         Complaint[]
   medicalRecord      MedicalRecord?
   payment            Payment?
   review             Review?
+  voucherUsage       VoucherUsage?
 }
 
 model MedicalRecord {
@@ -168,7 +175,6 @@ model MedicalRecord {
   userId               String
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
-  patientProfileId     String?
   bloodPressure        String?
   doctorNotes          String?
   finalDiagnosis       String?
@@ -188,7 +194,6 @@ model MedicalRecord {
   LabOrder             LabOrder[]
   appointment          Appointment         @relation(fields: [appointmentId], references: [id])
   doctor               Doctor              @relation(fields: [doctorId], references: [id])
-  patientProfile       PatientProfile?     @relation(fields: [patientProfileId], references: [id])
   user                 User                @relation(fields: [userId], references: [id])
   prescriptions        Prescription[]
 }
@@ -278,29 +283,16 @@ model MedicalPackage {
   appointments       Appointment[]
 }
 
-model PatientProfile {
-  id              String          @id @default(uuid())
-  userId          String
-  fullName        String
-  dateOfBirth     DateTime?
-  gender          String?
-  phoneNumber     String?
-  cccd            String?
-  ethnicity       String?
-  nationality     String?
-  address         String?
-  bloodType       String?
-  allergies       String?
-  chronicDiseases String?
-  personalHistory String?
-  familyHistory   String?
-  isPrimary       Boolean         @default(false)
-  isTemporary     Boolean         @default(false)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  appointments    Appointment[]
-  medicalRecords  MedicalRecord[]
-  user            User            @relation(fields: [userId], references: [id])
+model BookingProfile {
+  id           String   @id @default(uuid())
+  userId       String
+  fullName     String
+  phone        String?
+  gender       String?
+  yearOfBirth  Int?
+  relationship String
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Conversation {
@@ -519,4 +511,100 @@ enum SeverityLevel {
   EMERGENCY
 }
 
+enum NotificationType {
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_REMINDER_24H
+  APPOINTMENT_CANCELLED_BY_DOCTOR
+  APPOINTMENT_COMPLETED
+  LAB_RESULT_READY
+  REFUND_PROCESSED
+  NEW_APPOINTMENT
+  APPOINTMENT_CANCELLED_BY_PATIENT
+  NEW_RATING
+  ACCOUNT_APPROVED
+  ACCOUNT_REJECTED
+  CERTIFICATE_VERIFIED
+  NEW_DOCTOR_REGISTRATION
+  NEW_COMPLAINT
+  PAYMENT_RECEIVED
+  CERTIFICATE_PENDING
+}
 
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+}
+
+enum VoucherType {
+  PERCENT
+  FIXED
+}
+
+enum VoucherApplyTo {
+  ALL
+  PACKAGE
+  SPECIALTY
+}
+
+model Voucher {
+  id               String         @id @default(uuid())
+  code             String         @unique @db.VarChar(20)
+  type             VoucherType
+  discountValue    Int
+  applyTo          VoucherApplyTo @default(ALL)
+  specialtyId      String?
+  minDepositAmount Int            @default(0)
+  maxUses          Int?
+  usedCount        Int            @default(0)
+  isFirstBooking   Boolean        @default(false)
+  isActive         Boolean        @default(true)
+  startDate        DateTime
+  endDate          DateTime
+  createdAt        DateTime       @default(now())
+
+  specialty        Specialty?     @relation(fields: [specialtyId], references: [id])
+  usages           VoucherUsage[]
+  savedVouchers    SavedVoucher[]
+}
+
+model VoucherUsage {
+  id              String      @id @default(uuid())
+  voucherId       String
+  userId          String
+  appointmentId   String      @unique
+  originalDeposit Int
+  discountAmount  Int
+  finalDeposit    Int
+  usedAt          DateTime    @default(now())
+
+  voucher         Voucher     @relation(fields: [voucherId], references: [id])
+  user            User        @relation(fields: [userId], references: [id])
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+enum PatientProfileType {
+  SELF
+  OTHER
+}
+
+model SavedVoucher {
+  id        String   @id @default(uuid())
+  userId    String
+  voucherId String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voucher   Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, voucherId])
+}

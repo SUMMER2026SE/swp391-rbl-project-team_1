@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import prisma from "../prisma/client";
+import { createNotification } from "../services/notificationService";
 
 // Configure your email service here
 // For Gmail: you need to use App Password, not regular password
@@ -776,6 +777,15 @@ export async function checkAndSendReminders(): Promise<void> {
                         where: { id: appt.id },
                         data: { reminderSent: true }
                     });
+                    
+                    await createNotification({
+                        userId: appt.userId,
+                        type: "APPOINTMENT_REMINDER_24H",
+                        title: "Nhắc nhở lịch khám sắp tới",
+                        message: `Bạn có lịch khám với bác sĩ ${appt.doctor?.name} vào lúc ${appt.appointmentDate.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'})} ngày ${appt.appointmentDate.toLocaleDateString("vi-VN")}`,
+                        data: { appointmentId: appt.id }
+                    });
+                    
                     remindersSent++;
                 } catch (emailError) {
                     // Log error, don't update reminderSent so it can retry later

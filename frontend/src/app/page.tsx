@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Search, Calendar, ShieldCheck, Users, MapPin, ArrowRight, HeartPulse } from "lucide-react";
 import Button from "@/components/common/Button";
 import { specialtyService } from "@/services/specialty.service";
+import api from "@/services/api";
 import { Specialty } from "@/types/doctor";
 import BookingSteps from "@/components/ui/BookingSteps";
 import Pagination from "@/components/common/Pagination";
@@ -47,9 +48,8 @@ export default function HomePage() {
     
     async function loadFeaturedDoctors() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/doctors/featured`);
-        const data = await response.json();
-        setFeaturedDoctors(data.doctors || []);
+        const response = await api.get("/doctors/featured");
+        setFeaturedDoctors(response.data.doctors || []);
       } catch (error) {
         console.error("Failed to load featured doctors", error);
       } finally {

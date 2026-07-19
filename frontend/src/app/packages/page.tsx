@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Search, ChevronRight, Stethoscope, RefreshCcw } from "lucide-react";
+import { Search, ChevronRight, Stethoscope, RefreshCcw, Tag } from "lucide-react";
 import { packageService, MedicalPackage } from "@/services/package.service";
+import { voucherService } from "@/services/voucher.service";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
@@ -14,6 +15,7 @@ export default function PackagesPage() {
   const [packages, setPackages] = useState<MedicalPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasVoucher, setHasVoucher] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,6 +44,10 @@ export default function PackagesPage() {
 
   useEffect(() => {
     fetchPackages();
+    // Check if there are active vouchers
+    voucherService.getPublicVouchers().then((vouchers) => {
+      if (vouchers.length > 0) setHasVoucher(true);
+    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -187,6 +193,21 @@ export default function PackagesPage() {
                         <Stethoscope className="w-12 h-12" />
                       </div>
                     )}
+                    
+                    {/* Badges on top right of image */}
+                    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+                      {pkg.isRecommended && (
+                        <span className="px-3 py-1 bg-rose-500 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-md">
+                          🔥 Đề xuất
+                        </span>
+                      )}
+                      {hasVoucher && (
+                        <span className="px-3 py-1 bg-amber-500 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-md flex items-center gap-1">
+                          <Tag className="w-3 h-3" /> Có mã giảm giá
+                        </span>
+                      )}
+                    </div>
+
                     {/* Teal bottom border accent matching the screenshot */}
                     <div className="absolute bottom-0 left-0 w-full h-1.5 bg-[#017a86]" />
                   </div>
@@ -197,11 +218,6 @@ export default function PackagesPage() {
                       <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-[#eaf6f7] text-[#017a86] text-[10px] font-bold uppercase tracking-wide">
                         {pkg.hospital}
                       </div>
-                      {pkg.isRecommended && (
-                        <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wide border border-orange-200">
-                          🔥 Đề xuất
-                        </div>
-                      )}
                     </div>
                     
                     <h3 className="text-lg font-bold text-[#017a86] mb-2 leading-tight group-hover:text-teal-700 transition-colors line-clamp-2">
@@ -212,13 +228,18 @@ export default function PackagesPage() {
                       {pkg.description || "Chưa có mô tả chi tiết cho gói khám này."}
                     </p>
                     
-                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-50">
-                      <div className="font-black text-slate-800">
-                        {pkg.price.toLocaleString("vi-VN")} <span className="text-xs text-slate-400 font-medium">VNĐ</span>
+                    <div className="mt-auto pt-4 border-t border-slate-50">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-black text-2xl text-[#017a86]">
+                          {pkg.price.toLocaleString("vi-VN")}đ
+                        </div>
+                        <Link href={`/packages/${pkg.id}`} className="inline-flex items-center text-sm font-bold text-[#017a86] hover:text-teal-700 transition-colors group-hover:translate-x-1 duration-300">
+                          Xem thêm <ChevronRight className="w-4 h-4 ml-0.5" />
+                        </Link>
                       </div>
-                      <Link href={`/packages/${pkg.id}`} className="inline-flex items-center text-sm font-bold text-[#017a86] hover:text-teal-700 transition-colors group-hover:translate-x-1 duration-300">
-                        Xem thêm <ChevronRight className="w-4 h-4 ml-0.5" />
-                      </Link>
+                      <div className="text-xs text-slate-500 font-medium">
+                        Cọc chỉ từ <span className="font-bold text-slate-700">{(pkg.price * 0.2).toLocaleString("vi-VN")}đ</span> khi đặt lịch
+                      </div>
                     </div>
                   </div>
                 </div>

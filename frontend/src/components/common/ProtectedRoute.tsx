@@ -7,17 +7,27 @@ import LoadingSpinner from "./LoadingSpinner";
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  allowedRoles?: string[];
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push("/login");
+      } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+        // If USER tries to access /my-appointments (DOCTOR only), redirect to their profile appointments tab
+        if (user.role === "USER") {
+          router.push("/profile#appointments");
+        } else {
+          router.push("/");
+        }
+      }
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, user, allowedRoles]);
 
   if (isLoading) {
     return (
@@ -30,7 +40,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || (allowedRoles && user && !allowedRoles.includes(user.role))) {
     return null;
   }
 

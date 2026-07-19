@@ -79,7 +79,6 @@ export const saveRecord = async (req: Request, res: Response): Promise<void> => 
         appointmentId: appointmentId as string,
         doctorId: appointment.doctorId!,
         userId: appointment.userId,
-        patientProfileId: appointment.patientProfileId,
         height, weight, bloodPressure, heartRate, temperature, spo2,
         symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
         icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status

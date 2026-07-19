@@ -38,6 +38,7 @@ api.interceptors.response.use(
       // Clear storage on unauthorized token
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      window.dispatchEvent(new Event("auth:logout"));
       // Optional: redirect to login if necessary
     }
 

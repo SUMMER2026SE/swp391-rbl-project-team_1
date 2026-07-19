@@ -232,7 +232,7 @@ export async function createPayOSPaymentUrlHandler(
 ): Promise<void> {
     try {
         const userId = req.user?.userId;
-        const { appointmentId } = req.body;
+        const { appointmentId, voucherCode, discountAmount } = req.body;
         
         if (!userId) {
             throw new ApiError("Yêu cầu đăng nhập", 401);
@@ -242,7 +242,11 @@ export async function createPayOSPaymentUrlHandler(
             throw new ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
         }
 
-        const result = await createPayOSPaymentLink(appointmentId);
+        const result = await createPayOSPaymentLink(
+            appointmentId,
+            voucherCode,
+            discountAmount ? Number(discountAmount) : undefined
+        );
 
         res.status(200).json({
             message: "Tạo link thanh toán PayOS thành công",

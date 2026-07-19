@@ -139,6 +139,7 @@ export async function updateUserProfile(
             allergies: data.allergies !== undefined ? data.allergies : user.allergies,
             chronicDiseases: data.chronicDiseases !== undefined ? data.chronicDiseases : user.chronicDiseases,
             personalHistory: data.personalHistory !== undefined ? data.personalHistory : user.personalHistory,
+            familyHistory: data.familyHistory !== undefined ? data.familyHistory : user.familyHistory,
         },
         select: {
             id: true,
@@ -154,6 +155,7 @@ export async function updateUserProfile(
             allergies: true,
             chronicDiseases: true,
             personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },

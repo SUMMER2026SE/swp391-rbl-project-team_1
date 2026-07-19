@@ -16,11 +16,13 @@ import articleRoutes from "./routes/article.routes";
 import reviewRoutes from "./routes/review.routes";
 import paymentRoutes from "./routes/payment.routes";
 import packageRoutes from "./routes/package.routes";
-import patientProfileRoutes from "./routes/patient-profile.routes";
+import bookingProfileRoutes from "./routes/booking-profile.routes";
 import messageRoutes from "./routes/message.routes";
 import medicineRoutes from "./routes/medicine.routes";
 import medicalRecordRoutes from "./routes/medical-record.routes";
 import videoCallRoutes from "./routes/video-call.routes";
+import notificationRoutes from "./routes/notification.routes";
+import voucherRoutes from "./routes/voucher.routes";
 import { initReminderScheduler } from "./utils/emailService";
 import { startReminderJob } from "./jobs/reminderJob";
 import { verifyToken } from "./middleware/auth.middleware";
@@ -39,7 +41,9 @@ const app = express();
 
 // Production CORS Configuration
 const corsOrigin = process.env.CORS_ORIGIN;
-const allowedOrigins = corsOrigin && corsOrigin !== "*" ? corsOrigin.split(",") : ["http://localhost:3000"];
+const allowedOrigins = corsOrigin && corsOrigin !== "*"
+  ? corsOrigin.split(",")
+  : ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"];
 
 app.use(
   cors({
@@ -63,13 +67,15 @@ app.use("/api", reviewRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/payments", paymentRoutes); // /api/payments/status/:orderCode (public polling)
 app.use("/api", packageRoutes);
-app.use("/api/patient-profiles", patientProfileRoutes);
+app.use("/api/booking-profiles", bookingProfileRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/medical-records", medicalRecordRoutes);
 app.use("/api/video-calls", videoCallRoutes);
 app.get("/api/profile", verifyToken, getProfile);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/vouchers", voucherRoutes);
 
 
 app.get("/", (req, res) => {

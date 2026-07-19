@@ -449,7 +449,7 @@ function MyAppointmentsContent() {
 
 export default function MyAppointmentsPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["DOCTOR", "ADMIN"]}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-grow">
         {/* Header section */}
         <div className="space-y-2 mb-8">
@@ -466,3 +466,4 @@ export default function MyAppointmentsPage() {
     </ProtectedRoute>
   );
 }
+

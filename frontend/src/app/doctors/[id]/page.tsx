@@ -177,7 +177,7 @@ export default function DoctorDetailPage({ params }: PageProps) {
       const response = await appointmentService.createAppointment({
         doctorId: id, clinicId: doctor.clinicId,
         appointmentDate: appointmentDateTime.toISOString(),
-        notes: notes.trim() || undefined, patientProfileId: selectedProfileId,
+        notes: notes.trim() || undefined, isBookingForMyself: true,
       });
       setBookingMessage({ type: "success", text: "Đặt lịch thành công! Đang chuyển tới trang thanh toán..." });
       setSelectedSlot(null); setSelectedDate(""); setNotes(""); resetBooking();

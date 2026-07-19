@@ -11,7 +11,9 @@ interface CreateAppointmentRequestBody {
     appointmentDate: string;
     notes?: string;
     packageId?: string;
-    patientProfileId: string;
+    isBookingForMyself: boolean;
+    otherProfileName?: string;
+    newBookingProfile?: any;
 }
 
 /**
@@ -30,33 +32,37 @@ export async function createAppointmentHandler(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate, notes, packageId, patientProfileId, newPatientProfile } = req.body as any;
+        const { doctorId, appointmentDate, notes, packageId, isBookingForMyself, otherProfileName, relativeProfileId, newBookingProfile } = req.body as any;
 
-        let finalProfileId = patientProfileId;
+        let finalProfileType: "SELF" | "OTHER" = isBookingForMyself ? "SELF" : "OTHER";
+        let finalProfileName: string | undefined = isBookingForMyself ? undefined : otherProfileName;
 
-        if (!finalProfileId && newPatientProfile) {
-            const fullAddress = [newPatientProfile.address, newPatientProfile.ward, newPatientProfile.province]
-                .filter(Boolean)
-                .join(", ");
-
-            const profile = await prisma.patientProfile.create({
-                data: {
-                    userId,
-                    fullName: newPatientProfile.fullName,
-                    phoneNumber: newPatientProfile.phoneNumber,
-                    gender: newPatientProfile.gender,
-                    dateOfBirth: new Date(newPatientProfile.dateOfBirth),
-                    cccd: newPatientProfile.cccd || "",
-                    address: fullAddress || "",
-                    isPrimary: false,
-                    isTemporary: newPatientProfile.isTemporary || false
-                }
+        // If a saved relative profile was selected, look up its name
+        if (!isBookingForMyself && relativeProfileId && !finalProfileName) {
+            const savedProfile = await prisma.bookingProfile.findFirst({
+                where: { id: relativeProfileId, userId },
+                select: { fullName: true },
             });
-            finalProfileId = profile.id;
+            if (savedProfile) {
+                finalProfileName = savedProfile.fullName;
+            }
         }
 
-        if (!finalProfileId) {
-            throw new ApiError("Vui lòng chọn hồ sơ người khám", 400);
+        if (!isBookingForMyself && newBookingProfile && newBookingProfile.saveAsProfile) {
+            await prisma.bookingProfile.create({
+                data: {
+                    userId,
+                    fullName: newBookingProfile.fullName,
+                    phone: newBookingProfile.phone,
+                    gender: newBookingProfile.gender,
+                    yearOfBirth: newBookingProfile.yearOfBirth ? parseInt(newBookingProfile.yearOfBirth) : null,
+                    relationship: "Khác",
+                }
+            });
+        }
+        
+        if (!isBookingForMyself && !finalProfileName) {
+            throw new ApiError("Vui lòng nhập tên người khám", 400);
         }
         if (!doctorId && !packageId) {
             throw new ApiError("Doctor ID or Package ID is required", 400);
@@ -80,7 +86,8 @@ export async function createAppointmentHandler(
 
         const appointment = await createAppointment({
             userId,
-            patientProfileId: finalProfileId,
+            patientProfileType: finalProfileType,
+            patientProfileName: finalProfileName,
             doctorId,
             appointmentDate: date,
             notes,

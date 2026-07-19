@@ -17,6 +17,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export interface AuthTokenPayload {
     userId: string;
+    id?: string;
     role: Role;
     iat?: number;
     exp?: number;

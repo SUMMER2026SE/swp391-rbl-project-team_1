@@ -48,7 +48,11 @@ export const appointmentService = {
     return response.data;
   },
 
-  async createPayOSPaymentUrl(appointmentId: string): Promise<{
+  async createPayOSPaymentUrl(
+    appointmentId: string,
+    voucherCode?: string,
+    discountAmount?: number
+  ): Promise<{
     checkoutUrl: string;
     qrCode: string;
     accountNumber: string;
@@ -69,7 +73,7 @@ export const appointmentService = {
       description: string;
       orderCode: number;
       expiredAt: string;
-    }>("/payment/payos", { appointmentId });
+    }>("/payment/payos", { appointmentId, voucherCode, discountAmount });
     return response.data;
   },
 

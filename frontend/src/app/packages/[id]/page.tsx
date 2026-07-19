@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { packageService, MedicalPackage } from "@/services/package.service";
+import { voucherService } from "@/services/voucher.service";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { MapPin, ArrowRight, Clock, CheckCircle2, Info, AlertTriangle, ShieldAlert } from "lucide-react";
+import { MapPin, ArrowRight, Clock, CheckCircle2, Info, AlertTriangle, ShieldAlert, Check, Tag } from "lucide-react";
 import Link from "next/link";
 
 export default function PackageDetailPage() {
@@ -16,6 +17,18 @@ export default function PackageDetailPage() {
   const [pkg, setPkg] = useState<MedicalPackage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Voucher preview state
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
+  const [voucherResult, setVoucherResult] = useState<{
+    valid: boolean;
+    discountAmount?: number;
+    finalDeposit?: number;
+    voucher?: any;
+    message?: string;
+  } | null>(null);
 
   useEffect(() => {
     async function fetchPackage() {
@@ -58,7 +71,30 @@ export default function PackageDetailPage() {
   }
 
   // Calculate deposit
-  const depositAmount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+  const defaultDepositAmount = Math.round((pkg.price * pkg.depositPercentage) / 100);
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    try {
+      setVoucherLoading(true);
+      setVoucherError("");
+      const result = await voucherService.validateVoucher(voucherCode.trim(), defaultDepositAmount, undefined, pkg.id); // packageId passed
+      if (result.valid) {
+        setVoucherResult(result);
+      } else {
+        setVoucherError(result.message);
+        setVoucherResult(null);
+      }
+    } catch (err: any) {
+      setVoucherError(err.message || "Lỗi khi áp dụng mã");
+      setVoucherResult(null);
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const currentDeposit = voucherResult?.finalDeposit ?? defaultDepositAmount;
+  const bookingFee = 5000;
 
   return (
     <div className="bg-white min-h-screen pb-20">
@@ -86,18 +122,74 @@ export default function PackageDetailPage() {
                 </div>
             </div>
             <div className="bg-white p-6 rounded-2xl shadow-xl border border-teal-50 min-w-[300px]">
-                <p className="text-sm text-slate-500 mb-1">Giá niêm yết</p>
-                <p className="text-3xl font-bold text-teal-700 mb-4">{pkg.price.toLocaleString('vi-VN')} đ</p>
-                
-                <div className="bg-teal-50 rounded-xl p-3 mb-5 border border-teal-100">
-                    <div className="flex justify-between items-center text-sm mb-1">
-                        <span className="text-teal-800 font-medium">Cọc giữ chỗ ({pkg.depositPercentage}%):</span>
-                        <span className="font-bold text-teal-900">{depositAmount.toLocaleString('vi-VN')} đ</span>
+                {/* Voucher Input */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-teal-600" /> Mã giảm giá
+                  </label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Nhập mã voucher..." 
+                      className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 uppercase"
+                      value={voucherCode}
+                      onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    />
+                    <button 
+                      onClick={handleApplyVoucher}
+                      disabled={voucherLoading || !voucherCode.trim()}
+                      className="bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+                    >
+                      {voucherLoading ? "..." : "Áp dụng"}
+                    </button>
+                  </div>
+                  {voucherError && <p className="text-rose-500 text-xs mt-2 font-medium">{voucherError}</p>}
+                  {voucherResult?.valid && (
+                    <div className="mt-2 flex items-start gap-1.5 text-emerald-600 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                      <Check className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span className="text-xs font-medium">
+                        {voucherResult.message || `Đã áp dụng mã ${voucherResult.voucher?.code}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 bg-teal-50/50 p-4 rounded-xl border border-teal-100 mb-6">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-600 font-medium">Giá gói khám:</span>
+                        <span className="font-bold text-slate-800">{pkg.price.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    
+                    {voucherResult?.valid && voucherResult.discountAmount && (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-emerald-600 font-bold">Voucher {voucherResult.voucher?.code}:</span>
+                            <span className="font-bold text-emerald-600">- {voucherResult.discountAmount.toLocaleString('vi-VN')}đ</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-600 font-medium">Giá sau giảm:</span>
+                            <span className="font-bold text-slate-800">{(pkg.price - voucherResult.discountAmount).toLocaleString('vi-VN')}đ</span>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex justify-between items-center text-sm font-bold pt-2 border-t border-teal-200">
+                        <span className="text-teal-800">Tiền cọc ({pkg.depositPercentage}%):</span>
+                        <span className="text-teal-900 text-lg">{currentDeposit.toLocaleString('vi-VN')}đ</span>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 mt-3 flex justify-between items-center text-xs text-slate-500 group relative cursor-help">
+                        <span>Phí đặt lịch (demo):</span>
+                        <span className="font-medium">{bookingFee.toLocaleString('vi-VN')}đ</span>
+                        <div className="absolute bottom-full right-0 mb-2 w-64 bg-slate-800 text-white text-[11px] p-2 rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                          Đây là phí đặt lịch demo. Tiền cọc thực tế sẽ được thu tại quầy.
+                          <div className="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-slate-800"></div>
+                        </div>
                     </div>
                 </div>
 
                 <Link 
-                    href={`/packages/${pkg.id}/booking`} 
+                    href={`/packages/${pkg.id}/booking${voucherResult?.valid ? `?voucherCode=${voucherCode}` : ''}`} 
                     className="w-full bg-[#017a86] hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
                 >
                     <span>Đặt Lịch Ngay</span>

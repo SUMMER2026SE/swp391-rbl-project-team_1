@@ -56,8 +56,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     }
-
     loadStoredAuth();
+
+    const handleForceLogout = () => {
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener("auth:logout", handleForceLogout);
+    return () => {
+      window.removeEventListener("auth:logout", handleForceLogout);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

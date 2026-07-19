@@ -72,7 +72,18 @@ export default function PrescriptionModal({ appointmentId, onClose }: Prescripti
 
   const { medicalRecord } = appointment;
   const prescriptions = medicalRecord.prescriptions || [];
-  const patient = appointment.patientProfile || appointment.user || { fullName: "Chưa rõ", gender: "Chưa rõ", dateOfBirth: "", address: "" };
+  
+  // Try to use the profile name if it was a booking for a relative
+  const patientName = appointment.patientProfileType === "OTHER" && appointment.patientProfileName 
+    ? appointment.patientProfileName 
+    : (appointment.user?.fullName || "Chưa rõ");
+    
+  const patient = {
+    fullName: patientName,
+    gender: appointment.user?.gender || "Chưa rõ",
+    dateOfBirth: appointment.user?.dateOfBirth || "",
+    address: appointment.user?.address || ""
+  };
 
   const patientDob = patient.dateOfBirth
     ? new Date(patient.dateOfBirth).toLocaleDateString("vi-VN", {

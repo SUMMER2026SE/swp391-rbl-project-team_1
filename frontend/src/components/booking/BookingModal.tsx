@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { patientProfileService, PatientProfile } from "@/services/patient-profile.service";
+import { bookingProfileService, BookingProfile } from "@/services/booking-profile.service";
 import { appointmentService } from "@/services/appointment.service";
 import { DoctorSchedule, TimeSlot } from "@/types/doctor";
 import Button from "@/components/common/Button";
@@ -36,10 +36,6 @@ type Step = 1 | 2 | 3;
 
 interface NewProfileData {
   fullName: string;
-  phoneNumber: string;
-  gender: string;
-  dateOfBirth: string;
-  cccd: string;
 }
 
 interface SlotWithMeta extends TimeSlot {
@@ -111,12 +107,13 @@ export default function BookingModal({
   const { isAuthenticated, user } = useAuth();
 
   const [step, setStep] = useState<Step>(1);
-  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
+  const [isBookingForMyself, setIsBookingForMyself] = useState<boolean>(true);
+  const [profiles, setProfiles] = useState<BookingProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [newProfileData, setNewProfileData] = useState<NewProfileData>({
-    fullName: "", phoneNumber: "", gender: "", dateOfBirth: "", cccd: "",
+    fullName: ""
   });
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<SlotWithMeta[]>([]);
@@ -133,12 +130,10 @@ export default function BookingModal({
   useEffect(() => {
     if (!isOpen || !isAuthenticated || user?.role !== "USER") return;
     setProfilesLoading(true);
-    patientProfileService.getMyProfiles()
+    bookingProfileService.getMyProfiles()
       .then((data) => {
         setProfiles(data);
-        const primary = data.find((p) => p.isPrimary);
-        if (primary) setSelectedProfileId(primary.id);
-        else if (data.length > 0) setSelectedProfileId(data[0].id);
+        if (data.length > 0) setSelectedProfileId(data[0].id);
       })
       .catch(console.error)
       .finally(() => setProfilesLoading(false));
@@ -154,7 +149,8 @@ export default function BookingModal({
       setError(null);
       setSuccessId(null);
       setIsCreatingNew(false);
-      setNewProfileData({ fullName: "", phoneNumber: "", gender: "", dateOfBirth: "", cccd: "" });
+      setIsBookingForMyself(true);
+      setNewProfileData({ fullName: "" });
     }
   }, [isOpen]);
 
@@ -187,13 +183,15 @@ export default function BookingModal({
   }, [isDoctor, doctorSchedules, doctorBookedCounts, packageBookedCounts]);
 
   const validateStep1 = () => {
-    if (!isCreatingNew && !selectedProfileId) {
-      setError("Vui lòng chọn hồ sơ người đi khám.");
-      return false;
-    }
-    if (isCreatingNew && !newProfileData.fullName.trim()) {
-      setError("Vui lòng nhập họ tên người khám.");
-      return false;
+    if (!isBookingForMyself) {
+      if (isCreatingNew && !newProfileData.fullName.trim()) {
+        setError("Vui lòng nhập họ tên người khám.");
+        return false;
+      }
+      if (!isCreatingNew && !selectedProfileId) {
+        setError("Vui lòng chọn hồ sơ người thân.");
+        return false;
+      }
     }
     return true;
   };
@@ -246,8 +244,9 @@ export default function BookingModal({
         packageId: packageId,
         appointmentDate,
         notes: notes.trim() || undefined,
-        patientProfileId: isCreatingNew ? undefined : selectedProfileId,
-        newPatientProfile: isCreatingNew ? { ...newProfileData, isTemporary: true } : undefined,
+        isBookingForMyself,
+        relativeProfileId: !isBookingForMyself && !isCreatingNew ? selectedProfileId : undefined,
+        otherProfileName: !isBookingForMyself && isCreatingNew ? newProfileData.fullName : undefined,
       });
       setSuccessId(response.appointment.id);
       if (onSuccess) onSuccess(response.appointment.id);
@@ -264,7 +263,6 @@ export default function BookingModal({
 
   if (!isOpen) return null;
 
-  const atMaxProfiles = profiles.length >= MAX_PROFILES;
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
 
   return (
@@ -332,158 +330,82 @@ export default function BookingModal({
               ) : profilesLoading ? (
                 <div className="flex justify-center py-10"><LoadingSpinner /></div>
               ) : (
-                <>
-                  <div className="flex items-center justify-between">
+                <div className="flex flex-col space-y-4">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                       <User className="h-4 w-4 text-teal-600" />
                       Chọn người đi khám
-                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${atMaxProfiles ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-500"}`}>
-                        {profiles.length}/{MAX_PROFILES}
-                      </span>
                     </h3>
-                    {!isCreatingNew && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (atMaxProfiles) return;
-                          setIsCreatingNew(true);
-                          setSelectedProfileId("");
-                        }}
-                        disabled={atMaxProfiles}
-                        title={atMaxProfiles ? `Đã đạt tối đa ${MAX_PROFILES} hồ sơ.` : "Nhập thông tin mới"}
-                        className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors ${
-                          atMaxProfiles
-                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            : "bg-teal-50 text-teal-700 hover:bg-teal-100 cursor-pointer"
-                        }`}
-                      >
-                        <Plus className="h-3 w-3" />
-                        {atMaxProfiles ? `Đã đủ ${MAX_PROFILES} hồ sơ` : "Nhập thông tin mới"}
-                      </button>
+
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" checked={isBookingForMyself} onChange={() => { setIsBookingForMyself(true); setIsCreatingNew(false); }} className="accent-teal-600 w-4 h-4" />
+                        <span className="text-sm font-semibold text-slate-700">Cho bản thân</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" checked={!isBookingForMyself} onChange={() => setIsBookingForMyself(false)} className="accent-teal-600 w-4 h-4" />
+                        <span className="text-sm font-semibold text-slate-700">Cho người thân</span>
+                      </label>
+                    </div>
+
+                    {isBookingForMyself && (
+                      <div className="p-4 rounded-xl border border-teal-200 bg-teal-50 flex items-center gap-3">
+                         <UserCircle2 className="h-10 w-10 text-teal-600" />
+                         <div>
+                            <p className="font-bold text-teal-900">{user?.fullName}</p>
+                            <p className="text-xs text-teal-700">Hồ sơ chính</p>
+                         </div>
+                      </div>
                     )}
-                    {isCreatingNew && (
-                      <button
-                        type="button"
-                        onClick={() => { setIsCreatingNew(false); if (profiles.length > 0) setSelectedProfileId(profiles[0].id); }}
-                        className="text-xs font-semibold text-slate-500 hover:text-teal-600 px-2 py-1 rounded-lg hover:bg-slate-50"
-                      >
-                        ← Chọn hồ sơ có sẵn
-                      </button>
+
+                    {!isBookingForMyself && (
+                      <div className="space-y-3 p-4 border border-slate-200 rounded-xl bg-slate-50">
+                        <div className="flex justify-between items-center mb-2">
+                           <span className="text-sm font-semibold text-slate-700">Chọn hồ sơ người thân:</span>
+                           {!isCreatingNew && (
+                              <button type="button" onClick={() => { setIsCreatingNew(true); setSelectedProfileId(""); }} className="text-xs font-semibold text-teal-600 hover:underline flex items-center gap-1">
+                                <Plus className="w-3 h-3"/> Thêm mới
+                              </button>
+                           )}
+                        </div>
+                        
+                        {isCreatingNew ? (
+                           <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-slate-700">Họ và tên người bệnh *</label>
+                                <Input
+                                  value={newProfileData.fullName}
+                                  onChange={(e) => setNewProfileData({ fullName: e.target.value })}
+                                  placeholder="Nguyễn Văn A"
+                                  className="!py-2 !text-sm"
+                                />
+                              </div>
+                              <button type="button" onClick={() => setIsCreatingNew(false)} className="text-xs text-slate-500 hover:text-teal-600 font-medium">← Quay lại danh sách</button>
+                           </div>
+                        ) : (
+                           profiles.length === 0 ? (
+                                 <div className="text-center py-4 border border-dashed border-slate-300 rounded-lg">
+                                 <p className="text-sm text-slate-500 mb-2">Chưa có hồ sơ người thân nào</p>
+                                 <Button variant="outline" className="py-1.5 px-3 text-xs" onClick={() => { setIsCreatingNew(true); setSelectedProfileId(""); }}>Tạo mới ngay</Button>
+                              </div>
+                           ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                 {profiles.map(p => (
+                                    <button
+                                      key={p.id}
+                                      type="button"
+                                      onClick={() => setSelectedProfileId(p.id)}
+                                      className={`p-3 rounded-xl border text-left transition-all ${selectedProfileId === p.id ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-300"}`}
+                                    >
+                                      <p className="font-bold text-sm text-slate-800">{p.fullName}</p>
+                                      <p className="text-xs text-slate-500 mt-1">Quan hệ: {p.relationship}</p>
+                                    </button>
+                                 ))}
+                              </div>
+                           )
+                        )}
+                      </div>
                     )}
                   </div>
-
-                  {atMaxProfiles && !isCreatingNew && (
-                    <div className="flex items-start gap-2 p-3 rounded-xl bg-orange-50 border border-orange-100 text-xs text-orange-700">
-                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                      <span>Bạn đã có <strong>{MAX_PROFILES} hồ sơ</strong>. Hãy vào <Link href="/profile" className="underline font-bold" onClick={onClose}>Trang cá nhân</Link> để xóa hồ sơ cũ nếu muốn tạo mới.</span>
-                    </div>
-                  )}
-
-                  {!isCreatingNew && (
-                    <>
-                      {profiles.length === 0 ? (
-                        <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl space-y-3">
-                          <User className="h-10 w-10 text-slate-300 mx-auto" />
-                          <p className="text-sm font-semibold text-slate-600">Chưa có hồ sơ nào</p>
-                          <p className="text-xs text-slate-400">Bấm "Nhập thông tin mới" để tạo hồ sơ đầu tiên</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {profiles.map((p) => {
-                            const isSelected = selectedProfileId === p.id;
-                            return (
-                              <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => { setSelectedProfileId(p.id); setIsCreatingNew(false); }}
-                                className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-150 cursor-pointer group ${
-                                  isSelected
-                                    ? "border-teal-500 bg-teal-50 shadow-md shadow-teal-500/10 scale-[1.02]"
-                                    : "border-slate-200 bg-white hover:border-teal-300 hover:shadow-sm hover:scale-[1.01]"
-                                }`}
-                              >
-                                {isSelected && (
-                                  <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-teal-500 flex items-center justify-center shadow-sm">
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                                  </div>
-                                )}
-                                <div className={`h-9 w-9 rounded-xl flex items-center justify-center mb-3 font-bold text-sm ${isSelected ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-500"}`}>
-                                  {p.fullName.charAt(0).toUpperCase()}
-                                </div>
-                                <p className={`font-bold text-sm leading-tight ${isSelected ? "text-teal-800" : "text-slate-800"}`}>
-                                  {p.fullName}
-                                </p>
-                                <p className={`text-xs mt-1 ${isSelected ? "text-teal-600" : "text-slate-400"}`}>
-                                  {p.phoneNumber || "Chưa có SĐT"}
-                                </p>
-                                {p.isPrimary && (
-                                  <span className="inline-block mt-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700">
-                                    Hồ sơ chính
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <p className="text-xs text-slate-400 text-right">
-                        <Link href="/profile" className="hover:text-teal-600 underline underline-offset-2" onClick={onClose}>
-                          Quản lý hồ sơ →
-                        </Link>
-                      </p>
-                    </>
-                  )}
-
-                  {isCreatingNew && (
-                    <div className="p-4 rounded-2xl border border-teal-200 bg-teal-50/40 space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
-                      <p className="text-xs text-slate-500 italic">
-                        Thông tin này sẽ được lưu tạm thời cho lịch hẹn này.
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold mb-1 text-slate-700">Họ và tên *</label>
-                          <Input
-                            value={newProfileData.fullName}
-                            onChange={(e) => setNewProfileData({ ...newProfileData, fullName: e.target.value })}
-                            placeholder="Nguyễn Văn A"
-                            className="!py-2 !text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold mb-1 text-slate-700">Số điện thoại</label>
-                          <Input
-                            value={newProfileData.phoneNumber}
-                            onChange={(e) => setNewProfileData({ ...newProfileData, phoneNumber: e.target.value })}
-                            placeholder="0987654321"
-                            className="!py-2 !text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold mb-1 text-slate-700">Ngày sinh</label>
-                          <Input
-                            type="date"
-                            value={newProfileData.dateOfBirth}
-                            onChange={(e) => setNewProfileData({ ...newProfileData, dateOfBirth: e.target.value })}
-                            className="!py-2 !text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold mb-1 text-slate-700">Giới tính</label>
-                          <select
-                            className="w-full border border-slate-200 p-2 rounded-xl text-sm bg-white focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
-                            value={newProfileData.gender}
-                            onChange={(e) => setNewProfileData({ ...newProfileData, gender: e.target.value })}
-                          >
-                            <option value="">Chọn giới tính</option>
-                            <option value="Nam">Nam</option>
-                            <option value="Nữ">Nữ</option>
-                            <option value="Khác">Khác</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
               )}
             </div>
           )}
@@ -579,8 +501,8 @@ export default function BookingModal({
                       <p className="font-bold text-slate-800 text-sm">
                         {isCreatingNew ? newProfileData.fullName : (selectedProfile?.fullName || "—")}
                       </p>
-                      {!isCreatingNew && selectedProfile?.phoneNumber && (
-                        <p className="text-xs text-slate-500">{selectedProfile.phoneNumber}</p>
+                      {!isCreatingNew && selectedProfile?.phone && (
+                        <p className="text-xs text-slate-500">{selectedProfile.phone}</p>
                       )}
                     </div>
                   </div>

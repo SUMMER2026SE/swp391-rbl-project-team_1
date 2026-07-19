@@ -166,3 +166,68 @@ export async function getDoctorReviews(
         next(error);
     }
 }
+
+/**
+ * GET /api/reviews/me
+ * Protected: Returns all reviews submitted by the current user.
+ */
+export async function getMyReviews(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) throw new ApiError("Authentication required", 401);
+
+        const reviews = await prisma.review.findMany({
+            where: { userId },
+            include: {
+                doctor: {
+                    select: { name: true, avatar: true, specialty: { select: { name: true } } }
+                },
+                appointment: {
+                    select: { appointmentDate: true, patientProfileName: true }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        res.json({ data: reviews });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/reviews/pending
+ * Protected: Returns COMPLETED appointments without a review.
+ */
+export async function getPendingReviews(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) throw new ApiError("Authentication required", 401);
+
+        const appointments = await prisma.appointment.findMany({
+            where: {
+                userId,
+                status: "COMPLETED",
+                review: null // appointments that don't have a review
+            },
+            include: {
+                doctor: {
+                    select: { name: true, avatar: true, specialty: { select: { name: true } } }
+                }
+            },
+            orderBy: { appointmentDate: "desc" }
+        });
+
+        res.json({ data: appointments });
+    } catch (error) {
+        next(error);
+    }
+}
