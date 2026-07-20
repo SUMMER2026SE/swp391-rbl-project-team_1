@@ -5,15 +5,15 @@ import { createAppointment, getAppointmentsByUser, getAppointmentById, uploadPay
 import { sendBookingStatusUpdateEmail, sendCancellationEmail } from "../utils/emailService";
 import { ApiError } from "../utils/apiError";
 import prisma from "../prisma/client";
+import { createNotification } from "../services/notificationService";
 
 interface CreateAppointmentRequestBody {
     doctorId?: string;
     appointmentDate: string;
     notes?: string;
     packageId?: string;
-    isBookingForMyself: boolean;
-    otherProfileName?: string;
-    newBookingProfile?: any;
+    patientInfo: any;
+    patientProfileType?: 'SELF' | 'OTHER';
 }
 
 /**
@@ -32,37 +32,10 @@ export async function createAppointmentHandler(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate, notes, packageId, isBookingForMyself, otherProfileName, relativeProfileId, newBookingProfile } = req.body as any;
+        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType } = req.body as any;
 
-        let finalProfileType: "SELF" | "OTHER" = isBookingForMyself ? "SELF" : "OTHER";
-        let finalProfileName: string | undefined = isBookingForMyself ? undefined : otherProfileName;
-
-        // If a saved relative profile was selected, look up its name
-        if (!isBookingForMyself && relativeProfileId && !finalProfileName) {
-            const savedProfile = await prisma.bookingProfile.findFirst({
-                where: { id: relativeProfileId, userId },
-                select: { fullName: true },
-            });
-            if (savedProfile) {
-                finalProfileName = savedProfile.fullName;
-            }
-        }
-
-        if (!isBookingForMyself && newBookingProfile && newBookingProfile.saveAsProfile) {
-            await prisma.bookingProfile.create({
-                data: {
-                    userId,
-                    fullName: newBookingProfile.fullName,
-                    phone: newBookingProfile.phone,
-                    gender: newBookingProfile.gender,
-                    yearOfBirth: newBookingProfile.yearOfBirth ? parseInt(newBookingProfile.yearOfBirth) : null,
-                    relationship: "Khác",
-                }
-            });
-        }
-        
-        if (!isBookingForMyself && !finalProfileName) {
-            throw new ApiError("Vui lòng nhập tên người khám", 400);
+        if (!patientInfo || !patientInfo.fullName) {
+            throw new ApiError("Vui lòng điền đầy đủ thông tin người khám", 400);
         }
         if (!doctorId && !packageId) {
             throw new ApiError("Doctor ID or Package ID is required", 400);
@@ -86,14 +59,13 @@ export async function createAppointmentHandler(
 
         const appointment = await createAppointment({
             userId,
-            patientProfileType: finalProfileType,
-            patientProfileName: finalProfileName,
+            patientInfo: patientInfo,
+            patientProfileType: patientProfileType === 'OTHER' ? 'OTHER' : 'SELF',
             doctorId,
             appointmentDate: date,
             notes,
             packageId,
         });
-
 
         res.status(201).json({
             message: "Appointment created successfully",
@@ -416,6 +388,17 @@ export async function cancelAppointmentHandler(
                 amount: updatedAppointment.amount
             }).catch(console.error);
         }
+
+        // Create in-app notification for the user
+        createNotification({
+            userId,
+            type: "APPOINTMENT_CANCELLED_BY_PATIENT",
+            title: "Lịch hẹn đã bị huỷ ❌",
+            message: isRefundable
+                ? `Lịch hẹn #${updatedAppointment.bookingCode} đã huỷ thành công. Tiền đặt cọc sẽ được hoàn trả trong vòng 3-5 ngày làm việc.`
+                : `Lịch hẹn #${updatedAppointment.bookingCode} đã huỷ thành công. Lưu ý: huỷ trong vòng 24h trước giờ khám nên không hoàn cọc.`,
+            data: { appointmentId: updatedAppointment.id }
+        }).catch(console.error);
 
         res.json({
             message: "Huỷ lịch hẹn thành công",

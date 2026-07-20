@@ -1,122 +1,126 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import prisma from "../prisma/client";
+import { AuthenticatedRequest } from "../middleware/auth.middleware";
+import { ApiError } from "../utils/apiError";
 
-// GET /api/booking-profiles
-export async function getMyBookingProfiles(req: Request, res: Response) {
+export const getMyProfiles = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        // req.user is set by authenticateToken
-        const userId = (req as any).user?.id;
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+        const userId = req.user?.userId;
+        if (!userId) throw new ApiError("Unauthorized", 401);
 
         const profiles = await prisma.bookingProfile.findMany({
             where: { userId },
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: 'desc' }
         });
 
-        res.json({ message: "Success", data: profiles });
+        res.status(200).json({ data: profiles });
     } catch (error) {
-        console.error("Error getting booking profiles:", error);
-        res.status(500).json({ message: "Internal server error" });
+        if (error instanceof ApiError) throw error;
+        console.error("getMyProfiles error:", error);
+        res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
     }
-}
+};
 
-// POST /api/booking-profiles
-export async function createBookingProfile(req: Request, res: Response) {
+export const createProfile = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+        const userId = req.user?.userId;
+        if (!userId) throw new ApiError("Unauthorized", 401);
 
-        const { fullName, phone, gender, yearOfBirth, relationship } = req.body;
+        const { fullName, phone, email, gender, dateOfBirth, relationship, province, district, ward, street, bloodType, allergies, chronicDiseases, personalHistory, familyHistory } = req.body;
 
         if (!fullName || !relationship) {
-            return res.status(400).json({ message: "Vui lòng nhập họ tên và mối quan hệ" });
+            throw new ApiError("Họ tên và mối quan hệ là bắt buộc", 400);
         }
 
-        const newProfile = await prisma.bookingProfile.create({
+        const profile = await prisma.bookingProfile.create({
             data: {
                 userId,
                 fullName,
-                phone: phone || null,
-                gender: gender || null,
-                yearOfBirth: yearOfBirth ? parseInt(yearOfBirth) : null,
+                phone,
+                email,
+                gender,
+                dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
                 relationship,
-            },
+                province,
+                district,
+                ward,
+                street,
+                bloodType,
+                allergies,
+                chronicDiseases,
+                personalHistory,
+                familyHistory
+            }
         });
 
-        res.status(201).json({ message: "Tạo hồ sơ thành công", data: newProfile });
+        res.status(201).json({ data: profile, message: "Đã lưu hồ sơ thành công" });
     } catch (error) {
-        console.error("Error creating booking profile:", error);
-        res.status(500).json({ message: "Internal server error" });
+        if (error instanceof ApiError) throw error;
+        console.error("createProfile error:", error);
+        res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
     }
-}
+};
 
-// PUT /api/booking-profiles/:id
-export async function updateBookingProfile(req: Request, res: Response) {
+export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = (req as any).user?.id || (req as any).user?.userId;
-        const id = req.params.id as string;
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+        const userId = req.user?.userId;
+        if (!userId) throw new ApiError("Unauthorized", 401);
 
-        const { fullName, phone, gender, yearOfBirth, relationship } = req.body;
+        const profileId = req.params.id as string;
+        const { fullName, phone, email, gender, dateOfBirth, relationship, province, district, ward, street, bloodType, allergies, chronicDiseases, personalHistory, familyHistory } = req.body;
 
-        // Verify ownership
-        const existing = await prisma.bookingProfile.findUnique({
-            where: { id },
-        });
-
+        const existing = await prisma.bookingProfile.findUnique({ where: { id: profileId } });
         if (!existing || existing.userId !== userId) {
-            return res.status(404).json({ message: "Không tìm thấy hồ sơ hoặc không có quyền sửa" });
+            throw new ApiError("Hồ sơ không tồn tại hoặc không có quyền truy cập", 404);
         }
 
-        const updatedProfile = await prisma.bookingProfile.update({
-            where: { id },
+        const profile = await prisma.bookingProfile.update({
+            where: { id: profileId },
             data: {
-                fullName: fullName !== undefined ? fullName : existing.fullName,
-                phone: phone !== undefined ? phone : existing.phone,
-                gender: gender !== undefined ? gender : existing.gender,
-                yearOfBirth: yearOfBirth !== undefined ? parseInt(yearOfBirth) : existing.yearOfBirth,
-                relationship: relationship !== undefined ? relationship : existing.relationship,
-            },
+                fullName,
+                phone,
+                email,
+                gender,
+                dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+                relationship,
+                province,
+                district,
+                ward,
+                street,
+                bloodType,
+                allergies,
+                chronicDiseases,
+                personalHistory,
+                familyHistory
+            }
         });
 
-        res.json({ message: "Cập nhật hồ sơ thành công", data: updatedProfile });
+        res.status(200).json({ data: profile, message: "Đã cập nhật hồ sơ" });
     } catch (error) {
-        console.error("Error updating booking profile:", error);
-        res.status(500).json({ message: "Internal server error" });
+        if (error instanceof ApiError) throw error;
+        console.error("updateProfile error:", error);
+        res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
     }
-}
+};
 
-// DELETE /api/booking-profiles/:id
-export async function deleteBookingProfile(req: Request, res: Response) {
+export const deleteProfile = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = (req as any).user?.id || (req as any).user?.userId;
-        const id = req.params.id as string;
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+        const userId = req.user?.userId;
+        if (!userId) throw new ApiError("Unauthorized", 401);
 
-        // Verify ownership
-        const existing = await prisma.bookingProfile.findUnique({
-            where: { id },
-        });
+        const profileId = req.params.id as string;
 
+        const existing = await prisma.bookingProfile.findUnique({ where: { id: profileId } });
         if (!existing || existing.userId !== userId) {
-            return res.status(404).json({ message: "Không tìm thấy hồ sơ hoặc không có quyền xóa" });
+            throw new ApiError("Hồ sơ không tồn tại hoặc không có quyền truy cập", 404);
         }
 
-        await prisma.bookingProfile.delete({
-            where: { id },
-        });
+        await prisma.bookingProfile.delete({ where: { id: profileId } });
 
-        res.json({ message: "Xóa hồ sơ thành công" });
+        res.status(200).json({ message: "Đã xoá hồ sơ" });
     } catch (error) {
-        console.error("Error deleting booking profile:", error);
-        res.status(500).json({ message: "Internal server error" });
+        if (error instanceof ApiError) throw error;
+        console.error("deleteProfile error:", error);
+        res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
     }
-}
+};

@@ -197,7 +197,10 @@ export default function DoctorDashboard() {
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-sm text-slate-800 line-clamp-1">{app.patientProfile?.fullName || app.user?.fullName}</p>
+                      <p className="font-semibold text-sm text-slate-800 line-clamp-1">{(app.patientInfo as any)?.fullName || app.user?.fullName}</p>
+                      {(app.patientProfileType as any) === 'OTHER' && (
+                        <p className="text-xs text-slate-400 mt-0.5">Đặt bởi: {app.user?.email}</p>
+                      )}
                       <p className="text-xs text-slate-500 mt-0.5">{new Date(app.appointmentDate).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</p>
                     </div>
                     <Link href={`/video-call?appointmentId=${app.id}`}>

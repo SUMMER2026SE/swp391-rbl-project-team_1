@@ -51,9 +51,22 @@ export const adminListVouchers = async (req: Request, res: Response) => {
     }
 };
 
+export const adminGetVoucherChartData = async (req: Request, res: Response) => {
+    try {
+        const period = (req.query.period as string) || 'month';
+        if (!['week', 'month', 'year'].includes(period)) {
+            return res.status(400).json({ message: "Invalid period. Use: week, month, year" });
+        }
+        const data = await voucherService.getVoucherChartData(period as 'week' | 'month' | 'year');
+        return res.json(data);
+    } catch (error: any) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
 export const adminCreateVoucher = async (req: Request, res: Response) => {
     try {
-        const { code, type, discountValue, applyTo, specialtyId, minDepositAmount, maxUses, isFirstBooking, startDate, endDate } = req.body;
+        const { code, type, discountValue, applyTo, specialtyId, minDepositAmount, maxUses, isFirstBooking, startDate, endDate, category, description, avatarColor, avatarIcon } = req.body;
         const { voucher, capped } = await voucherService.createVoucher({
             code,
             type,
@@ -65,6 +78,10 @@ export const adminCreateVoucher = async (req: Request, res: Response) => {
             isFirstBooking: Boolean(isFirstBooking),
             startDate: new Date(startDate),
             endDate: new Date(endDate),
+            category,
+            description,
+            avatarColor,
+            avatarIcon,
         });
         return res.status(201).json({ voucher, capped, message: capped ? "Ngày kết thúc đã được tự động điều chỉnh theo giới hạn cho phép." : "Tạo voucher thành công." });
     } catch (error: any) {
@@ -72,6 +89,7 @@ export const adminCreateVoucher = async (req: Request, res: Response) => {
         return res.status(500).json({ message: error.message });
     }
 };
+
 
 export const adminUpdateVoucher = async (req: Request, res: Response) => {
     try {

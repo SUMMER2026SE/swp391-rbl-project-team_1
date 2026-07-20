@@ -50,7 +50,7 @@ export default function ExaminationPage({ params }: { params: Promise<{ appointm
         <ExaminationForm 
           appointmentId={appointmentId} 
           initialRecord={recordData} 
-          patientName={appointmentData.patientProfile?.fullName || appointmentData.user.fullName || 'Bệnh nhân'}
+          patientName={(appointmentData.patientInfo as any)?.fullName || appointmentData.user.fullName || 'Bệnh nhân'}
           doctorName={appointmentData.doctor?.name || 'Bác sĩ'}
           appointmentDate={appointmentData.appointmentDate}
         />

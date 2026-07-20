@@ -20,11 +20,12 @@ const article_routes_1 = __importDefault(require("./routes/article.routes"));
 const review_routes_1 = __importDefault(require("./routes/review.routes"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 const package_routes_1 = __importDefault(require("./routes/package.routes"));
-const patient_profile_routes_1 = __importDefault(require("./routes/patient-profile.routes"));
 const message_routes_1 = __importDefault(require("./routes/message.routes"));
 const medicine_routes_1 = __importDefault(require("./routes/medicine.routes"));
 const medical_record_routes_1 = __importDefault(require("./routes/medical-record.routes"));
 const video_call_routes_1 = __importDefault(require("./routes/video-call.routes"));
+const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
+const voucher_routes_1 = __importDefault(require("./routes/voucher.routes"));
 const emailService_1 = require("./utils/emailService");
 const reminderJob_1 = require("./jobs/reminderJob");
 const auth_middleware_1 = require("./middleware/auth.middleware");
@@ -39,7 +40,9 @@ BigInt.prototype.toJSON = function () {
 const app = (0, express_1.default)();
 // Production CORS Configuration
 const corsOrigin = process.env.CORS_ORIGIN;
-const allowedOrigins = corsOrigin && corsOrigin !== "*" ? corsOrigin.split(",") : ["http://localhost:3000"];
+const allowedOrigins = corsOrigin && corsOrigin !== "*"
+    ? corsOrigin.split(",")
+    : ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"];
 app.use((0, cors_1.default)({
     origin: allowedOrigins,
     credentials: true,
@@ -59,13 +62,14 @@ app.use("/api", review_routes_1.default);
 app.use("/api/payment", payment_routes_1.default);
 app.use("/api/payments", payment_routes_1.default); // /api/payments/status/:orderCode (public polling)
 app.use("/api", package_routes_1.default);
-app.use("/api/patient-profiles", patient_profile_routes_1.default);
 app.use("/api/messages", message_routes_1.default);
 app.use("/api/doctor", doctor_dashboard_routes_1.default);
 app.use("/api/medicines", medicine_routes_1.default);
 app.use("/api/medical-records", medical_record_routes_1.default);
 app.use("/api/video-calls", video_call_routes_1.default);
 app.get("/api/profile", auth_middleware_1.verifyToken, auth_controller_1.getProfile);
+app.use("/api/notifications", notification_routes_1.default);
+app.use("/api/vouchers", voucher_routes_1.default);
 app.get("/", (req, res) => {
     res.send("Healthcare Booking API Running...");
 });

@@ -65,7 +65,7 @@ function initSocket(httpServer, allowedOrigins) {
             console.log(`Socket ${socket.id} joined chat_${conversationId}`);
         });
         socket.on("send-direct-message", ({ conversationId, message }) => {
-            socket.to(`chat_${conversationId}`).emit("receive-direct-message", message);
+            socket.to(`chat_${conversationId}`).emit("receive-direct-message", { conversationId, message });
         });
         // --- Video Call Invite Flow ---
         socket.on("video_call_invite", (data) => {

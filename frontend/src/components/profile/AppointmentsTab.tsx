@@ -169,12 +169,7 @@ export default function AppointmentsTab() {
                     <MapPin className="w-4 h-4" />
                     Phòng khám MedBooking
                   </span>
-                  {appt.patientProfileName && (
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-[10px] font-bold">P</span>
-                      Bệnh nhân: <strong className="text-slate-700">{appt.patientProfileName}</strong>
-                    </span>
-                  )}
+
                 </div>
 
                 {appt.cancellationReason && (

@@ -36,11 +36,16 @@ export async function getUserById(id: string): Promise<UserSafeDto | null> {
             avatar: true,
             gender: true,
             address: true,
+            province: true,
+            district: true,
+            ward: true,
+            street: true,
             dateOfBirth: true,
             bloodType: true,
             allergies: true,
             chronicDiseases: true,
             personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -77,11 +82,16 @@ export async function updateUserRole(id: string, role: Role): Promise<UserSafeDt
             avatar: true,
             gender: true,
             address: true,
+            province: true,
+            district: true,
+            ward: true,
+            street: true,
             dateOfBirth: true,
             bloodType: true,
             allergies: true,
             chronicDiseases: true,
             personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -113,7 +123,10 @@ export async function updateUserProfile(
     data: {
         fullName?: string | null;
         gender?: string | null;
-        address?: string | null;
+        province?: string | null;
+        district?: string | null;
+        ward?: string | null;
+        street?: string | null;
         dateOfBirth?: Date | null;
         bloodType?: string | null;
         allergies?: string | null;
@@ -128,12 +141,20 @@ export async function updateUserProfile(
         throw new ApiError("User not found", 404);
     }
 
+    const newAddress = (data.street || data.ward || data.district || data.province)
+        ? `${data.street || ""}, ${data.ward || ""}, ${data.district || ""}, ${data.province || ""}`
+        : user.address;
+
     return prisma.user.update({
         where: { id },
         data: {
             fullName: data.fullName !== undefined ? data.fullName : user.fullName,
             gender: data.gender !== undefined ? data.gender : user.gender,
-            address: data.address !== undefined ? data.address : user.address,
+            province: data.province !== undefined ? data.province : user.province,
+            district: data.district !== undefined ? data.district : user.district,
+            ward: data.ward !== undefined ? data.ward : user.ward,
+            street: data.street !== undefined ? data.street : user.street,
+            address: newAddress,
             dateOfBirth: data.dateOfBirth !== undefined ? data.dateOfBirth : user.dateOfBirth,
             bloodType: data.bloodType !== undefined ? data.bloodType : user.bloodType,
             allergies: data.allergies !== undefined ? data.allergies : user.allergies,
@@ -150,6 +171,10 @@ export async function updateUserProfile(
             avatar: true,
             gender: true,
             address: true,
+            province: true,
+            district: true,
+            ward: true,
+            street: true,
             dateOfBirth: true,
             bloodType: true,
             allergies: true,
@@ -219,11 +244,16 @@ export async function updateUserAvatar(id: string, avatarPath: string): Promise<
             avatar: true,
             gender: true,
             address: true,
+            province: true,
+            district: true,
+            ward: true,
+            street: true,
             dateOfBirth: true,
             bloodType: true,
             allergies: true,
             chronicDiseases: true,
             personalHistory: true,
+            familyHistory: true,
             createdAt: true,
             updatedAt: true,
         },

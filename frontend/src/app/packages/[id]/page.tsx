@@ -71,7 +71,7 @@ export default function PackageDetailPage() {
   }
 
   // Calculate deposit
-  const defaultDepositAmount = Math.round((pkg.price * pkg.depositPercentage) / 100);
+  const defaultDepositAmount = Math.round((pkg.price * (pkg.depositPercentage || 100)) / 100);
 
   const handleApplyVoucher = async () => {
     if (!voucherCode.trim()) return;

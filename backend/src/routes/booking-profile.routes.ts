@@ -1,20 +1,14 @@
 import { Router } from "express";
+import { getMyProfiles, createProfile, updateProfile, deleteProfile } from "../controllers/booking-profile.controller";
 import { verifyToken } from "../middleware/auth.middleware";
-import {
-    getMyBookingProfiles,
-    createBookingProfile,
-    updateBookingProfile,
-    deleteBookingProfile
-} from "../controllers/booking-profile.controller";
 
 const router = Router();
 
-// Apply auth middleware to all routes
 router.use(verifyToken);
 
-router.get("/", getMyBookingProfiles);
-router.post("/", createBookingProfile);
-router.put("/:id", updateBookingProfile);
-router.delete("/:id", deleteBookingProfile);
+router.get("/", getMyProfiles);
+router.post("/", createProfile);
+router.put("/:id", updateProfile);
+router.delete("/:id", deleteProfile);
 
 export default router;

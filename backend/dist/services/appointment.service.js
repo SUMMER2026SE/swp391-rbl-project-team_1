@@ -39,99 +39,101 @@ function generateTransactionCode() {
     return code;
 }
 async function createAppointment(params) {
-    if (params.doctorId) {
-        const doctor = await client_1.default.doctor.findUnique({ where: { id: params.doctorId } });
-        if (!doctor) {
+    const { userId, patientInfo, doctorId, packageId, appointmentDate, notes } = params;
+    if (doctorId) {
+        const doctor = await client_1.default.doctor.findUnique({ where: { id: doctorId } });
+        if (!doctor)
             throw new apiError_1.ApiError("Doctor not found", 404);
-        }
-        // prevent self-booking
-        const doctorUser = await client_1.default.user.findUnique({
-            where: { doctorId: params.doctorId }
-        });
-        if (doctorUser && doctorUser.id === params.userId) {
+        const doctorUser = await client_1.default.user.findUnique({ where: { doctorId } });
+        if (doctorUser?.id === userId) {
             throw new apiError_1.ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
         }
         const count = await client_1.default.appointment.count({
             where: {
-                doctorId: params.doctorId,
-                appointmentDate: params.appointmentDate,
-                status: {
-                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
-                }
+                doctorId,
+                appointmentDate,
+                status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
             },
         });
         if (count >= 20) {
             throw new apiError_1.ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
         }
     }
-    else if (params.packageId) {
-        const count = await client_1.default.appointment.count({
-            where: {
-                packageId: params.packageId,
-                appointmentDate: params.appointmentDate,
-                status: {
-                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
-                }
-            },
-        });
-        if (count >= 20) {
-            throw new apiError_1.ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
-        }
-    }
-    else {
+    else if (!packageId) {
         throw new apiError_1.ApiError("Doctor ID or Package ID is required", 400);
     }
-    // Generate unique transaction code
-    let transactionCode = generateTransactionCode();
-    let codeConflict = await client_1.default.appointment.findFirst({ where: { transactionCode } });
-    let attempts = 0;
-    while (codeConflict && attempts < 10) {
-        transactionCode = generateTransactionCode();
-        codeConflict = await client_1.default.appointment.findFirst({ where: { transactionCode } });
-        attempts++;
-    }
-    // Lấy giá tiền từ bác sỹ hoặc gói khám
-    let amount = 5000;
-    if (params.doctorId) {
-        const doc = await client_1.default.doctor.findUnique({ where: { id: params.doctorId } });
-        if (doc?.price) {
-            amount = doc.price;
+    // Transaction to update user profile and create appointment
+    return client_1.default.$transaction(async (tx) => {
+        // 1. Update user profile
+        await tx.user.update({
+            where: { id: userId },
+            data: {
+                fullName: patientInfo.fullName,
+                gender: patientInfo.gender,
+                dateOfBirth: patientInfo.dateOfBirth,
+                province: patientInfo.province,
+                district: patientInfo.district,
+                ward: patientInfo.ward,
+                street: patientInfo.street,
+                address: `${patientInfo.street}, ${patientInfo.ward}, ${patientInfo.district}, ${patientInfo.province}`,
+                bloodType: patientInfo.bloodType,
+                allergies: patientInfo.allergies,
+                chronicDiseases: patientInfo.chronicDiseases,
+                personalHistory: patientInfo.personalHistory,
+                familyHistory: patientInfo.familyHistory,
+            },
+        });
+        // 2. Create appointment
+        let transactionCode = generateTransactionCode();
+        let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        while (codeConflict) {
+            transactionCode = generateTransactionCode();
+            codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
         }
-    }
-    else if (params.packageId) {
-        const pkg = await client_1.default.medicalPackage.findUnique({ where: { id: params.packageId } });
-        if (pkg) {
-            amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        let bookingCode = (0, generateBookingCode_1.generateBookingCode)();
+        let bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        while (bookingCodeConflict) {
+            bookingCode = (0, generateBookingCode_1.generateBookingCode)();
+            bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
         }
-    }
-    // Generate unique booking code
-    let bookingCode = (0, generateBookingCode_1.generateBookingCode)();
-    let bookingCodeConflict = await client_1.default.appointment.findFirst({ where: { bookingCode } });
-    let bcAttempts = 0;
-    while (bookingCodeConflict && bcAttempts < 10) {
-        bookingCode = (0, generateBookingCode_1.generateBookingCode)();
-        bookingCodeConflict = await client_1.default.appointment.findFirst({ where: { bookingCode } });
-        bcAttempts++;
-    }
-    const created = await client_1.default.appointment.create({
-        data: {
-            userId: params.userId,
-            patientProfileId: params.patientProfileId,
-            doctorId: params.doctorId,
-            appointmentDate: params.appointmentDate,
-            status: "PENDING_PAYMENT",
-            notes: params.notes,
-            amount,
-            transactionCode,
-            bookingCode,
-            packageId: params.packageId,
-        },
+        let amount = 5000;
+        if (doctorId) {
+            const doc = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (doc?.price)
+                amount = doc.price;
+        }
+        else if (packageId) {
+            const pkg = await tx.medicalPackage.findUnique({ where: { id: packageId } });
+            if (pkg)
+                amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+        const createdAppointment = await tx.appointment.create({
+            data: {
+                userId,
+                patientProfileType: "SELF",
+                patientInfo: patientInfo, // Store snapshot
+                doctorId,
+                packageId,
+                appointmentDate,
+                status: "PENDING_PAYMENT",
+                notes,
+                amount,
+                transactionCode,
+                bookingCode,
+            },
+            include: {
+                doctor: { include: { userAccount: true } },
+                medicalPackage: true,
+                user: true,
+            },
+        });
+        return createdAppointment;
     });
-    return created;
 }
 async function uploadPaymentProof(appointmentId, fileBuffer, mimetype) {
     const appointment = await client_1.default.appointment.findUnique({
         where: { id: appointmentId },
+        include: { user: true, doctor: true, medicalPackage: true }
     });
     if (!appointment) {
         throw new apiError_1.ApiError("Lịch hẹn không tồn tại", 404);
@@ -195,8 +197,10 @@ async function uploadPaymentProof(appointmentId, fileBuffer, mimetype) {
     });
     // Send confirmation email asynchronously
     if (updated.user?.email) {
+        const patientInfo = updated.patientInfo;
+        const patientName = patientInfo?.fullName || updated.user?.fullName || "Bệnh nhân";
         (0, emailService_1.sendBookingConfirmationEmail)(updated.user.email, {
-            patientName: updated.user.fullName || updated.user.email,
+            patientName: patientName,
             doctorName: updated.doctor?.name || "Hệ thống",
             specialtyName: updated.doctor?.specialty?.name || "",
             clinicName: updated.doctor?.clinic?.name || updated.doctor?.hospital || updated.medicalPackage?.hospital || "Bệnh viện",
@@ -207,7 +211,7 @@ async function uploadPaymentProof(appointmentId, fileBuffer, mimetype) {
             transactionCode: updated.transactionCode || undefined,
             paymentAt: updated.paymentAt,
             appointmentId: updated.id,
-            bookingCode: updated.bookingCode,
+            bookingCode: updated.bookingCode || "N/A",
             paymentMethod: "Chuyển khoản ngân hàng",
             packageName: updated.medicalPackage?.name
         }).catch((err) => console.error("Error sending confirmation email:", err));
@@ -250,7 +254,6 @@ async function getAppointmentsByUser(userId) {
                     specialty: true,
                 }
             },
-            patientProfile: true,
             medicalPackage: true,
             payment: true,
             review: true,
@@ -286,7 +289,6 @@ async function getAllAppointments() {
                 },
             },
             doctor: true,
-            patientProfile: true,
             medicalPackage: true,
         },
         orderBy: {
@@ -314,7 +316,6 @@ async function getAppointmentById(id) {
                     familyHistory: true,
                 },
             },
-            patientProfile: true,
             doctor: {
                 include: {
                     specialty: true,

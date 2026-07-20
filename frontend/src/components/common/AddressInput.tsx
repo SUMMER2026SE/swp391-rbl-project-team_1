@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MapPin, ChevronDown, Search, X, Building2, Map, Home, Edit3 } from "lucide-react";
 
-interface Province {
+interface Ward {
   code: number;
   name: string;
 }
@@ -11,23 +11,24 @@ interface Province {
 interface District {
   code: number;
   name: string;
+  wards?: Ward[];
 }
 
-interface Ward {
+interface Province {
   code: number;
   name: string;
+  districts?: District[];
 }
 
 interface AddressInputProps {
   value: string;
   onChange: (address: string) => void;
+  onAddressChange?: (parts: { province: string; district: string; ward: string; street: string }) => void;
   existingAddress?: string;
   className?: string;
 }
 
-const API_BASE = "https://provinces.open-api.vn/api";
-
-export default function AddressInput({ value, onChange, existingAddress, className }: AddressInputProps) {
+export default function AddressInput({ value, onChange, onAddressChange, existingAddress, className }: AddressInputProps) {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
@@ -73,64 +74,46 @@ export default function AddressInput({ value, onChange, existingAddress, classNa
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Use local JSON file for data
+  const [allData, setAllData] = useState<Province[]>([]);
+
   // Fetch provinces on mount
   useEffect(() => {
-    const fetchProvinces = async () => {
+    const fetchData = async () => {
       setLoadingProvinces(true);
       try {
-        const res = await fetch(`${API_BASE}/p/`);
+        const res = await fetch(`/data/vietnam-provinces.json`);
         const data = await res.json();
+        setAllData(data);
         setProvinces(data);
       } catch (error) {
-        console.error("Failed to fetch provinces:", error);
+        console.error("Failed to fetch provinces data:", error);
       } finally {
         setLoadingProvinces(false);
       }
     };
-    fetchProvinces();
+    fetchData();
   }, []);
 
-  // Fetch districts when province changes
+  // Update districts when province changes
   useEffect(() => {
     if (!selectedProvince) {
       setDistricts([]);
       return;
     }
-    const fetchDistricts = async () => {
-      setLoadingDistricts(true);
-      try {
-        const res = await fetch(`${API_BASE}/p/${selectedProvince.code}?depth=2`);
-        const data = await res.json();
-        setDistricts(data.districts || []);
-      } catch (error) {
-        console.error("Failed to fetch districts:", error);
-      } finally {
-        setLoadingDistricts(false);
-      }
-    };
-    fetchDistricts();
-  }, [selectedProvince]);
+    const provinceData = allData.find(p => p.code === selectedProvince.code);
+    setDistricts(provinceData?.districts || []);
+  }, [selectedProvince, allData]);
 
-  // Fetch wards when district changes
+  // Update wards when district changes
   useEffect(() => {
     if (!selectedDistrict) {
       setWards([]);
       return;
     }
-    const fetchWards = async () => {
-      setLoadingWards(true);
-      try {
-        const res = await fetch(`${API_BASE}/d/${selectedDistrict.code}?depth=2`);
-        const data = await res.json();
-        setWards(data.wards || []);
-      } catch (error) {
-        console.error("Failed to fetch wards:", error);
-      } finally {
-        setLoadingWards(false);
-      }
-    };
-    fetchWards();
-  }, [selectedDistrict]);
+    const districtData = districts.find(d => d.code === selectedDistrict.code);
+    setWards(districtData?.wards || []);
+  }, [selectedDistrict, districts]);
 
   // Build full address whenever components change
   const buildAddress = useCallback(() => {
@@ -147,6 +130,14 @@ export default function AddressInput({ value, onChange, existingAddress, classNa
     const fullAddress = buildAddress();
     if (fullAddress !== value) {
       onChange(fullAddress);
+      if (onAddressChange) {
+        onAddressChange({
+          province: selectedProvince?.name || "",
+          district: selectedDistrict?.name || "",
+          ward: selectedWard?.name || "",
+          street: streetAddress.trim()
+        });
+      }
     }
   }, [streetAddress, selectedWard, selectedDistrict, selectedProvince, isEditing]);
 
@@ -198,6 +189,7 @@ export default function AddressInput({ value, onChange, existingAddress, classNa
     setDistrictSearch("");
     setWardSearch("");
     onChange("");
+    if (onAddressChange) onAddressChange({ province: "", district: "", ward: "", street: streetAddress.trim() });
   };
 
   const clearDistrict = () => {
@@ -230,6 +222,7 @@ export default function AddressInput({ value, onChange, existingAddress, classNa
     setWards([]);
     // Restore parent value to the existing address
     onChange(existingAddress || "");
+    // Note: If you want to reset the individual parts on cancel, you might want to pass existing parts, but usually we just reset to existing string.
   };
 
   // If existingAddress is provided and we're not editing, show preview

@@ -36,13 +36,15 @@ interface Appointment {
   status: "PENDING_PAYMENT" | "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
   notes: string | null;
   user: UserInfo;
-  patientProfile?: {
+  patientInfo?: {
     fullName?: string;
     phoneNumber?: string;
     dateOfBirth?: string;
     gender?: string;
-    cccd?: string;
     address?: string;
+    bloodType?: string;
+    allergies?: string;
+    chronicDiseases?: string;
   };
   medicalRecord?: {
     id: string;
@@ -352,7 +354,7 @@ export default function DoctorAppointmentsPage() {
                     {dayAppointments.map(app => {
                       const isApptToday = isSameDay(new Date(app.appointmentDate), new Date());
                       const isReadyToEnter = app.status === "CONFIRMED" && canEnterRoom(app.appointmentDate);
-                      const patientName = (app.patientProfile as any)?.fullName || app.user?.fullName;
+                      const patientName = (app.patientInfo as any)?.fullName || app.user?.fullName;
                       return (
                         <tr key={app.id} className="hover:bg-slate-50/80 transition-colors group">
                           <td className="p-4 pl-6">
@@ -369,7 +371,7 @@ export default function DoctorAppointmentsPage() {
                               <div>
                                 <p className="font-bold text-slate-800 text-[15px]">{patientName}</p>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                  {(app.patientProfile as any)?.gender || app.user?.gender} • {new Date((app.patientProfile as any)?.dateOfBirth || app.user?.dateOfBirth || Date.now()).getFullYear()}
+                                  {(app.patientInfo as any)?.gender || app.user?.gender} • {new Date((app.patientInfo as any)?.dateOfBirth || app.user?.dateOfBirth || Date.now()).getFullYear()}
                                 </p>
                               </div>
                             </div>
@@ -501,13 +503,13 @@ export default function DoctorAppointmentsPage() {
                         <img src={app.user.avatar} alt="avatar" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold bg-teal-50">
-                          {((app.patientProfile as any)?.fullName || app.user?.fullName)?.charAt(0) || "U"}
+                          {((app.patientInfo as any)?.fullName || app.user?.fullName)?.charAt(0) || "U"}
                         </div>
                       )}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 text-[15px]">
-                        {(app.patientProfile as any)?.fullName || app.user?.fullName}
+                        {(app.patientInfo as any)?.fullName || app.user?.fullName}
                       </p>
                       <div className="flex items-center gap-3 mt-1 text-xs font-medium">
                         <span className="text-orange-600 bg-orange-100 px-2 py-0.5 rounded flex items-center gap-1.5">

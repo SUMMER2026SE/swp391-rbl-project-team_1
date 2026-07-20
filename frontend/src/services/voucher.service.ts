@@ -1,11 +1,17 @@
 import api from "./api";
 
+export type VoucherCategory = "FIRST_BOOKING" | "SPECIALTY" | "PACKAGE" | "DOCTOR" | "REFERRAL" | "HOLIDAY";
+
 export interface Voucher {
     id: string;
     code: string;
     type: "PERCENT" | "FIXED";
     discountValue: number;
-    applyTo: "ALL" | "PACKAGE" | "SPECIALTY";
+    applyTo: "ALL" | "PACKAGE" | "SPECIALTY" | "DOCTOR";
+    category: VoucherCategory;
+    description?: string | null;
+    avatarColor?: string | null;
+    avatarIcon?: string | null;
     specialtyId?: string | null;
     specialty?: { id: string; name: string } | null;
     minDepositAmount: number;
@@ -78,6 +84,11 @@ export const voucherService = {
 
     adminGetVoucherUsages: async (id: string) => {
         const response = await api.get(`/vouchers/admin/${id}/usages`);
+        return response.data;
+    },
+
+    adminGetChartData: async (period: 'week' | 'month' | 'year') => {
+        const response = await api.get(`/vouchers/admin/chart-data?period=${period}`);
         return response.data;
     },
 

@@ -39,6 +39,18 @@ const nextConfig: NextConfig = {
         hostname: "*.supabase.co",
         pathname: "/**",
       },
+      {
+        // Google OAuth avatars (lh3.googleusercontent.com)
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
+      {
+        // Other Google user content domains
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+        pathname: "/**",
+      },
     ],
   },
 

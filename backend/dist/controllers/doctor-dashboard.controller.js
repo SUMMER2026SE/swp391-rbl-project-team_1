@@ -292,7 +292,6 @@ const getDoctorAppointments = async (req, res) => {
             where: { doctorId: doctor.id },
             include: {
                 user: { select: { id: true, fullName: true, email: true, gender: true, dateOfBirth: true, avatar: true } },
-                patientProfile: true,
                 payment: true,
                 medicalRecord: { select: { id: true, status: true } }
             },
@@ -533,7 +532,7 @@ const getDashboardCharts = async (req, res) => {
                 appointmentDate: { gte: today, lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
                 status: 'CONFIRMED'
             },
-            include: { user: { select: { fullName: true, avatar: true } }, patientProfile: { select: { fullName: true } } },
+            include: { user: { select: { fullName: true, avatar: true } } },
             orderBy: { appointmentDate: 'asc' }
         });
         // 5. Latest Reviews
@@ -642,20 +641,13 @@ const getDoctorStatistics = async (req, res) => {
             patients12Months.push({ name: monthStr, patients: pats });
         }
         // 6. Pie chart age distribution
-        const patientsRecords = await prisma.patientProfile.findMany({
-            where: { appointments: { some: { doctorId: doctor.id } } },
-            select: { dateOfBirth: true }
-        });
-        const usersRecords = await prisma.user.findMany({
-            where: { appointments: { some: { doctorId: doctor.id } } },
-            select: { dateOfBirth: true }
+        const appointmentsForAge = await prisma.appointment.findMany({
+            where: { doctorId: doctor.id },
+            select: { patientInfo: true }
         });
         const ageGroups = { '0-18': 0, '19-40': 0, '41-60': 0, '60+': 0 };
         const currentYear = today.getFullYear();
-        const calculateAgeGroup = (dob) => {
-            if (!dob)
-                return;
-            const age = currentYear - dob.getFullYear();
+        const calculateAgeGroup = (age) => {
             if (age <= 18)
                 ageGroups['0-18']++;
             else if (age <= 40)
@@ -665,8 +657,15 @@ const getDoctorStatistics = async (req, res) => {
             else
                 ageGroups['60+']++;
         };
-        patientsRecords.forEach(p => calculateAgeGroup(p.dateOfBirth));
-        // If patient profiles are scarce, we could fallback to user records, but for simplicity let's combine if they are unique
+        appointmentsForAge.forEach(a => {
+            const patient = a.patientInfo;
+            if (patient && patient.dateOfBirth) {
+                const dob = new Date(patient.dateOfBirth);
+                if (!isNaN(dob.getTime())) {
+                    calculateAgeGroup(currentYear - dob.getFullYear());
+                }
+            }
+        });
         // We will just map the results to chart format
         const ageChart = [
             { name: '0-18 tuổi', value: ageGroups['0-18'] },
@@ -761,18 +760,15 @@ const getPatientDetail = async (req, res) => {
             select: {
                 id: true, fullName: true, email: true, gender: true,
                 dateOfBirth: true, avatar: true, bloodType: true,
-                allergies: true, chronicDiseases: true, personalHistory: true
+                allergies: true, chronicDiseases: true, personalHistory: true,
+                phoneNumber: true, cccd: true
             }
         });
         if (!user)
             return res.status(404).json({ message: "Patient not found" });
-        const patientProfile = await prisma.patientProfile.findFirst({
-            where: { userId, isPrimary: true }
-        });
         const pastAppointments = await prisma.appointment.findMany({
             where: { userId, doctorId: doctor.id, status: 'COMPLETED' },
             include: {
-                patientProfile: true,
                 medicalRecord: { select: { id: true, status: true } }
             },
             orderBy: { appointmentDate: 'desc' }
@@ -780,8 +776,8 @@ const getPatientDetail = async (req, res) => {
         res.json({
             user: {
                 ...user,
-                phone: patientProfile?.phoneNumber || null,
-                cccd: patientProfile?.cccd || null,
+                phone: user.phoneNumber || null,
+                cccd: user.cccd || null,
             },
             pastAppointments
         });

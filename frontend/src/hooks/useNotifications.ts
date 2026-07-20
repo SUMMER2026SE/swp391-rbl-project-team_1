@@ -41,12 +41,12 @@ export function useNotifications() {
     useEffect(() => {
         if (!user || !token) return;
 
-        socket.emit("join", `user_${user.id}`);
+        socket.emit("join_user_room", { userId: user.id });
         if (user.role === "ADMIN") {
-            socket.emit("join", "admin");
+            socket.emit("join_admin_room");
         }
         if (user.role === "DOCTOR") {
-            socket.emit("join", `doctor_${user.id}`);
+            socket.emit("join_doctor_room", { doctorId: user.id });
         }
 
         const handleNewNotification = (notification: NotificationData) => {

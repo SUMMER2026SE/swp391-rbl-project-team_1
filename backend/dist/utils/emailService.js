@@ -18,6 +18,7 @@ exports.sendPrescriptionEmail = sendPrescriptionEmail;
 exports.sendCertificateVerificationEmail = sendCertificateVerificationEmail;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const client_1 = __importDefault(require("../prisma/client"));
+const notificationService_1 = require("../services/notificationService");
 // Configure your email service here
 // For Gmail: you need to use App Password, not regular password
 // For other services, adjust accordingly
@@ -685,6 +686,13 @@ async function checkAndSendReminders() {
                     await client_1.default.appointment.update({
                         where: { id: appt.id },
                         data: { reminderSent: true }
+                    });
+                    await (0, notificationService_1.createNotification)({
+                        userId: appt.userId,
+                        type: "APPOINTMENT_REMINDER_24H",
+                        title: "Nhắc nhở lịch khám sắp tới",
+                        message: `Bạn có lịch khám với bác sĩ ${appt.doctor?.name} vào lúc ${appt.appointmentDate.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })} ngày ${appt.appointmentDate.toLocaleDateString("vi-VN")}`,
+                        data: { appointmentId: appt.id }
                     });
                     remindersSent++;
                 }

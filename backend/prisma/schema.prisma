@@ -16,6 +16,10 @@ model User {
   avatar                                   String?
   gender                                   String?
   address                                  String?
+  province                                 String?
+  district                                 String?
+  ward                                     String?
+  street                                   String?
   dateOfBirth                              DateTime?
   role                                     Role             @default(USER)
   doctorId                                 String?          @unique
@@ -39,8 +43,8 @@ model User {
   callerVideoCallLogs                      VideoCallLog[]   @relation("VideoCallLog_callerIdToUser")
   notifications                            Notification[]
   voucherUsages                            VoucherUsage[]
-  bookingProfiles                          BookingProfile[]
   savedVouchers                            SavedVoucher[]
+  bookingProfiles                          BookingProfile[]
 }
 
 model OTP {
@@ -151,7 +155,7 @@ model Appointment {
   paymentAt          DateTime?
   packageId          String?
   patientProfileType PatientProfileType @default(SELF)
-  patientProfileName String?
+  patientInfo        Json?
   voucherCode        String?
   discountAmount     Int?
   absenceProcessed   Boolean           @default(false)
@@ -283,17 +287,6 @@ model MedicalPackage {
   appointments       Appointment[]
 }
 
-model BookingProfile {
-  id           String   @id @default(uuid())
-  userId       String
-  fullName     String
-  phone        String?
-  gender       String?
-  yearOfBirth  Int?
-  relationship String
-  createdAt    DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
 model Conversation {
   id        String    @id @default(uuid())
@@ -554,25 +547,39 @@ enum VoucherApplyTo {
   ALL
   PACKAGE
   SPECIALTY
+  DOCTOR
+}
+
+enum VoucherCategory {
+  FIRST_BOOKING
+  SPECIALTY
+  PACKAGE
+  DOCTOR
+  REFERRAL
+  HOLIDAY
 }
 
 model Voucher {
-  id               String         @id @default(uuid())
-  code             String         @unique @db.VarChar(20)
+  id               String           @id @default(uuid())
+  code             String           @unique @db.VarChar(20)
   type             VoucherType
   discountValue    Int
-  applyTo          VoucherApplyTo @default(ALL)
+  applyTo          VoucherApplyTo   @default(ALL)
+  category         VoucherCategory  @default(FIRST_BOOKING)
+  description      String?          @db.VarChar(255)
+  avatarColor      String?          @db.VarChar(20)
+  avatarIcon       String?          @db.VarChar(50)
   specialtyId      String?
-  minDepositAmount Int            @default(0)
+  minDepositAmount Int              @default(0)
   maxUses          Int?
-  usedCount        Int            @default(0)
-  isFirstBooking   Boolean        @default(false)
-  isActive         Boolean        @default(true)
+  usedCount        Int              @default(0)
+  isFirstBooking   Boolean          @default(false)
+  isActive         Boolean          @default(true)
   startDate        DateTime
   endDate          DateTime
-  createdAt        DateTime       @default(now())
+  createdAt        DateTime         @default(now())
 
-  specialty        Specialty?     @relation(fields: [specialtyId], references: [id])
+  specialty        Specialty?       @relation(fields: [specialtyId], references: [id])
   usages           VoucherUsage[]
   savedVouchers    SavedVoucher[]
 }
@@ -595,6 +602,34 @@ model VoucherUsage {
 enum PatientProfileType {
   SELF
   OTHER
+}
+
+model BookingProfile {
+  id              String    @id @default(cuid())
+  userId          String
+  fullName        String
+  phone           String?
+  email           String?
+  gender          String?
+  dateOfBirth     DateTime?
+  relationship    String
+  
+  // Địa chỉ
+  province        String?
+  district        String?
+  ward            String?
+  street          String?
+  
+  // Thông tin sức khỏe
+  bloodType       String?
+  allergies       String?
+  chronicDiseases String?
+  personalHistory String?
+  familyHistory   String?
+  
+  createdAt       DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id])
 }
 
 model SavedVoucher {

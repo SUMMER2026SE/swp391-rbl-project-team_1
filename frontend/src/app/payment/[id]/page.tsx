@@ -28,6 +28,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { voucherService, ValidateVoucherResult } from "@/services/voucher.service";
 import { Tag, X as XIcon } from "lucide-react";
+import VoucherSelectorModal from "@/components/ui/VoucherSelectorModal";
 
 interface PayOSPaymentInfo {
     checkoutUrl: string;
@@ -61,6 +62,7 @@ function PaymentContent({ id }: { id: string }) {
     const [voucherResult, setVoucherResult] = useState<ValidateVoucherResult | null>(null);
     const [voucherLoading, setVoucherLoading] = useState(false);
     const [voucherError, setVoucherError] = useState("");
+    const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 
     const socketRef = useRef<Socket | null>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -114,9 +116,9 @@ function PaymentContent({ id }: { id: string }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
-    // 2. Countdown timer
+    // 2. Countdown timer — only starts AFTER PayOS link is created
     useEffect(() => {
-        if (loading || resolvedRef.current || timeLeft <= 0) return;
+        if (!payosInfo || resolvedRef.current || timeLeft <= 0) return;
 
         timerIntervalRef.current = setInterval(() => {
             setTimeLeft((prev) => {
@@ -132,20 +134,23 @@ function PaymentContent({ id }: { id: string }) {
             if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loading, timeLeft]);
+    }, [payosInfo]);
 
     // Handle voucher apply
-    const handleApplyVoucher = async () => {
-        if (!voucherInput.trim() || !appointment) return;
+    const handleApplyVoucher = async (codeToApply?: string) => {
+        const code = codeToApply || voucherInput;
+        if (!code.trim() || !appointment) return;
         setVoucherLoading(true);
         setVoucherError("");
         try {
             const depositAmount = appointment.doctor?.price || appointment.amount || 5000;
             const specialtyId = appointment.doctor?.specialtyId;
-            const res = await voucherService.validateVoucher(voucherInput.trim(), depositAmount, specialtyId || undefined);
+            const packageId = appointment.packageId || undefined;
+            const res = await voucherService.validateVoucher(code.trim(), depositAmount, specialtyId || undefined, packageId);
             if (res.valid) {
                 setVoucherResult(res);
-                setVoucherCode(voucherInput.trim().toUpperCase());
+                setVoucherCode(code.trim().toUpperCase());
+                setVoucherInput(code.trim().toUpperCase());
                 toast.success("Áp dụng mã giảm giá thành công!");
             } else {
                 setVoucherError(res.message);
@@ -679,20 +684,12 @@ const backendUrl = process.env.NEXT_PUBLIC_API_URL
                     ) : (
                         <div className="space-y-2">
                             <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={voucherInput}
-                                    onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
-                                    placeholder="Nhập mã voucher..."
-                                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:normal-case uppercase"
-                                    onKeyDown={(e) => e.key === "Enter" && handleApplyVoucher()}
-                                />
                                 <button
-                                    onClick={handleApplyVoucher}
-                                    disabled={voucherLoading || !voucherInput.trim()}
-                                    className="bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors"
+                                    onClick={() => setIsVoucherModalOpen(true)}
+                                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-500 hover:border-teal-400 focus:outline-none flex items-center justify-between transition-colors text-left"
                                 >
-                                    {voucherLoading ? "..." : "Áp dụng"}
+                                    <span>Chọn hoặc nhập mã giảm giá</span>
+                                    <ChevronRight className="h-4 w-4 text-slate-400" />
                                 </button>
                             </div>
                             {voucherError && (
@@ -723,6 +720,18 @@ const backendUrl = process.env.NEXT_PUBLIC_API_URL
             </div>
 
         </div>
+
+        {appointment && (
+            <VoucherSelectorModal
+                isOpen={isVoucherModalOpen}
+                onClose={() => setIsVoucherModalOpen(false)}
+                onSelect={(code) => handleApplyVoucher(code)}
+                depositAmount={appointment.doctor?.price || appointment.amount || 5000}
+                specialtyId={appointment.doctor?.specialtyId}
+                packageId={appointment.packageId || undefined}
+                isDoctorBooking={!!appointment.doctorId}
+            />
+        )}
         </>
     );
 }

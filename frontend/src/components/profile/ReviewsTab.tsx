@@ -128,7 +128,7 @@ export default function ReviewsTab() {
                 )}
                 
                 <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                  <span className="font-medium text-slate-600">Bệnh nhân khám:</span> {r.appointment?.patientProfileName || "N/A"} (Ngày: {r.appointment?.appointmentDate ? new Date(r.appointment?.appointmentDate).toLocaleDateString('vi-VN') : "N/A"})
+                  <span className="font-medium text-slate-600">Bệnh nhân khám:</span> {(r.appointment?.patientInfo as any)?.fullName || "N/A"} (Ngày: {r.appointment?.appointmentDate ? new Date(r.appointment?.appointmentDate).toLocaleDateString('vi-VN') : "N/A"})
                 </div>
               </div>
             ))}

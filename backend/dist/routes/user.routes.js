@@ -37,12 +37,15 @@ router.put("/profile", auth_middleware_1.verifyToken, async (req, res, next) => 
         if (!userId) {
             throw new apiError_1.ApiError("Authentication required", 401);
         }
-        const { fullName, gender, address, dateOfBirth, bloodType, allergies, chronicDiseases, personalHistory, familyHistory } = req.body;
+        const { fullName, gender, address, province, district, ward, street, dateOfBirth, bloodType, allergies, chronicDiseases, personalHistory, familyHistory } = req.body;
         const parsedDob = dateOfBirth ? new Date(dateOfBirth) : null;
         const updatedUser = await (0, user_service_1.updateUserProfile)(userId, {
             fullName,
             gender,
-            address,
+            province,
+            district,
+            ward,
+            street,
             dateOfBirth: parsedDob,
             bloodType,
             allergies,

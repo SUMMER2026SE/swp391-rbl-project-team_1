@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+dotenv.config();
+
 import path from "path";
 import { createServer } from "http";
 import { initSocket } from "./utils/socket";
@@ -16,13 +18,13 @@ import articleRoutes from "./routes/article.routes";
 import reviewRoutes from "./routes/review.routes";
 import paymentRoutes from "./routes/payment.routes";
 import packageRoutes from "./routes/package.routes";
-import bookingProfileRoutes from "./routes/booking-profile.routes";
 import messageRoutes from "./routes/message.routes";
 import medicineRoutes from "./routes/medicine.routes";
 import medicalRecordRoutes from "./routes/medical-record.routes";
 import videoCallRoutes from "./routes/video-call.routes";
 import notificationRoutes from "./routes/notification.routes";
 import voucherRoutes from "./routes/voucher.routes";
+import bookingProfileRoutes from "./routes/booking-profile.routes";
 import { initReminderScheduler } from "./utils/emailService";
 import { startReminderJob } from "./jobs/reminderJob";
 import { verifyToken } from "./middleware/auth.middleware";
@@ -30,7 +32,7 @@ import { errorHandler } from "./middleware/error.middleware";
 import { getProfile } from "./controllers/auth.controller";
 import { autoCancelExpiredAppointments } from "./services/appointment.service";
 
-dotenv.config();
+
 
 // Patch BigInt to be serialized as string in JSON responses
 (BigInt.prototype as any).toJSON = function () {
@@ -67,7 +69,6 @@ app.use("/api", reviewRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/payments", paymentRoutes); // /api/payments/status/:orderCode (public polling)
 app.use("/api", packageRoutes);
-app.use("/api/booking-profiles", bookingProfileRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
 app.use("/api/medicines", medicineRoutes);
@@ -76,6 +77,7 @@ app.use("/api/video-calls", videoCallRoutes);
 app.get("/api/profile", verifyToken, getProfile);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/vouchers", voucherRoutes);
+app.use("/api/booking-profiles", bookingProfileRoutes);
 
 
 app.get("/", (req, res) => {
@@ -93,7 +95,7 @@ httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   initReminderScheduler();
   startReminderJob();
-  
+
   // Run expired payment check immediately on startup
   console.log("[Scheduler] Initializing auto-cancellation scheduler for expired payments...");
   autoCancelExpiredAppointments().catch((err) =>

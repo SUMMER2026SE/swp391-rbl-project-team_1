@@ -113,11 +113,15 @@ export default function VideoCallRoom({
       try {
         const { ZegoUIKitPrebuilt } = await import("@zegocloud/zego-uikit-prebuilt");
 
+        // ZegoCloud only supports alphanumeric and underscores for IDs
+        const safeRoomID = String(roomID).replace(/[^a-zA-Z0-9_]/g, "");
+        const safeUserID = String(userID).replace(/[^a-zA-Z0-9_]/g, "");
+
         const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
           appID,
           serverSecret,
-          String(roomID),
-          String(userID),
+          safeRoomID,
+          safeUserID,
           userName
         );
 

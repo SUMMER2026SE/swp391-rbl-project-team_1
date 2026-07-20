@@ -10,26 +10,46 @@ import { supabase } from "../config/supabase";
 
 async function saveFileLocally(appointmentId: string, fileName: string, fileBuffer: Buffer): Promise<string> {
     const uploadDir = path.join(__dirname, "../../public/payment-proofs", `appointment-${appointmentId}`);
-    
+
     // Ensure directory exists
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
-    
+
     const baseName = path.basename(fileName);
     const filePath = path.join(uploadDir, baseName);
-    
+
     fs.writeFileSync(filePath, fileBuffer);
-    
+
     // Return relative URL served by Express static middleware
     const port = process.env.PORT || 5000;
     return `http://localhost:${port}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
 }
 
+export interface PatientInfo {
+    fullName: string;
+    phoneNumber?: string;
+    gender?: string;
+    dateOfBirth?: Date | string;
+    province?: string;
+    district?: string;
+    ward?: string;
+    street?: string;
+    address?: string;
+    bloodType?: string;
+    allergies?: string;
+    chronicDiseases?: string;
+    personalHistory?: string;
+    familyHistory?: string;
+    // For OTHER type
+    yearOfBirth?: number;
+    relationship?: string;
+}
+
 export interface CreateAppointmentParams {
     userId: string;
-    patientProfileType: "SELF" | "OTHER";
-    patientProfileName?: string;
+    patientInfo: PatientInfo;
+    patientProfileType?: 'SELF' | 'OTHER';
     doctorId?: string;
     appointmentDate: Date;
     notes?: string;
@@ -48,108 +68,104 @@ function generateTransactionCode(): string {
 export async function createAppointment(
     params: CreateAppointmentParams
 ): Promise<Appointment> {
-    if (params.doctorId) {
-        const doctor = await prisma.doctor.findUnique({ where: { id: params.doctorId } });
+    const { userId, patientInfo, patientProfileType = 'SELF', doctorId, packageId, appointmentDate, notes } = params;
 
-        if (!doctor) {
-            throw new ApiError("Doctor not found", 404);
-        }
+    if (doctorId) {
+        const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+        if (!doctor) throw new ApiError("Doctor not found", 404);
 
-        // prevent self-booking
-        const doctorUser = await prisma.user.findUnique({
-            where: { doctorId: params.doctorId }
-        });
-        if (doctorUser && doctorUser.id === params.userId) {
+        const doctorUser = await prisma.user.findUnique({ where: { doctorId } });
+        if (doctorUser?.id === userId) {
             throw new ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
         }
 
         const count = await prisma.appointment.count({
             where: {
-                doctorId: params.doctorId,
-                appointmentDate: params.appointmentDate,
-                status: {
-                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
-                }
+                doctorId,
+                appointmentDate,
+                status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
             },
         });
-
         if (count >= 20) {
             throw new ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
         }
-    } else if (params.packageId) {
-        const count = await prisma.appointment.count({
-            where: {
-                packageId: params.packageId,
-                appointmentDate: params.appointmentDate,
-                status: {
-                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"]
-                }
-            },
-        });
-
-        if (count >= 20) {
-            throw new ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
-        }
-    } else {
+    } else if (!packageId) {
         throw new ApiError("Doctor ID or Package ID is required", 400);
     }
 
-    // Generate unique transaction code
-    let transactionCode = generateTransactionCode();
-    let codeConflict = await prisma.appointment.findFirst({ where: { transactionCode } });
-    let attempts = 0;
-    while (codeConflict && attempts < 10) {
-        transactionCode = generateTransactionCode();
-        codeConflict = await prisma.appointment.findFirst({ where: { transactionCode } });
-        attempts++;
-    }
+    // Transaction to (optionally) update user profile and create appointment
+    return prisma.$transaction(async (tx) => {
+        // 1. Only update user profile fields if booking for SELF
+        if (patientProfileType === 'SELF') {
+            const updateData: Record<string, unknown> = {};
+            if (patientInfo.fullName) updateData.fullName = patientInfo.fullName;
+            if (patientInfo.gender) updateData.gender = patientInfo.gender;
+            if (patientInfo.dateOfBirth) updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
+            if (patientInfo.bloodType) updateData.bloodType = patientInfo.bloodType;
+            if (patientInfo.allergies) updateData.allergies = patientInfo.allergies;
+            if (patientInfo.chronicDiseases) updateData.chronicDiseases = patientInfo.chronicDiseases;
+            if (patientInfo.personalHistory) updateData.personalHistory = patientInfo.personalHistory;
+            if (patientInfo.familyHistory) updateData.familyHistory = patientInfo.familyHistory;
+            if (patientInfo.province) updateData.province = patientInfo.province;
+            if (patientInfo.district) updateData.district = patientInfo.district;
+            if (patientInfo.ward) updateData.ward = patientInfo.ward;
+            if (patientInfo.street) updateData.street = patientInfo.street;
 
-    // Lấy giá tiền từ bác sỹ hoặc gói khám
-    let amount = 5000;
-    if (params.doctorId) {
-        const doc = await prisma.doctor.findUnique({ where: { id: params.doctorId } });
-        if (doc?.price) {
-            amount = doc.price;
+            if (Object.keys(updateData).length > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: updateData,
+                });
+            }
         }
-    } else if (params.packageId) {
-        const pkg = await prisma.medicalPackage.findUnique({ where: { id: params.packageId } });
-        if (pkg) {
-            amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
-        }
-    }
 
-    // Generate unique booking code
-    let bookingCode = generateBookingCode();
-    let bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
-    let bcAttempts = 0;
-    while (bookingCodeConflict && bcAttempts < 10) {
-        bookingCode = generateBookingCode();
-        bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
-        bcAttempts++;
-    }
-    
-    const created = await prisma.appointment.create({
-        data: {
-            userId: params.userId,
-            patientProfileType: params.patientProfileType,
-            patientProfileName: params.patientProfileName || null,
-            doctorId: params.doctorId,
-            packageId: params.packageId,
-            appointmentDate: params.appointmentDate,
-            status: "PENDING_PAYMENT",
-            notes: params.notes,
-            amount: amount,
-            transactionCode: transactionCode,
-            bookingCode: bookingCode,
-        },
-        include: {
-            doctor: { include: { userAccount: true } },
-            medicalPackage: true,
-            user: true,
-        },
+        // 2. Create appointment
+        let transactionCode = generateTransactionCode();
+        let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        while (codeConflict) {
+            transactionCode = generateTransactionCode();
+            codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        }
+
+        let bookingCode = generateBookingCode();
+        let bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        while (bookingCodeConflict) {
+            bookingCode = generateBookingCode();
+            bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        }
+
+        let amount = 5000;
+        if (doctorId) {
+            const doc = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (doc?.price) amount = doc.price;
+        } else if (packageId) {
+            const pkg = await tx.medicalPackage.findUnique({ where: { id: packageId } });
+            if (pkg) amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+
+        const createdAppointment = await tx.appointment.create({
+            data: {
+                userId,
+                patientProfileType: patientProfileType as any,
+                patientInfo: patientInfo as any, // Store snapshot
+                doctorId,
+                packageId,
+                appointmentDate,
+                status: "PENDING_PAYMENT",
+                notes,
+                amount,
+                transactionCode,
+                bookingCode,
+            },
+            include: {
+                doctor: { include: { userAccount: true } },
+                medicalPackage: true,
+                user: true,
+            },
+        });
+
+        return createdAppointment;
     });
-
-    return created;
 }
 
 export async function uploadPaymentProof(
@@ -175,10 +191,10 @@ export async function uploadPaymentProof(
     const fileName = `appointment-${appointmentId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
     let publicUrl = "";
-    const isSupabaseConfigured = 
-        process.env.SUPABASE_ANON_KEY && 
+    const isSupabaseConfigured =
+        process.env.SUPABASE_ANON_KEY &&
         !process.env.SUPABASE_ANON_KEY.includes("YOUR_") &&
-        process.env.SUPABASE_URL && 
+        process.env.SUPABASE_URL &&
         !process.env.SUPABASE_URL.includes("YOUR_");
 
     if (isSupabaseConfigured) {
@@ -229,12 +245,11 @@ export async function uploadPaymentProof(
 
     // Send confirmation email asynchronously
     if (updated.user?.email) {
-        const patientName = updated.patientProfileType === 'OTHER' 
-            ? updated.patientProfileName 
-            : updated.user?.fullName || "Bệnh nhân";
+        const patientInfo = updated.patientInfo as PatientInfo | null;
+        const patientName = patientInfo?.fullName || updated.user?.fullName || "Bệnh nhân";
 
         sendBookingConfirmationEmail(updated.user.email, {
-            patientName: patientName || "Bệnh nhân",
+            patientName: patientName,
             doctorName: updated.doctor?.name || "Hệ thống",
             specialtyName: updated.doctor?.specialty?.name || "",
             clinicName: updated.doctor?.clinic?.name || updated.doctor?.hospital || updated.medicalPackage?.hospital || "Bệnh viện",
@@ -256,7 +271,7 @@ export async function uploadPaymentProof(
 
 export async function autoCancelExpiredAppointments(): Promise<void> {
     const timeLimit = new Date(Date.now() - 5 * 60 * 1000); // 5 mins ago
-    
+
     // Find all expired appointments
     const expired = await prisma.appointment.findMany({
         where: {
@@ -293,7 +308,6 @@ export async function getAppointmentsByUser(userId: string): Promise<Appointment
                     specialty: true,
                 }
             },
-            patientProfile: true,
             medicalPackage: true,
             payment: true,
             review: true,
@@ -330,7 +344,6 @@ export async function getAllAppointments(): Promise<Appointment[]> {
                 },
             },
             doctor: true,
-            patientProfile: true,
             medicalPackage: true,
         },
         orderBy: {
@@ -359,7 +372,6 @@ export async function getAppointmentById(id: string): Promise<Appointment | null
                     familyHistory: true,
                 },
             },
-            patientProfile: true,
             doctor: {
                 include: {
                     specialty: true,

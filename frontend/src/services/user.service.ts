@@ -5,6 +5,10 @@ export interface UpdateProfileData {
   fullName?: string | null;
   gender?: string | null;
   address?: string | null;
+  province?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  street?: string | null;
   dateOfBirth?: string | null;
   bloodType?: string | null;
   allergies?: string | null;

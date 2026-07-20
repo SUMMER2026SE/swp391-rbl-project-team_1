@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Menu, X, Calendar, LogOut, User as UserIcon, ShieldAlert, LayoutDashboard } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ConsultBell } from "./ConsultBell";
 import Button from "../common/Button";
 import OnboardingSurveyModal from "../ui/OnboardingSurveyModal";
 
@@ -95,7 +96,10 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             {isAuthenticated && user ? (
               <div className="flex items-center gap-4">
-                <NotificationBell />
+                <div className="flex items-center gap-2">
+                  <ConsultBell />
+                  <NotificationBell />
+                </div>
                 <div className="relative">
                   <button
                     onClick={() => setShowDropdown(!showDropdown)}
@@ -208,7 +212,12 @@ export default function Navbar() {
 
           {/* Mobile actions */}
           <div className="md:hidden flex items-center gap-2">
-            {isAuthenticated && user && <NotificationBell />}
+            {isAuthenticated && user && (
+              <>
+                <ConsultBell />
+                <NotificationBell />
+              </>
+            )}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-slate-500 hover:text-slate-700 focus:outline-none p-2 rounded-lg hover:bg-slate-50"

@@ -15,7 +15,7 @@ export interface Review {
     };
     appointment?: {
         appointmentDate: string;
-        patientProfileName: string;
+        patientInfo?: { fullName?: string } | null;
     };
 }
 

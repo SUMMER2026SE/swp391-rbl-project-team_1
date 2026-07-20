@@ -175,8 +175,8 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
           )}
 
           {/* Main View */}
-          <main className="flex-grow p-4 sm:p-8 overflow-y-auto">
-            <div className="max-w-6xl mx-auto space-y-6">
+          <main className={`flex-grow overflow-y-auto ${pathname.startsWith("/doctor/chat") ? "" : "p-4 sm:p-8"}`}>
+            <div className={pathname.startsWith("/doctor/chat") ? "h-full" : "max-w-6xl mx-auto space-y-6"}>
               {children}
             </div>
           </main>

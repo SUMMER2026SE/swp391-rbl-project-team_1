@@ -6,7 +6,7 @@ import { appointmentService } from "@/services/appointment.service";
 import { Appointment, AppointmentStatus } from "@/types/appointment";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
-import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2, Video, Package } from "lucide-react";
+import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2, Video, Package, User } from "lucide-react";
 import Link from "next/link";
 import Button from "@/components/common/Button";
 import BookingProgress from "@/components/ui/BookingProgress";
@@ -195,8 +195,16 @@ function MyAppointmentsContent() {
 
                     <div className="space-y-1">
                       <h3 className="font-bold text-slate-900 text-base">{app.medicalPackage?.name || app.doctor?.name || "Bác sĩ Chuyên gia"}</h3>
-                      <div className="flex items-center gap-1.5 text-xs text-teal-700 bg-teal-50 rounded-lg px-2 py-0.5 w-max font-semibold">
-                        <span>{app.medicalPackage ? "Gói khám" : (app.doctor?.specialty?.name || "Đang cập nhật")}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="text-xs text-teal-700 bg-teal-50 rounded-lg px-2 py-0.5 w-max font-semibold">
+                          <span>{app.medicalPackage ? "Gói khám" : (app.doctor?.specialty?.name || "Đang cập nhật")}</span>
+                        </div>
+                        {app.patientProfileType === "OTHER" && (
+                          <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-0.5 w-max font-semibold flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            <span>Đặt cho: {app.patientInfo?.fullName || "Người thân"}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

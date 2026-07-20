@@ -5,9 +5,19 @@ export interface BookingProfile {
   userId: string;
   fullName: string;
   phone?: string;
+  email?: string;
   gender?: string;
-  yearOfBirth?: number;
+  dateOfBirth?: string;
   relationship: string;
+  province?: string;
+  district?: string;
+  ward?: string;
+  street?: string;
+  bloodType?: string;
+  allergies?: string;
+  chronicDiseases?: string;
+  personalHistory?: string;
+  familyHistory?: string;
   createdAt?: string;
 }
 

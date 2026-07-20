@@ -199,17 +199,76 @@ export const getVoucherStats = async () => {
     return { active, totalUsed, totalDiscounted, expiring };
 };
 
+export const getVoucherChartData = async (period: 'week' | 'month' | 'year') => {
+    const now = new Date();
+    let startDate: Date;
+    if (period === 'week') {
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+    } else if (period === 'month') {
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+    } else {
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+    }
+
+    const usages = await prisma.voucherUsage.findMany({
+        where: { usedAt: { gte: startDate } },
+        include: { voucher: { select: { code: true, category: true } } },
+        orderBy: { usedAt: 'asc' },
+    });
+
+    // Bar chart: usages per voucher code
+    const usagesByCode: Record<string, { code: string; count: number; totalCount: number; category: string }> = {};
+    const allVouchers = await prisma.voucher.findMany({ select: { id: true, code: true, usedCount: true, category: true } });
+    for (const v of allVouchers) {
+        usagesByCode[v.code] = { code: v.code, count: 0, totalCount: v.usedCount, category: v.category };
+    }
+    for (const u of usages) {
+        const code = u.voucher.code;
+        if (usagesByCode[code]) usagesByCode[code].count += 1;
+    }
+    const barData = Object.values(usagesByCode).filter(v => v.count > 0);
+
+    // Line chart: discount amount over time
+    const lineDataMap: Record<string, number> = {};
+    for (const u of usages) {
+        let key: string;
+        const d = new Date(u.usedAt);
+        if (period === 'week') {
+            key = `${d.getDate()}/${d.getMonth() + 1}`;
+        } else if (period === 'month') {
+            key = `${d.getDate()}/${d.getMonth() + 1}`;
+        } else {
+            key = `${d.getMonth() + 1}/${d.getFullYear()}`;
+        }
+        lineDataMap[key] = (lineDataMap[key] || 0) + u.discountAmount;
+    }
+    const lineData = Object.entries(lineDataMap).map(([date, amount]) => ({ date, amount }));
+
+    const totalUsed = usages.length;
+    const totalDiscount = usages.reduce((s, u) => s + u.discountAmount, 0);
+
+    return { barData, lineData, totalUsed, totalDiscount };
+};
+
+
 export const createVoucher = async (data: {
     code: string;
     type: "PERCENT" | "FIXED";
     discountValue: number;
-    applyTo: "ALL" | "PACKAGE" | "SPECIALTY";
+    applyTo: "ALL" | "PACKAGE" | "SPECIALTY" | "DOCTOR";
     specialtyId?: string;
     minDepositAmount?: number;
     maxUses?: number | null;
     isFirstBooking?: boolean;
     startDate: Date;
     endDate: Date;
+    category?: string;
+    description?: string;
+    avatarColor?: string;
+    avatarIcon?: string;
 }) => {
     // Enforce max percent
     if (data.type === "PERCENT" && data.discountValue > MAX_PERCENT) {
@@ -230,13 +289,17 @@ export const createVoucher = async (data: {
             code: data.code.toUpperCase(),
             type: data.type,
             discountValue: data.discountValue,
-            applyTo: data.applyTo,
+            applyTo: data.applyTo as any,
             specialtyId: data.specialtyId || null,
             minDepositAmount: data.minDepositAmount || 0,
             maxUses: data.maxUses ?? null,
             isFirstBooking: data.isFirstBooking || false,
             startDate: data.startDate,
             endDate: data.endDate,
+            category: (data.category as any) || "FIRST_BOOKING",
+            description: data.description || null,
+            avatarColor: data.avatarColor || null,
+            avatarIcon: data.avatarIcon || null,
         },
     });
     return { voucher, capped };

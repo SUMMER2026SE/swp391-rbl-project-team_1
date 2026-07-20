@@ -76,6 +76,7 @@ export interface Appointment {
   medicalPackage?: any;
   patientProfileType?: "SELF" | "OTHER";
   patientProfileName?: string | null;
+  patientInfo?: any;
   user?: User;
   medicalRecord?: MedicalRecord | null;
   review?: Review | null;
@@ -88,10 +89,30 @@ export interface Appointment {
   paymentAt?: string | null;
 }
 
+export interface PatientInfo {
+  fullName: string;
+  phoneNumber?: string;
+  email?: string;
+  gender?: string;
+  dateOfBirth?: string; // ISO String
+  province?: string;
+  district?: string;
+  ward?: string;
+  street?: string;
+  address?: string;
+  bloodType?: string;
+  allergies?: string;
+  chronicDiseases?: string;
+  personalHistory?: string;
+  familyHistory?: string;
+  // For OTHER type
+  yearOfBirth?: number;
+  relationship?: string;
+}
+
 export interface CreateAppointmentRequest {
-  isBookingForMyself: boolean;
-  relativeProfileId?: string;
-  otherProfileName?: string;
+  patientInfo: PatientInfo;
+  patientProfileType?: 'SELF' | 'OTHER';
   doctorId?: string;
   clinicId?: string;
   appointmentDate: string; // ISO String

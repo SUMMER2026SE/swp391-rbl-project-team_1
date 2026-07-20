@@ -221,6 +221,10 @@ export async function findUserById(id: string): Promise<Omit<User, "password"> |
             avatar: true,
             gender: true,
             address: true,
+            province: true,
+            district: true,
+            ward: true,
+            street: true,
             dateOfBirth: true,
             bloodType: true,
             allergies: true,
@@ -361,7 +365,7 @@ export async function googleLogin(idToken: string): Promise<AuthResult> {
         // Verify token with Google Auth Library
         const ticket = await googleClient.verifyIdToken({
             idToken: idToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
+            audience: process.env.GOOGLE_CLIENT_ID?.trim(),
         });
 
         const payload = ticket.getPayload();
@@ -419,8 +423,11 @@ export async function googleLogin(idToken: string): Promise<AuthResult> {
         if (error instanceof ApiError) {
             throw error;
         }
-        console.error("Google authentication error:", error?.response?.data || error);
-        const errorMessage = error?.response?.data?.error_description || error?.response?.data?.error || "Invalid Google ID Token or network error";
+        console.error("Google authentication error:", error);
+        
+        // Extract the exact error message from google-auth-library
+        const exactError = error instanceof Error ? error.message : "Unknown error";
+        const errorMessage = `Google Auth Failed: ${exactError}`;
         throw new ApiError(errorMessage, 401);
     }
 }

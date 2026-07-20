@@ -200,13 +200,21 @@ export async function processPaymentSuccess(appointmentId: string, transactionId
  * Handle failed payment transaction
  */
 export async function processPaymentFailed(appointmentId: string, transactionId: string) {
-    await prisma.payment.update({
-        where: { appointmentId },
-        data: {
-            status: PaymentStatus.FAILED,
-            transactionId,
-        },
-    });
+    // Update payment and reset appointment back to PENDING_PAYMENT so user can retry
+    await prisma.$transaction([
+        prisma.payment.update({
+            where: { appointmentId },
+            data: {
+                status: PaymentStatus.FAILED,
+                transactionId,
+            },
+        }),
+        // Reset appointment so user can retry payment
+        prisma.appointment.update({
+            where: { id: appointmentId },
+            data: { status: "PENDING_PAYMENT" },
+        }),
+    ]);
 }
 
 /**
@@ -400,12 +408,12 @@ export async function getPaymentStatusByOrderCode(orderCode: number) {
                         user: true,
                         doctor: { include: { specialty: true, clinic: true } },
                         medicalPackage: true,
-                        patientProfile: true,
                     }
                 });
                 if (fullAppointment?.user?.email) {
+                    const patientInfo = fullAppointment.patientInfo as any;
                     sendBookingConfirmationEmail(fullAppointment.user.email, {
-                        patientName: fullAppointment.user.fullName || fullAppointment.user.email,
+                        patientName: patientInfo?.fullName || fullAppointment.user.fullName || fullAppointment.user.email,
                         doctorName: fullAppointment.doctor?.name || "Hệ thống",
                         specialtyName: fullAppointment.doctor?.specialty?.name || "",
                         clinicName: fullAppointment.doctor?.clinic?.name || fullAppointment.doctor?.hospital || "Bệnh viện",
@@ -563,12 +571,12 @@ export async function processPayOSWebhook(body: any) {
             include: {
                 doctor: { include: { specialty: true, clinic: true } },
                 medicalPackage: true,
-                patientProfile: true,
             }
         }).then((fullAppt) => {
             if (!fullAppt) return;
+            const patientInfo = (fullAppt as any).patientInfo as any;
             sendBookingConfirmationEmail(updatedAppointment.user!.email!, {
-                patientName: updatedAppointment.user!.fullName || updatedAppointment.user!.email || "Bệnh nhân",
+                patientName: patientInfo?.fullName || updatedAppointment.user!.fullName || updatedAppointment.user!.email || "Bệnh nhân",
                 doctorName: fullAppt.doctor?.name || "Hệ thống",
                 specialtyName: (fullAppt.doctor as any)?.specialty?.name || "",
                 clinicName: (fullAppt.doctor as any)?.clinic?.name || (fullAppt.doctor as any)?.hospital || "Bệnh viện",

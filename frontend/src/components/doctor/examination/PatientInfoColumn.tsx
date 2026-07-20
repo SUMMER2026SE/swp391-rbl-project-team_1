@@ -2,7 +2,8 @@ import React from 'react';
 import { User, Activity, AlertCircle, Droplet, Clock } from 'lucide-react';
 
 export default function PatientInfoColumn({ appointment }: { appointment: any }) {
-  const profile = appointment.patientProfile || {};
+  // patientInfo is a JSON snapshot; fall back to user fields
+  const profile = (appointment.patientInfo as any) || {};
   const user = appointment.user || {};
   
   const calculateAge = (dob: string) => {
@@ -19,6 +20,9 @@ export default function PatientInfoColumn({ appointment }: { appointment: any })
           {profile.fullName?.charAt(0) || user.fullName?.charAt(0) || 'U'}
         </div>
         <h2 className="text-xl font-bold text-slate-800 mb-1">{profile.fullName || user.fullName || 'N/A'}</h2>
+        {appointment.patientProfileType === "OTHER" && (
+          <p className="text-xs text-slate-400 mb-2 font-medium">Đặt bởi: {user.email}</p>
+        )}
         <div className="flex items-center space-x-3 text-sm text-slate-500 bg-slate-50 px-3 py-1 rounded-full">
           <span className="flex items-center"><User className="w-4 h-4 mr-1" /> {profile.gender || user.gender || 'N/A'}</span>
           <span className="w-1 h-1 bg-slate-300 rounded-full"></span>

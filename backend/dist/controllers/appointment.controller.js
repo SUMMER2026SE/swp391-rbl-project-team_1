@@ -23,29 +23,9 @@ async function createAppointmentHandler(req, res, next) {
         if (!userId) {
             throw new apiError_1.ApiError("Authentication required", 401);
         }
-        const { doctorId, appointmentDate, notes, packageId, patientProfileId, newPatientProfile } = req.body;
-        let finalProfileId = patientProfileId;
-        if (!finalProfileId && newPatientProfile) {
-            const fullAddress = [newPatientProfile.address, newPatientProfile.ward, newPatientProfile.province]
-                .filter(Boolean)
-                .join(", ");
-            const profile = await client_1.default.patientProfile.create({
-                data: {
-                    userId,
-                    fullName: newPatientProfile.fullName,
-                    phoneNumber: newPatientProfile.phoneNumber,
-                    gender: newPatientProfile.gender,
-                    dateOfBirth: new Date(newPatientProfile.dateOfBirth),
-                    cccd: newPatientProfile.cccd || "",
-                    address: fullAddress || "",
-                    isPrimary: false,
-                    isTemporary: newPatientProfile.isTemporary || false
-                }
-            });
-            finalProfileId = profile.id;
-        }
-        if (!finalProfileId) {
-            throw new apiError_1.ApiError("Vui lòng chọn hồ sơ người khám", 400);
+        const { doctorId, appointmentDate, notes, packageId, patientInfo } = req.body;
+        if (!patientInfo || !patientInfo.fullName) {
+            throw new apiError_1.ApiError("Vui lòng điền đầy đủ thông tin người khám", 400);
         }
         if (!doctorId && !packageId) {
             throw new apiError_1.ApiError("Doctor ID or Package ID is required", 400);
@@ -64,7 +44,7 @@ async function createAppointmentHandler(req, res, next) {
         }
         const appointment = await (0, appointment_service_1.createAppointment)({
             userId,
-            patientProfileId: finalProfileId,
+            patientInfo: patientInfo,
             doctorId,
             appointmentDate: date,
             notes,

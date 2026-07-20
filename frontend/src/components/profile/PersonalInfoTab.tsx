@@ -16,7 +16,10 @@ export default function PersonalInfoTab() {
 
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState("");
-  const [address, setAddress] = useState("");
+  const [province, setProvince] = useState("");
+  const [district, setDistrict] = useState("");
+  const [ward, setWard] = useState("");
+  const [street, setStreet] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [bloodType, setBloodType] = useState("");
   const [allergies, setAllergies] = useState("");
@@ -36,7 +39,10 @@ export default function PersonalInfoTab() {
     if (user) {
       setFullName(user.fullName || "");
       setGender(user.gender || "");
-      setAddress(user.address || "");
+      setProvince(user.province || "");
+      setDistrict(user.district || "");
+      setWard(user.ward || "");
+      setStreet(user.street || "");
       if (user.dateOfBirth) {
         const d = new Date(user.dateOfBirth);
         const yyyy = d.getFullYear();
@@ -62,7 +68,10 @@ export default function PersonalInfoTab() {
       const response = await userService.updateProfile({
         fullName: fullName || null,
         gender: gender || null,
-        address: address || null,
+        province: province || null,
+        district: district || null,
+        ward: ward || null,
+        street: street || null,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : null,
         bloodType: bloodType || null,
         allergies: allergies || null,
@@ -202,9 +211,15 @@ export default function PersonalInfoTab() {
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Địa chỉ hiện tại</label>
           <AddressInput
-            value={address}
-            onChange={(val) => setAddress(val)}
-            existingAddress={address}
+            value={`${street ? street + ", " : ""}${ward ? ward + ", " : ""}${district ? district + ", " : ""}${province || ""}`.replace(/(^, )|(, $)/g, "")}
+            onChange={(val) => {}}
+            onAddressChange={(parts) => {
+              setProvince(parts.province);
+              setDistrict(parts.district);
+              setWard(parts.ward);
+              setStreet(parts.street);
+            }}
+            existingAddress={user.address || ""}
           />
         </div>
 

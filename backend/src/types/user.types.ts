@@ -13,8 +13,12 @@ export interface UserSafeDto {
     avatar: string | null;
     gender: string | null;
     address: string | null;
+    province: string | null;
+    district: string | null;
+    ward: string | null;
+    street: string | null;
     dateOfBirth: Date | null;
-    
+
     // Medical Background
     bloodType: string | null;
     allergies: string | null;

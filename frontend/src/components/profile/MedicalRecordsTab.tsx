@@ -44,11 +44,9 @@ export default function MedicalRecordsTab() {
     .sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
 
   const displayedAppts = completedAppts.filter(a => {
-    if (activeProfileId === "MAIN") {
-      return a.patientProfileType === "SELF";
-    }
-    const profile = profiles.find(p => p.id === activeProfileId);
-    return a.patientProfileType === "OTHER" && a.patientProfileName === profile?.fullName;
+    // All bookings are now SELF (patientProfileType = SELF)
+    // Just show all completed appointments for the main profile
+    return a.patientProfileType === "SELF" || !a.patientProfileType;
   });
 
   const handleDeleteProfile = async (id: string) => {

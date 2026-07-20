@@ -187,7 +187,7 @@ export async function getMyReviews(
                     select: { name: true, avatar: true, specialty: { select: { name: true } } }
                 },
                 appointment: {
-                    select: { appointmentDate: true, patientProfileName: true }
+                    select: { appointmentDate: true, patientInfo: true }
                 }
             },
             orderBy: { createdAt: "desc" }

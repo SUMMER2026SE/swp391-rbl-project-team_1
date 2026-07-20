@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { sendPrescriptionEmail } from '../utils/emailService';
-
-const prisma = new PrismaClient();
+import prisma from '../prisma/client';
 
 export const getRecordByAppointment = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -12,7 +10,6 @@ export const getRecordByAppointment = async (req: Request, res: Response): Promi
       where: { id: appointmentId as string },
       include: {
         user: true,
-        patientProfile: true,
         doctor: true
       }
     });
@@ -59,7 +56,7 @@ export const saveRecord = async (req: Request, res: Response): Promise<void> => 
 
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId as string },
-      include: { user: true, patientProfile: true }
+      include: { user: true }
     });
 
     if (!appointment) {
@@ -136,7 +133,7 @@ export const saveRecord = async (req: Request, res: Response): Promise<void> => 
         await sendPrescriptionEmail(
           (appointment as any).user.email,
           {
-            patientName: (appointment as any).patientProfile?.fullName || (appointment as any).user.fullName || (appointment as any).user.email,
+            patientName: (appointment.patientInfo as any)?.fullName || (appointment as any).user.fullName || (appointment as any).user.email,
             doctorName: doctor?.name || "Bác sĩ",
             appointmentDate: appointment.appointmentDate
           },

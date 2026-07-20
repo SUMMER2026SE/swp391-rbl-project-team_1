@@ -10,6 +10,16 @@ const router = (0, express_1.Router)();
  */
 router.post("/reviews", auth_middleware_1.verifyToken, review_controller_1.createReview);
 /**
+ * GET /api/reviews/me
+ * Get all reviews submitted by the user
+ */
+router.get("/reviews/me", auth_middleware_1.verifyToken, review_controller_1.getMyReviews);
+/**
+ * GET /api/reviews/pending
+ * Get all completed appointments that need a review
+ */
+router.get("/reviews/pending", auth_middleware_1.verifyToken, review_controller_1.getPendingReviews);
+/**
  * GET /api/doctors/:id/reviews
  * Public endpoint to fetch reviews and metrics for a doctor
  */

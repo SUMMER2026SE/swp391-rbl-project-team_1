@@ -184,14 +184,14 @@ async function mockPayHandler(req, res, next) {
 async function createPayOSPaymentUrlHandler(req, res, next) {
     try {
         const userId = req.user?.userId;
-        const { appointmentId } = req.body;
+        const { appointmentId, voucherCode, discountAmount } = req.body;
         if (!userId) {
             throw new apiError_1.ApiError("Yêu cầu đăng nhập", 401);
         }
         if (!appointmentId) {
             throw new apiError_1.ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
         }
-        const result = await (0, payment_service_1.createPayOSPaymentLink)(appointmentId);
+        const result = await (0, payment_service_1.createPayOSPaymentLink)(appointmentId, voucherCode, discountAmount ? Number(discountAmount) : undefined);
         res.status(200).json({
             message: "Tạo link thanh toán PayOS thành công",
             ...result

@@ -2,62 +2,64 @@
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { patientProfileService, PatientProfile } from "@/services/patient-profile.service";
+import { bookingProfileService, BookingProfile } from "@/services/booking-profile.service";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
-import { Plus, Edit2, Trash2, UserCircle2, User as UserIcon } from "lucide-react";
+import { Plus, Edit2, Trash2, UserCircle2, User as UserIcon, AlertCircle } from "lucide-react";
 
 export default function PatientProfilesTab() {
   const { user } = useAuth();
-  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
+  const [profiles, setProfiles] = useState<BookingProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<PatientProfile>>({});
+  
+  // Mối quan hệ dựa theo bảng form
+  const RELATIONSHIP_OPTIONS = ["Bố", "Mẹ", "Vợ", "Chồng", "Con", "Anh trai", "Chị gái", "Khác"];
+  const GENDER_OPTIONS = [
+    { value: "NAM", label: "Nam" },
+    { value: "NU", label: "Nữ" },
+    { value: "KHAC", label: "Khác" }
+  ];
+
+  const [formData, setFormData] = useState<Partial<BookingProfile>>({});
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // === VALIDATION ===
-  const validateProfileForm = (data: Partial<PatientProfile>): Record<string, string> => {
+  const validateProfileForm = (data: Partial<BookingProfile>): Record<string, string> => {
     const errors: Record<string, string> = {};
 
     const nameVal = (data.fullName || "").trim();
     if (!nameVal) {
-      errors.fullName = "Ho va ten khong duoc de trong.";
-    } else if (/[0-9!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?]/.test(nameVal)) {
-      errors.fullName = "Ho va ten khong duoc chua so hoac ky hieu dac biet.";
-    } else if (nameVal.length < 2) {
-      errors.fullName = "Ho va ten phai co it nhat 2 ky tu.";
+      errors.fullName = "Họ và tên không được để trống.";
     }
 
-    const phoneVal = (data.phoneNumber || "").trim();
+    const phoneVal = (data.phone || "").trim();
     if (!phoneVal) {
-      errors.phoneNumber = "So dien thoai khong duoc de trong.";
+      errors.phone = "Số điện thoại không được để trống.";
     } else if (!/^0[0-9]{9}$/.test(phoneVal)) {
-      errors.phoneNumber = "So dien thoai phai co dung 10 chu so va bat dau bang 0.";
+      errors.phone = "Số điện thoại phải có đúng 10 chữ số và bắt đầu bằng số 0.";
     }
 
     if (!data.dateOfBirth) {
-      errors.dateOfBirth = "Ngay sinh khong duoc de trong.";
+      errors.dateOfBirth = "Vui lòng nhập năm sinh.";
     } else {
-      const dob = new Date(data.dateOfBirth);
-      const today = new Date();
-      const minDate = new Date();
-      minDate.setFullYear(today.getFullYear() - 120);
-      if (isNaN(dob.getTime())) errors.dateOfBirth = "Ngay sinh khong hop le.";
-      else if (dob > today) errors.dateOfBirth = "Ngay sinh khong duoc la ngay tuong lai.";
-      else if (dob < minDate) errors.dateOfBirth = "Ngay sinh vuot qua gioi han (120 tuoi).";
+      const year = parseInt(data.dateOfBirth, 10);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(year) || year < 1900 || year > currentYear) {
+        errors.dateOfBirth = "Năm sinh không hợp lệ.";
+      }
     }
 
     if (!data.gender) {
-      errors.gender = "Vui long chon gioi tinh.";
+      errors.gender = "Vui lòng chọn giới tính.";
     }
 
-    const cccdVal = (data.cccd || "").trim();
-    if (cccdVal && !/^[0-9]{9}$|^[0-9]{12}$/.test(cccdVal)) {
-      errors.cccd = "CCCD/CMND phai co dung 9 hoac 12 chu so.";
+    if (!data.relationship) {
+      errors.relationship = "Vui lòng chọn mối quan hệ.";
     }
 
     return errors;
@@ -68,18 +70,32 @@ export default function PatientProfilesTab() {
   const fetchProfiles = async () => {
     try {
       setLoading(true);
-      const data = await patientProfileService.getMyProfiles();
+      const data = await bookingProfileService.getMyProfiles();
       setProfiles(data);
     } catch (err: any) {
-      setError(err.message || "Khong the tai danh sach ho so.");
+      setError(err.message || "Không thể tải danh sách hồ sơ.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenForm = (profile?: PatientProfile) => {
-    if (profile) { setEditingId(profile.id); setFormData(profile); }
-    else { setEditingId(null); setFormData({ isPrimary: profiles.length === 0 }); }
+  const handleOpenForm = (profile?: BookingProfile) => {
+    if (profile) {
+      setEditingId(profile.id);
+      let yearOnly = "";
+      if (profile.dateOfBirth) {
+        // If it's a full date, extract year
+        yearOnly = new Date(profile.dateOfBirth).getFullYear().toString();
+        if (isNaN(parseInt(yearOnly))) yearOnly = profile.dateOfBirth;
+      }
+      setFormData({
+        ...profile,
+        dateOfBirth: yearOnly
+      });
+    } else { 
+      setEditingId(null); 
+      setFormData({}); 
+    }
     setFormErrors({});
     setIsFormOpen(true);
   };
@@ -93,208 +109,270 @@ export default function PatientProfilesTab() {
     const errors = validateProfileForm(formData);
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    
     try {
       setSubmitting(true);
-      if (editingId) await patientProfileService.updateProfile(editingId, formData);
-      else await patientProfileService.createProfile(formData);
+      
+      // Chuyển năm sinh thành ISO string date (January 1st of that year)
+      const yearOfBirth = formData.dateOfBirth || "";
+      const dateOfBirthIso = `${yearOfBirth}-01-01T00:00:00.000Z`;
+
+      const payload = {
+        ...formData,
+        dateOfBirth: dateOfBirthIso
+      };
+
+      if (editingId) await bookingProfileService.updateProfile(editingId, payload);
+      else await bookingProfileService.createProfile(payload);
+      
       handleCloseForm();
       fetchProfiles();
     } catch (err: any) {
-      alert(err.message || "Da xay ra loi khi luu ho so.");
+      alert(err.message || "Đã xảy ra lỗi khi lưu hồ sơ.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Ban co chac chan muon xoa ho so nay?")) return;
-    try { await patientProfileService.deleteProfile(id); fetchProfiles(); }
-    catch (err: any) { alert(err.message || "Khong the xoa ho so nay."); }
+    if (!confirm("Bạn có chắc chắn muốn xóa hồ sơ này?")) return;
+    try { await bookingProfileService.deleteProfile(id); fetchProfiles(); }
+    catch (err: any) { alert(err.message || "Không thể xóa hồ sơ này."); }
   };
 
   if (loading) return <div className="flex justify-center py-20"><LoadingSpinner /></div>;
 
   const fc = (field: string) =>
-    `w-full border p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 transition-colors ${
-      formErrors[field] ? "border-red-400 focus:ring-red-200 bg-red-50/30" : "border-slate-200 focus:ring-teal-200"
+    `w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm transition-all focus:outline-none focus:ring-2 ${
+      formErrors[field]
+        ? "border-red-300 focus:ring-red-500/20"
+        : "border-slate-200 focus:ring-teal-500/20 focus:border-teal-500"
     }`;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="flex justify-between items-center mb-6 pb-3 border-b border-slate-100">
-        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <UserIcon className="h-5 w-5 text-teal-600" />
-          <span>Hồ sơ người khám (Dành cho người thân)</span>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${profiles.length >= 3 ? "bg-orange-100 text-orange-600" : "bg-teal-100 text-teal-600"}`}>
-            {profiles.length}/3
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-slate-100 gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <UserIcon className="h-5 w-5 text-teal-600" />
+            <span>Hồ sơ người khám (Dành cho người thân)</span>
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Lưu sẵn thông tin để đặt khám nhanh hơn
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${profiles.length >= 10 ? "bg-orange-100 text-orange-700" : "bg-teal-50 text-teal-700 border border-teal-100"}`}>
+            {profiles.length}/10 hồ sơ
           </span>
-        </h3>
-        <Button
-          onClick={() => handleOpenForm()}
-          className="flex items-center gap-2 py-2 px-4"
-          disabled={profiles.length >= 3}
-          title={profiles.length >= 3 ? "Da dat toi da 3 ho so" : ""}
-        >
-          <Plus className="w-4 h-4" /> Them ho so moi
-        </Button>
+          <Button
+            onClick={() => handleOpenForm()}
+            className="flex items-center gap-2 py-2 px-4 shadow-sm"
+            disabled={profiles.length >= 10}
+            title={profiles.length >= 10 ? "Đã đạt tối đa 10 hồ sơ" : ""}
+          >
+            <Plus className="w-4 h-4" /> Thêm hồ sơ
+          </Button>
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} className="mb-6" />}
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <h2 className="text-xl font-bold mb-5">{editingId ? "Sua ho so" : "Them ho so moi"}</h2>
-            <form onSubmit={handleSave} className="space-y-4" noValidate>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={handleCloseForm} />
+          
+          <div className="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">
+                {editingId ? "Cập nhật thông tin" : "Thêm hồ sơ người thân"}
+              </h2>
+              <button onClick={handleCloseForm} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto">
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100 text-blue-800 text-sm mb-5">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+                <p>Thông tin người đi khám cần trùng khớp với giấy tờ tùy thân (CCCD/CMND/BHYT) để thuận tiện cho việc làm thủ tục tại bệnh viện.</p>
+              </div>
 
-                {/* Ho va ten */}
+              <form id="profile-form" onSubmit={handleSave} className="space-y-4" noValidate>
+                {/* Họ và tên */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1.5">
-                    Ho va ten <span className="text-red-500">*</span>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Họ và tên (như trên CCCD) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.fullName || ""}
-                    placeholder="Nguyen Van An"
+                    placeholder="VD: NGUYEN VAN A"
                     onChange={e => { setFormData({...formData, fullName: e.target.value}); setFormErrors(p => ({...p, fullName: ""})); }}
                     className={fc("fullName")}
                   />
-                  {formErrors.fullName && <p className="text-xs text-red-500 mt-1">{formErrors.fullName}</p>}
+                  {formErrors.fullName && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>{formErrors.fullName}</p>}
                 </div>
 
-                {/* So dien thoai */}
-                <div>
-                  <label className="block text-sm font-semibold mb-1.5">
-                    So dien thoai <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phoneNumber || ""}
-                    placeholder="0987654321"
-                    maxLength={10}
-                    onChange={e => { const v = e.target.value.replace(/[^0-9]/g,""); setFormData({...formData, phoneNumber: v}); setFormErrors(p => ({...p, phoneNumber: ""})); }}
-                    className={fc("phoneNumber")}
-                  />
-                  {formErrors.phoneNumber && <p className="text-xs text-red-500 mt-1">{formErrors.phoneNumber}</p>}
-                </div>
-
-                {/* Ngay sinh */}
-                <div>
-                  <label className="block text-sm font-semibold mb-1.5">
-                    Ngay sinh <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString().split("T")[0] : ""}
-                    max={new Date().toISOString().split("T")[0]}
-                    onChange={e => { setFormData({...formData, dateOfBirth: e.target.value}); setFormErrors(p => ({...p, dateOfBirth: ""})); }}
-                    className={fc("dateOfBirth")}
-                  />
-                  {formErrors.dateOfBirth && <p className="text-xs text-red-500 mt-1">{formErrors.dateOfBirth}</p>}
-                </div>
-
-                {/* Gioi tinh */}
-                <div>
-                  <label className="block text-sm font-semibold mb-1.5">
-                    Gioi tinh <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.gender || ""}
-                    onChange={e => { setFormData({...formData, gender: e.target.value}); setFormErrors(p => ({...p, gender: ""})); }}
-                    className={fc("gender")}
-                  >
-                    <option value="">Chon gioi tinh</option>
-                    <option value="NAM">Nam</option>
-                    <option value="NU">Nu</option>
-                    <option value="KHAC">Khac</option>
-                  </select>
-                  {formErrors.gender && <p className="text-xs text-red-500 mt-1">{formErrors.gender}</p>}
-                </div>
-
-                {/* CCCD */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-1.5">CCCD / CMND</label>
-                  <input
-                    type="text"
-                    value={formData.cccd || ""}
-                    placeholder="9 hoac 12 chu so"
-                    maxLength={12}
-                    onChange={e => { const v = e.target.value.replace(/[^0-9]/g,""); setFormData({...formData, cccd: v}); setFormErrors(p => ({...p, cccd: ""})); }}
-                    className={fc("cccd")}
-                  />
-                  {formErrors.cccd && <p className="text-xs text-red-500 mt-1">{formErrors.cccd}</p>}
-                </div>
-              </div>
-
-              {/* Thong tin y te */}
-              <div className="pt-4 border-t mt-4">
-                <h3 className="font-semibold mb-3">Thong tin y te (Tuy chon)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Số điện thoại */}
                   <div>
-                    <label className="block text-sm font-semibold mb-1.5">Nhom mau</label>
-                    <input type="text" value={formData.bloodType || ""} placeholder="A+, O-..."
-                      onChange={e => setFormData({...formData, bloodType: e.target.value})}
-                      className="w-full border border-slate-200 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-200" />
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Số điện thoại <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone || ""}
+                      placeholder="0987654321"
+                      maxLength={10}
+                      onChange={e => { const v = e.target.value.replace(/[^0-9]/g,""); setFormData({...formData, phone: v}); setFormErrors(p => ({...p, phone: ""})); }}
+                      className={fc("phone")}
+                    />
+                    {formErrors.phone && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>{formErrors.phone}</p>}
                   </div>
+
+                  {/* Năm sinh */}
                   <div>
-                    <label className="block text-sm font-semibold mb-1.5">Di ung</label>
-                    <input type="text" value={formData.allergies || ""}
-                      onChange={e => setFormData({...formData, allergies: e.target.value})}
-                      className="w-full border border-slate-200 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-200" />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold mb-1.5">Tien su benh ly</label>
-                    <textarea value={formData.personalHistory || ""}
-                      onChange={e => setFormData({...formData, personalHistory: e.target.value})}
-                      className="w-full border border-slate-200 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-200" rows={2} />
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Năm sinh <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.dateOfBirth || ""}
+                      placeholder="VD: 1990"
+                      maxLength={4}
+                      onChange={e => { const v = e.target.value.replace(/[^0-9]/g,""); setFormData({...formData, dateOfBirth: v}); setFormErrors(p => ({...p, dateOfBirth: ""})); }}
+                      className={fc("dateOfBirth")}
+                    />
+                    {formErrors.dateOfBirth && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>{formErrors.dateOfBirth}</p>}
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center mt-4">
-                <input type="checkbox" id="isPrimary" checked={formData.isPrimary || false}
-                  onChange={e => setFormData({...formData, isPrimary: e.target.checked})}
-                  className="mr-2 accent-teal-600 w-4 h-4" />
-                <label htmlFor="isPrimary" className="text-sm font-medium cursor-pointer">Dat lam ho so mac dinh</label>
-              </div>
+                {/* Giới tính */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Giới tính <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-3">
+                    {GENDER_OPTIONS.map((g) => (
+                      <label key={g.value} className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${
+                        formData.gender === g.value
+                          ? 'border-teal-600 bg-teal-50 text-teal-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      } ${formErrors.gender ? 'border-red-300' : ''}`}>
+                        <input
+                          type="radio"
+                          name="gender"
+                          value={g.value}
+                          checked={formData.gender === g.value}
+                          onChange={(e) => {
+                            setFormData({...formData, gender: e.target.value});
+                            setFormErrors(p => ({...p, gender: ""}));
+                          }}
+                          className="w-4 h-4 text-teal-600 focus:ring-teal-500 border-slate-300"
+                        />
+                        <span className="text-sm font-medium">{g.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {formErrors.gender && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>{formErrors.gender}</p>}
+                </div>
 
-              <div className="flex justify-end gap-3 mt-6">
-                <Button type="button" variant="outline" onClick={handleCloseForm}>Huy</Button>
-                <Button type="submit" disabled={submitting}>{submitting ? "Dang luu..." : "Luu ho so"}</Button>
-              </div>
-            </form>
+                {/* Mối quan hệ */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Mối quan hệ với bạn <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {RELATIONSHIP_OPTIONS.map((rel) => (
+                      <button
+                        key={rel}
+                        type="button"
+                        onClick={() => {
+                          setFormData({...formData, relationship: rel});
+                          setFormErrors(p => ({...p, relationship: ""}));
+                        }}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
+                          formData.relationship === rel
+                            ? 'bg-teal-600 border-teal-600 text-white shadow-md shadow-teal-600/20'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-600'
+                        }`}
+                      >
+                        {rel}
+                      </button>
+                    ))}
+                  </div>
+                  {formErrors.relationship && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>{formErrors.relationship}</p>}
+                </div>
+              </form>
+            </div>
+            
+            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={handleCloseForm} className="px-6 rounded-xl border-slate-200">
+                Hủy
+              </Button>
+              <Button form="profile-form" type="submit" isLoading={submitting} className="px-8 rounded-xl shadow-lg shadow-teal-600/20">
+                Xác nhận
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {profiles.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 rounded-xl border border-slate-100">
-          <UserCircle2 className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500 mb-4">Ban chua co ho so kham benh nao.</p>
-          <Button onClick={() => handleOpenForm()}>Tao ho so dau tien</Button>
+        <div className="text-center py-16 bg-slate-50 border border-slate-100 border-dashed rounded-2xl">
+          <UserCircle2 className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+          <h3 className="text-sm font-bold text-slate-700">Chưa có hồ sơ người thân</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-5">Thêm thông tin người thân để đặt lịch khám cho bố mẹ, con cái hoặc vợ/chồng nhanh chóng hơn.</p>
+          <Button onClick={() => handleOpenForm()} variant="outline" className="rounded-full shadow-sm text-sm">
+            <Plus className="w-4 h-4 mr-1.5" /> Thêm hồ sơ đầu tiên
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {profiles.map(profile => (
-            <div key={profile.id} className={`p-5 rounded-xl border ${profile.isPrimary ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white"}`}>
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-lg">{profile.fullName}</h3>
-                  {profile.isPrimary && (
-                    <span className="bg-teal-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Mac dinh</span>
-                  )}
+          {profiles.map(p => (
+            <div key={p.id} className="relative group bg-white border border-slate-200 rounded-2xl p-5 hover:border-teal-300 hover:shadow-md transition-all">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-lg">
+                    {p.fullName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 leading-tight">{p.fullName}</h4>
+                    <span className="text-xs text-slate-500 font-medium">
+                      Mối quan hệ: <span className="text-teal-600 font-bold">{p.relationship}</span>
+                    </span>
+                  </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleOpenForm(profile)} className="text-slate-400 hover:text-blue-500 transition"><Edit2 className="w-4 h-4" /></button>
-                  {!profile.isPrimary && (
-                    <button onClick={() => handleDelete(profile.id)} className="text-slate-400 hover:text-red-500 transition"><Trash2 className="w-4 h-4" /></button>
-                  )}
+                  <button onClick={() => handleOpenForm(p)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(p.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <p className="text-sm text-slate-600 mb-1">SDT: {profile.phoneNumber || "Chua cap nhat"}</p>
-              <p className="text-sm text-slate-600 mb-1">Gioi tinh: {profile.gender || "Chua cap nhat"}</p>
-              <p className="text-sm text-slate-600">CCCD: {profile.cccd || "Chua cap nhat"}</p>
+              
+              <div className="grid grid-cols-2 gap-y-2 mt-4 pt-4 border-t border-slate-100 text-sm">
+                <div>
+                  <span className="text-slate-500 text-xs block mb-0.5">Số điện thoại</span>
+                  <span className="font-medium text-slate-700">{p.phone || "---"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-xs block mb-0.5">Năm sinh</span>
+                  <span className="font-medium text-slate-700">
+                    {p.dateOfBirth ? new Date(p.dateOfBirth).getFullYear() : "---"}
+                  </span>
+                </div>
+                <div className="col-span-2 mt-1">
+                  <span className="text-slate-500 text-xs block mb-0.5">Giới tính</span>
+                  <span className="font-medium text-slate-700">
+                    {p.gender === 'NAM' ? 'Nam' : p.gender === 'NU' ? 'Nữ' : p.gender === 'KHAC' ? 'Khác' : '---'}
+                  </span>
+                </div>
+              </div>
             </div>
           ))}
         </div>

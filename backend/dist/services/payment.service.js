@@ -18,6 +18,7 @@ const client_1 = require("@prisma/client");
 const client_2 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
 const socket_1 = require("../utils/socket");
+const notificationService_1 = require("./notificationService");
 const emailService_1 = require("../utils/emailService");
 const PayOS = require("@payos/node");
 const payos = new PayOS(process.env.PAYOS_CLIENT_ID || "", process.env.PAYOS_API_KEY || "", process.env.PAYOS_CHECKSUM_KEY || "");
@@ -177,13 +178,21 @@ async function processPaymentSuccess(appointmentId, transactionId) {
  * Handle failed payment transaction
  */
 async function processPaymentFailed(appointmentId, transactionId) {
-    await client_2.default.payment.update({
-        where: { appointmentId },
-        data: {
-            status: client_1.PaymentStatus.FAILED,
-            transactionId,
-        },
-    });
+    // Update payment and reset appointment back to PENDING_PAYMENT so user can retry
+    await client_2.default.$transaction([
+        client_2.default.payment.update({
+            where: { appointmentId },
+            data: {
+                status: client_1.PaymentStatus.FAILED,
+                transactionId,
+            },
+        }),
+        // Reset appointment so user can retry payment
+        client_2.default.appointment.update({
+            where: { id: appointmentId },
+            data: { status: "PENDING_PAYMENT" },
+        }),
+    ]);
 }
 /**
  * Direct Mock Payment service (for test/local development)
@@ -235,7 +244,7 @@ async function processMockPayment(appointmentId) {
 /**
  * PayOS: Create Payment Link
  */
-async function createPayOSPaymentLink(appointmentId) {
+async function createPayOSPaymentLink(appointmentId, voucherCode, discountAmount) {
     const appointment = await client_2.default.appointment.findUnique({
         where: { id: appointmentId },
         include: { doctor: true },
@@ -248,8 +257,10 @@ async function createPayOSPaymentLink(appointmentId) {
     }
     // Generate a numeric order code < 9007199254740991
     const orderCode = Number(String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 1000)));
-    // Sử dụng giá tiền của bác sỹ, fallback sang appointment.amount
-    const amount = appointment.doctor?.price || appointment.amount || 5000;
+    // Use doctor price or appointment amount as base
+    const baseAmount = appointment.doctor?.price || appointment.amount || 5000;
+    // Apply voucher discount if provided
+    const amount = discountAmount ? Math.max(baseAmount - discountAmount, 1000) : baseAmount;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);
     // Set expired time = now + 5 minutes
     const expiredAt = Math.floor(Date.now() / 1000) + 5 * 60;
@@ -265,6 +276,17 @@ async function createPayOSPaymentLink(appointmentId) {
         expiredAt
     };
     const paymentLink = await payos.createPaymentLink(requestData);
+    // Save voucher info to appointment if applicable
+    if (voucherCode && discountAmount) {
+        await client_2.default.appointment.update({
+            where: { id: appointmentId },
+            data: {
+                voucherCode: voucherCode.toUpperCase(),
+                discountAmount: discountAmount,
+                amount: amount,
+            }
+        });
+    }
     // Save to DB
     await client_2.default.payment.upsert({
         where: { appointmentId },
@@ -344,12 +366,12 @@ async function getPaymentStatusByOrderCode(orderCode) {
                         user: true,
                         doctor: { include: { specialty: true, clinic: true } },
                         medicalPackage: true,
-                        patientProfile: true,
                     }
                 });
                 if (fullAppointment?.user?.email) {
+                    const patientInfo = fullAppointment.patientInfo;
                     (0, emailService_1.sendBookingConfirmationEmail)(fullAppointment.user.email, {
-                        patientName: fullAppointment.user.fullName || fullAppointment.user.email,
+                        patientName: patientInfo?.fullName || fullAppointment.user.fullName || fullAppointment.user.email,
                         doctorName: fullAppointment.doctor?.name || "Hệ thống",
                         specialtyName: fullAppointment.doctor?.specialty?.name || "",
                         clinicName: fullAppointment.doctor?.clinic?.name || fullAppointment.doctor?.hospital || "Bệnh viện",
@@ -414,31 +436,79 @@ async function processPayOSWebhook(body) {
             include: { user: true, doctor: true }
         })
     ]);
-    // Socket.io Notifications
+    // Notifications
     try {
-        const io = (0, socket_1.getIO)();
         const userId = updatedAppointment.userId;
         const doctorId = updatedAppointment.doctorId;
         // Notify User
-        io.to(`user_${userId}`).emit("payment_confirmed", {
-            appointmentId: updatedAppointment.id,
-            transactionCode: updatedAppointment.transactionCode
+        await (0, notificationService_1.createNotification)({
+            userId: userId,
+            type: "APPOINTMENT_CONFIRMED",
+            title: "Xác nhận lịch hẹn",
+            message: "Lịch khám của bạn đã được xác nhận.",
+            data: { appointmentId: updatedAppointment.id, transactionCode: updatedAppointment.transactionCode }
         });
         // Notify Doctor
         if (doctorId) {
-            io.to(`doctor_${doctorId}`).emit("new_appointment", {
-                appointmentId: updatedAppointment.id,
-                message: "Bạn có lịch hẹn mới đã thanh toán."
-            });
+            const doctorUser = await client_2.default.user.findFirst({ where: { doctorId } });
+            if (doctorUser) {
+                await (0, notificationService_1.createNotification)({
+                    userId: doctorUser.id,
+                    type: "NEW_APPOINTMENT",
+                    title: "Lịch hẹn mới",
+                    message: `Bạn có lịch hẹn mới đã thanh toán.`,
+                    data: { appointmentId: updatedAppointment.id }
+                });
+            }
         }
         // Notify Admin
-        io.to("admin").emit("payment_updated", {
-            appointmentId: updatedAppointment.id,
-            status: "PAID"
-        });
+        const admins = await client_2.default.user.findMany({ where: { role: "ADMIN" } });
+        for (const admin of admins) {
+            await (0, notificationService_1.createNotification)({
+                userId: admin.id,
+                type: "PAYMENT_RECEIVED",
+                title: "Thanh toán mới",
+                message: `Giao dịch mới từ lịch hẹn ${updatedAppointment.transactionCode}.`,
+                data: { appointmentId: updatedAppointment.id }
+            });
+        }
     }
     catch (error) {
-        console.error("Socket notification error:", error);
+        console.error("Notification error:", error);
+    }
+    // Apply voucher if one was used for this appointment
+    if (updatedAppointment.voucherCode && updatedAppointment.discountAmount) {
+        try {
+            const voucher = await client_2.default.voucher.findUnique({ where: { code: updatedAppointment.voucherCode } });
+            if (voucher) {
+                const existingUsage = await client_2.default.voucherUsage.findFirst({
+                    where: { voucherId: voucher.id, appointmentId: updatedAppointment.id }
+                });
+                if (!existingUsage) {
+                    const originalDeposit = updatedAppointment.amount + updatedAppointment.discountAmount;
+                    await client_2.default.$transaction([
+                        client_2.default.voucherUsage.create({
+                            data: {
+                                voucherId: voucher.id,
+                                userId: updatedAppointment.userId,
+                                appointmentId: updatedAppointment.id,
+                                originalDeposit: originalDeposit,
+                                discountAmount: updatedAppointment.discountAmount,
+                                finalDeposit: updatedAppointment.amount,
+                            }
+                        }),
+                        client_2.default.voucher.update({
+                            where: { id: voucher.id },
+                            data: { usedCount: { increment: 1 } }
+                        })
+                    ]);
+                    console.log(`[Voucher] Applied voucher ${voucher.code} for appointment ${updatedAppointment.id}`);
+                }
+            }
+        }
+        catch (voucherError) {
+            console.error("[Voucher] Failed to record voucher usage:", voucherError);
+        }
     }
     // Send booking confirmation email — wrapped in .catch so it never crashes the webhook
     if (updatedAppointment.user?.email) {
@@ -448,13 +518,13 @@ async function processPayOSWebhook(body) {
             include: {
                 doctor: { include: { specialty: true, clinic: true } },
                 medicalPackage: true,
-                patientProfile: true,
             }
         }).then((fullAppt) => {
             if (!fullAppt)
                 return;
+            const patientInfo = fullAppt.patientInfo;
             (0, emailService_1.sendBookingConfirmationEmail)(updatedAppointment.user.email, {
-                patientName: updatedAppointment.user.fullName || updatedAppointment.user.email || "Bệnh nhân",
+                patientName: patientInfo?.fullName || updatedAppointment.user.fullName || updatedAppointment.user.email || "Bệnh nhân",
                 doctorName: fullAppt.doctor?.name || "Hệ thống",
                 specialtyName: fullAppt.doctor?.specialty?.name || "",
                 clinicName: fullAppt.doctor?.clinic?.name || fullAppt.doctor?.hospital || "Bệnh viện",

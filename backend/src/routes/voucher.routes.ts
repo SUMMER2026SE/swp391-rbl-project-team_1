@@ -5,6 +5,7 @@ import {
     applyVoucher,
     getMyVouchers,
     adminListVouchers,
+    adminGetVoucherChartData,
     adminCreateVoucher,
     adminUpdateVoucher,
     adminDeleteVoucher,
@@ -28,6 +29,7 @@ router.get("/public", getPublicVouchers);
 
 // Admin routes
 router.get("/admin", verifyToken, adminListVouchers);
+router.get("/admin/chart-data", verifyToken, adminGetVoucherChartData);
 router.post("/admin", verifyToken, adminCreateVoucher);
 router.put("/admin/:id", verifyToken, adminUpdateVoucher);
 router.delete("/admin/:id", verifyToken, adminDeleteVoucher);

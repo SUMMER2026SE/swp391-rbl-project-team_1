@@ -10,49 +10,43 @@ async function main() {
     return;
   }
 
-  console.log(`Found ${doctors.length} doctors. Adding schedules...`);
+  console.log(`Found ${doctors.length} doctors. Resetting and adding schedules...`);
 
-  let addedCount = 0;
+  // Remove existing schedules to start fresh
+  const deleted = await prisma.doctorSchedule.deleteMany();
+  console.log(`Removed ${deleted.count} existing schedule slots.`);
 
-  // Remove existing schedules for Saturday (6) and Sunday (0)
-  const deleted = await prisma.doctorSchedule.deleteMany({
-    where: {
-      dayOfWeek: {
-        in: [0, 6]
-      }
-    }
-  });
-  console.log(`Removed ${deleted.count} weekend schedule slots.`);
+  const scheduleData = [];
 
   for (const doctor of doctors) {
     // For each day of the week (1 = Monday to 5 = Friday)
     for (let day = 1; day <= 5; day++) {
-      // Check if schedule already exists
-      const existing = await prisma.doctorSchedule.findFirst({
-        where: {
-          doctorId: doctor.id,
-          dayOfWeek: day,
-          startTime: "08:00",
-          endTime: "17:00"
-        }
+      // Morning Slot: 08:00 to 12:00
+      scheduleData.push({
+        doctorId: doctor.id,
+        dayOfWeek: day,
+        startTime: "08:00",
+        endTime: "12:00",
+        isAvailable: true
       });
 
-      if (!existing) {
-        await prisma.doctorSchedule.create({
-          data: {
-            doctorId: doctor.id,
-            dayOfWeek: day,
-            startTime: "08:00",
-            endTime: "17:00",
-            isAvailable: true
-          }
-        });
-        addedCount++;
-      }
+      // Afternoon Slot: 13:00 to 17:00
+      scheduleData.push({
+        doctorId: doctor.id,
+        dayOfWeek: day,
+        startTime: "13:00",
+        endTime: "17:00",
+        isAvailable: true
+      });
     }
   }
 
-  console.log(`Successfully added ${addedCount} schedule slots.`);
+  const result = await prisma.doctorSchedule.createMany({
+    data: scheduleData,
+    skipDuplicates: true, // optional
+  });
+
+  console.log(`Successfully added ${result.count} schedule slots (Morning & Afternoon, Mon-Fri).`);
 }
 
 main()

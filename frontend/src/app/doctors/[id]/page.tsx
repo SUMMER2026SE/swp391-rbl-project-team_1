@@ -100,15 +100,22 @@ export default function DoctorDetailPage({ params }: PageProps) {
   }, [id]);
 
   useEffect(() => {
-    if (isAuthenticated && user?.role === "USER") {
-      patientProfileService.getMyProfiles().then(myProfiles => {
-        setProfiles(myProfiles);
-        const primary = myProfiles.find(p => p.isPrimary);
-        if (primary) setSelectedProfileId(primary.id);
-        else if (myProfiles.length > 0) setSelectedProfileId(myProfiles[0].id);
-      }).catch(console.error);
+    async function fetchReviews() {
+      try {
+        setReviewsLoading(true);
+        const res = await doctorService.getReviews(id);
+        if (res && res.data) {
+          setReviews(res.data.reviews);
+          setRatingStats(res.data.stats);
+        }
+      } catch (err) {
+        console.error("Failed to load reviews:", err);
+      } finally {
+        setReviewsLoading(false);
+      }
     }
-  }, [isAuthenticated, user]);
+    fetchReviews();
+  }, [id]);
 
   const getNext7Days = () => {
     const weekdays = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
@@ -177,7 +184,16 @@ export default function DoctorDetailPage({ params }: PageProps) {
       const response = await appointmentService.createAppointment({
         doctorId: id, clinicId: doctor.clinicId,
         appointmentDate: appointmentDateTime.toISOString(),
-        notes: notes.trim() || undefined, isBookingForMyself: true,
+        notes: notes.trim() || undefined,
+        patientInfo: {
+          fullName: user?.fullName || "Bệnh nhân",
+          gender: user?.gender || "",
+          dateOfBirth: user?.dateOfBirth ? new Date(user.dateOfBirth).toISOString() : new Date().toISOString(),
+          province: user?.province || "",
+          district: user?.district || "",
+          ward: user?.ward || "",
+          street: user?.street || "",
+        }
       });
       setBookingMessage({ type: "success", text: "Đặt lịch thành công! Đang chuyển tới trang thanh toán..." });
       setSelectedSlot(null); setSelectedDate(""); setNotes(""); resetBooking();

@@ -8,13 +8,14 @@ import { voucherService } from "@/services/voucher.service";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import Button from "@/components/common/Button";
-import Input from "@/components/common/Input";
-import { ArrowLeft, CalendarDays, Clock, Package, UserCircle2, Plus, Tag, Check } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock, Package, Tag, Check, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { packageService, MedicalPackage } from "@/services/package.service";
-import { bookingProfileService, BookingProfile } from "@/services/booking-profile.service";
+import { bookingProfileService } from "@/services/booking-profile.service";
 import BookingProgress from "@/components/ui/BookingProgress";
 import { useBooking } from "@/hooks/useBooking";
+import PatientSelector, { PatientFormData, buildRelativeSnapshot } from "@/components/ui/PatientSelector";
+import VoucherSelectorModal from "@/components/ui/VoucherSelectorModal";
 
 interface TimeSlot {
   id: string;
@@ -51,32 +52,21 @@ export default function PackageBookingPage({ params }: PageProps) {
     voucher?: any;
     message?: string;
   } | null>(null);
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 
   const [pkg, setPkg] = useState<MedicalPackage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookedCounts, setBookedCounts] = useState<Record<string, number>>({});
 
-  // Patient Profiles
-  const [profiles, setProfiles] = useState<BookingProfile[]>([]);
-  const [isBookingForMyself, setIsBookingForMyself] = useState<boolean>(true);
-  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
-  const [newProfileData, setNewProfileData] = useState({ fullName: "" });
-
+  // Patient Selector state
+  const [isBookingForMyself, setIsBookingForMyself] = useState(true);
+  const [relativeData, setRelativeData] = useState<PatientFormData>({
+    fullName: "", phoneNumber: "", gender: "", dateOfBirth: "", relationship: ""
+  });
+  const [saveProfile, setSaveProfile] = useState(false);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [bookingErrors, setBookingErrors] = useState<Record<string, string>>({});
-
-  const validateBookingForm = (): Record<string, string> => {
-    const errors: Record<string, string> = {};
-    if (!isBookingForMyself && isCreatingNew && !newProfileData.fullName.trim()) {
-      errors.fullName = "Họ và tên không được để trống.";
-    }
-    if (!isBookingForMyself && !isCreatingNew && !selectedProfileId) {
-      errors.profile = "Vui lòng chọn hồ sơ người thân.";
-    }
-    return errors;
-  };
 
   // Booking Flow States
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -110,15 +100,6 @@ export default function PackageBookingPage({ params }: PageProps) {
         } else {
           setError("Không thể tải chi tiết gói khám.");
         }
-        if (isAuthenticated && user?.role === "USER") {
-          try {
-            const myProfiles = await bookingProfileService.getMyProfiles();
-            setProfiles(myProfiles);
-            if (myProfiles.length > 0) setSelectedProfileId(myProfiles[0].id);
-          } catch (profileErr) {
-            console.error("Failed to load profiles", profileErr);
-          }
-        }
       } catch (err: unknown) {
         const errorMsg = err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message)
@@ -131,15 +112,17 @@ export default function PackageBookingPage({ params }: PageProps) {
     fetchData();
   }, [id, isAuthenticated, user]);
 
-  const handleApplyVoucher = async () => {
-    if (!pkg || !voucherCode.trim()) return;
-    const depositAmt = Math.round((pkg.price * pkg.depositPercentage) / 100);
+  const handleApplyVoucher = async (codeToApply?: string) => {
+    const code = codeToApply || voucherCode;
+    if (!pkg || !code.trim()) return;
+    const depositAmt = Math.round((pkg.price * (pkg.depositPercentage || 100)) / 100);
     try {
       setVoucherLoading(true);
       setVoucherError("");
-      const result = await voucherService.validateVoucher(voucherCode.trim(), depositAmt, undefined, pkg.id);
+      const result = await voucherService.validateVoucher(code.trim(), depositAmt, undefined, pkg.id);
       if (result.valid) {
         setVoucherResult(result);
+        setVoucherCode(code.trim().toUpperCase());
       } else {
         setVoucherError(result.message);
         setVoucherResult(null);
@@ -207,6 +190,16 @@ export default function PackageBookingPage({ params }: PageProps) {
     setAvailableTimeSlots(mappedSlots);
   };
 
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!isBookingForMyself) {
+      if (!relativeData.fullName.trim()) errors.fullName = "Họ và tên không được để trống.";
+      if (!relativeData.relationship) errors.relationship = "Vui lòng chọn mối quan hệ.";
+    }
+    setBookingErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthenticated) { router.push("/login"); return; }
@@ -214,9 +207,7 @@ export default function PackageBookingPage({ params }: PageProps) {
       setBookingMessage({ type: "error", text: "Chỉ tài khoản người bệnh mới được phép đặt lịch." });
       return;
     }
-    const bErrors = validateBookingForm();
-    setBookingErrors(bErrors);
-    if (Object.keys(bErrors).length > 0) {
+    if (!validateForm()) {
       setBookingMessage({ type: "error", text: "Vui lòng kiểm tra lại thông tin người đi khám." });
       return;
     }
@@ -232,14 +223,49 @@ export default function PackageBookingPage({ params }: PageProps) {
     setBookingLoading(true);
     setBookingMessage(null);
     try {
+      let patientInfo: Record<string, unknown>;
+      let patientProfileType: "SELF" | "OTHER";
+
+      if (isBookingForMyself) {
+        patientProfileType = "SELF";
+        patientInfo = {
+          fullName: user?.fullName || "Bệnh nhân",
+          gender: user?.gender || "",
+          dateOfBirth: user?.dateOfBirth || undefined,
+          address: user?.address || "",
+          province: user?.province || "",
+          district: user?.district || "",
+          ward: user?.ward || "",
+          street: user?.street || "",
+          bloodType: user?.bloodType || undefined,
+          allergies: user?.allergies || undefined,
+        };
+      } else {
+        patientProfileType = "OTHER";
+        patientInfo = buildRelativeSnapshot(relativeData) as unknown as Record<string, unknown>;
+
+        if (saveProfile && relativeData.fullName.trim()) {
+          try {
+            await bookingProfileService.createProfile({
+              fullName: relativeData.fullName,
+              phone: relativeData.phoneNumber || undefined,
+              gender: relativeData.gender || undefined,
+              dateOfBirth: relativeData.dateOfBirth ? relativeData.dateOfBirth : undefined,
+              relationship: relativeData.relationship,
+            });
+          } catch {
+            console.warn("Failed to save booking profile, continuing...");
+          }
+        }
+      }
+
       const appointmentDateTime = new Date(`${selectedDate}T${selectedSlot.startTime}:00`);
       const response = await appointmentService.createAppointment({
         appointmentDate: appointmentDateTime.toISOString(),
         notes: notes.trim() || undefined,
         packageId: pkg!.id,
-        isBookingForMyself,
-        relativeProfileId: !isBookingForMyself && !isCreatingNew ? selectedProfileId : undefined,
-        otherProfileName: !isBookingForMyself && isCreatingNew ? newProfileData.fullName : undefined,
+        patientProfileType,
+        patientInfo: patientInfo as any,
       });
       setBookingMessage({ type: "success", text: "Đặt lịch thành công! Chuyển hướng..." });
       resetBooking();
@@ -300,19 +326,12 @@ export default function PackageBookingPage({ params }: PageProps) {
                 <Tag className="w-3.5 h-3.5 text-teal-600" /> Mã giảm giá
               </label>
               <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  placeholder="Nhập mã voucher..."
-                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-500 uppercase"
-                  value={voucherCode}
-                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                />
                 <button
-                  onClick={handleApplyVoucher}
-                  disabled={voucherLoading || !voucherCode.trim()}
-                  className="bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+                  onClick={() => setIsVoucherModalOpen(true)}
+                  className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-500 hover:border-teal-400 focus:outline-none flex items-center justify-between transition-colors text-left"
                 >
-                  {voucherLoading ? "..." : "Áp dụng"}
+                  <span>Chọn hoặc nhập mã giảm giá</span>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
                 </button>
               </div>
               {voucherError && <p className="text-rose-500 text-xs mb-2">{voucherError}</p>}
@@ -325,7 +344,7 @@ export default function PackageBookingPage({ params }: PageProps) {
 
               {/* Cost Summary */}
               {(() => {
-                const defaultDeposit = Math.round((pkg.price * pkg.depositPercentage) / 100);
+                const defaultDeposit = Math.round((pkg.price * (pkg.depositPercentage || 100)) / 100);
                 const currentDeposit = voucherResult?.finalDeposit ?? defaultDeposit;
                 return (
                   <div className="space-y-2 bg-teal-50/60 p-3 rounded-xl border border-teal-100 text-xs">
@@ -378,83 +397,28 @@ export default function PackageBookingPage({ params }: PageProps) {
           ) : (
             <form onSubmit={handleBookAppointment} className="space-y-6">
 
-              {/* Bước 1: Người đi khám */}
+              {/* Bước 1: Người đi khám - PatientSelector */}
               <div className="space-y-3">
                 <label className="block text-sm font-bold text-slate-800">Bước 1: Người đi khám</label>
-
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={isBookingForMyself} onChange={() => { setIsBookingForMyself(true); setIsCreatingNew(false); }} className="accent-teal-600 w-4 h-4" />
-                    <span className="text-sm font-semibold text-slate-700">Cho bản thân</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={!isBookingForMyself} onChange={() => setIsBookingForMyself(false)} className="accent-teal-600 w-4 h-4" />
-                    <span className="text-sm font-semibold text-slate-700">Cho người thân</span>
-                  </label>
-                </div>
-
-                {isBookingForMyself && (
-                  <div className="p-4 rounded-xl border border-teal-200 bg-teal-50 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-sm">
-                      {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
-                    </div>
-                    <div>
-                      <p className="font-bold text-teal-900">{user?.fullName}</p>
-                      <p className="text-xs text-teal-700">Hồ sơ chính của bạn</p>
-                    </div>
-                  </div>
-                )}
-
-                {!isBookingForMyself && (
-                  <div className="space-y-3 p-4 border border-slate-200 rounded-xl bg-slate-50">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-semibold text-slate-700">Chọn hồ sơ người thân:</span>
-                      {!isCreatingNew && (
-                        <button type="button" onClick={() => { setIsCreatingNew(true); setSelectedProfileId(""); }} className="text-xs font-semibold text-teal-600 hover:underline flex items-center gap-1">
-                          <Plus className="w-3 h-3" /> Nhập tên mới
-                        </button>
-                      )}
-                    </div>
-
-                    {isCreatingNew ? (
-                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
-                        <div>
-                          <label className="block text-xs font-semibold mb-1 text-slate-700">Họ và tên người bệnh *</label>
-                          <Input
-                            value={newProfileData.fullName}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewProfileData({ fullName: e.target.value }); setBookingErrors(prev => ({ ...prev, fullName: "" })); }}
-                            placeholder="Nguyễn Văn A"
-                            className={`!py-2.5 !text-sm ${bookingErrors.fullName ? '!border-red-400' : ''}`}
-                          />
-                          {bookingErrors.fullName && <p className="text-xs text-red-500 mt-1">{bookingErrors.fullName}</p>}
-                        </div>
-                        <button type="button" onClick={() => setIsCreatingNew(false)} className="text-xs text-slate-500 hover:text-teal-600 font-medium">← Chọn từ danh sách</button>
-                      </div>
-                    ) : (
-                      profiles.length === 0 ? (
-                        <div className="text-center py-4 border border-dashed border-slate-300 rounded-lg">
-                          <p className="text-sm text-slate-500 mb-2">Chưa có hồ sơ người thân</p>
-                          <button type="button" onClick={() => setIsCreatingNew(true)} className="text-xs font-semibold text-teal-600 hover:underline">Nhập tên người thân</button>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {profiles.map(p => (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => setSelectedProfileId(p.id)}
-                              className={`p-3 rounded-xl border text-left transition-all ${selectedProfileId === p.id ? "border-teal-500 bg-teal-50 shadow-sm" : "border-slate-200 bg-white hover:border-teal-300"}`}
-                            >
-                              <p className="font-bold text-sm text-slate-800">{p.fullName}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">Quan hệ: {p.relationship || "Người thân"}</p>
-                            </button>
-                          ))}
-                        </div>
-                      )
-                    )}
-                    {bookingErrors.profile && <p className="text-xs text-red-500">{bookingErrors.profile}</p>}
-                  </div>
-                )}
+                <PatientSelector
+                  userProfile={user ? {
+                    fullName: user.fullName,
+                    phoneNumber: null,
+                    gender: user.gender,
+                    dateOfBirth: user.dateOfBirth,
+                    address: user.address,
+                    bloodType: user.bloodType,
+                    allergies: user.allergies,
+                  } : null}
+                  isBookingForMyself={isBookingForMyself}
+                  setIsBookingForMyself={setIsBookingForMyself}
+                  relativeData={relativeData}
+                  setRelativeData={setRelativeData}
+                  saveProfile={saveProfile}
+                  setSaveProfile={setSaveProfile}
+                  bookingErrors={bookingErrors}
+                  setBookingErrors={setBookingErrors}
+                />
               </div>
 
               {/* Policy checkbox */}
@@ -568,6 +532,17 @@ export default function PackageBookingPage({ params }: PageProps) {
           )}
         </div>
       </div>
+      
+      {pkg && (
+        <VoucherSelectorModal
+          isOpen={isVoucherModalOpen}
+          onClose={() => setIsVoucherModalOpen(false)}
+          onSelect={(code) => handleApplyVoucher(code)}
+          depositAmount={Math.round((pkg.price * (pkg.depositPercentage || 100)) / 100)}
+          packageId={pkg.id}
+          isDoctorBooking={false}
+        />
+      )}
     </div>
   );
 }

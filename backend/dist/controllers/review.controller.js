@@ -5,6 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createReview = createReview;
 exports.getDoctorReviews = getDoctorReviews;
+exports.getMyReviews = getMyReviews;
+exports.getPendingReviews = getPendingReviews;
 const client_1 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
 /**
@@ -133,6 +135,61 @@ async function getDoctorReviews(req, res, next) {
                 },
             },
         });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/reviews/me
+ * Protected: Returns all reviews submitted by the current user.
+ */
+async function getMyReviews(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+        if (!userId)
+            throw new apiError_1.ApiError("Authentication required", 401);
+        const reviews = await client_1.default.review.findMany({
+            where: { userId },
+            include: {
+                doctor: {
+                    select: { name: true, avatar: true, specialty: { select: { name: true } } }
+                },
+                appointment: {
+                    select: { appointmentDate: true, patientInfo: true }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+        res.json({ data: reviews });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/reviews/pending
+ * Protected: Returns COMPLETED appointments without a review.
+ */
+async function getPendingReviews(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+        if (!userId)
+            throw new apiError_1.ApiError("Authentication required", 401);
+        const appointments = await client_1.default.appointment.findMany({
+            where: {
+                userId,
+                status: "COMPLETED",
+                review: null // appointments that don't have a review
+            },
+            include: {
+                doctor: {
+                    select: { name: true, avatar: true, specialty: { select: { name: true } } }
+                }
+            },
+            orderBy: { appointmentDate: "desc" }
+        });
+        res.json({ data: appointments });
     }
     catch (error) {
         next(error);
