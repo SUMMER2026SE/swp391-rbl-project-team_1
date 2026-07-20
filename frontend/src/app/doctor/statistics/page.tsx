@@ -71,7 +71,6 @@ export default function StatisticsPage() {
     { title: "Tỷ lệ hoàn thành", value: `${kpiData.completionRate || 0}%`, icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, bg: "bg-green-50" },
     { title: "Điểm đánh giá TB", value: `${kpiData.averageRating || 0} ★`, icon: <Star className="w-8 h-8 text-orange-500" />, bg: "bg-orange-50" },
     { title: "Tổng đánh giá", value: kpiData.totalReviews || 0, icon: <MessageSquare className="w-8 h-8 text-blue-500" />, bg: "bg-blue-50" },
-    { title: "Tổng doanh thu", value: formatVND(kpiData.totalRevenue || 0), subtitle: `Tháng này: ${formatVND(kpiData.monthlyRevenue || 0)}`, icon: <DollarSign className="w-8 h-8 text-purple-500" />, bg: "bg-purple-50" },
     { title: "Bệnh nhân quay lại", value: `${kpiData.returnPatientRate || 0}%`, icon: <RefreshCw className="w-8 h-8 text-indigo-500" />, bg: "bg-indigo-50" },
   ];
 
@@ -83,7 +82,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map((card, idx) => (
           <div key={idx} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
@@ -93,7 +92,8 @@ export default function StatisticsPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 line-clamp-1" title={card.title}>{card.title}</p>
-              <h3 className={`text-xl font-bold ${idx === 4 ? 'text-purple-700 text-lg' : 'text-slate-800'}`}>{card.value}</h3>
+              <h3 className={`text-xl font-bold text-slate-800`}>{card.value}</h3>
+              {/* @ts-ignore */}
               {card.subtitle && <p className="text-[10px] font-semibold text-purple-500 mt-1">{card.subtitle}</p>}
             </div>
           </div>
@@ -101,22 +101,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* Main Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Line Chart */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <h3 className="font-bold text-slate-800 text-base mb-6">Doanh thu 12 tháng qua</h3>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={charts.revenue12Months || []} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} width={80} tickFormatter={(value) => `${value / 1000000}M`} />
-                <Tooltip formatter={(value: any) => formatVND(Number(value))} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                <Line type="monotone" dataKey="revenue" name="Doanh thu" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6}} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-6">
 
         {/* Patients Bar Chart */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">

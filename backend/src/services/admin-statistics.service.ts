@@ -15,9 +15,10 @@ interface AppointmentsBySpecialty {
     count: number;
 }
 
-interface AppointmentsByMonth {
-    month: string;
-    count: number;
+interface TimeSeriesData {
+    period: string;
+    count?: number;
+    revenue?: number;
 }
 
 interface CancellationStats {
@@ -29,17 +30,18 @@ interface AdminStatistics {
     totalUsers: number;
     totalDoctors: number;
     totalAppointments: number;
+    totalRevenue: number;
     appointmentsByStatus: AppointmentsByStatus;
     appointmentsBySpecialty: AppointmentsBySpecialty[];
-    appointmentsByMonth: AppointmentsByMonth[];
+    appointmentsOverTime: TimeSeriesData[];
+    revenueOverTime: TimeSeriesData[];
     cancellationStats: CancellationStats[];
 }
 
 /**
  * Returns comprehensive admin dashboard statistics.
  */
-export async function getStatistics(): Promise<AdminStatistics> {
-    // Run all count queries in parallel
+export async function getStatistics(period: 'week' | 'month' | 'year' = 'month'): Promise<AdminStatistics> {
     const [
         totalUsers,
         totalDoctors,
@@ -47,6 +49,7 @@ export async function getStatistics(): Promise<AdminStatistics> {
         statusCounts,
         specialtyCounts,
         cancellationStats,
+        revenueData,
     ] = await Promise.all([
         prisma.user.count(),
         prisma.doctor.count(),
@@ -54,19 +57,31 @@ export async function getStatistics(): Promise<AdminStatistics> {
         getAppointmentsByStatus(),
         getAppointmentsBySpecialty(),
         getCancellationStats(),
+        getRevenueTotal(),
     ]);
 
-    const appointmentsByMonth = await getAppointmentsByMonth();
+    const appointmentsOverTime = await getAppointmentsOverTime(period);
+    const revenueOverTime = await getRevenueOverTime(period);
 
     return {
         totalUsers,
         totalDoctors,
         totalAppointments,
+        totalRevenue: revenueData,
         appointmentsByStatus: statusCounts,
         appointmentsBySpecialty: specialtyCounts,
-        appointmentsByMonth,
+        appointmentsOverTime,
+        revenueOverTime,
         cancellationStats,
     };
+}
+
+async function getRevenueTotal(): Promise<number> {
+    const completedAppts = await prisma.appointment.findMany({
+        where: { status: 'COMPLETED' },
+        select: { amount: true, discountAmount: true }
+    });
+    return completedAppts.reduce((sum, appt) => sum + (appt.amount - (appt.discountAmount || 0)), 0);
 }
 
 async function getAppointmentsByStatus(): Promise<AppointmentsByStatus> {
@@ -117,43 +132,128 @@ async function getAppointmentsBySpecialty(): Promise<AppointmentsBySpecialty[]> 
         .sort((a, b) => b.count - a.count);
 }
 
-async function getAppointmentsByMonth(): Promise<AppointmentsByMonth[]> {
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    sixMonthsAgo.setDate(1);
-    sixMonthsAgo.setHours(0, 0, 0, 0);
+async function getAppointmentsOverTime(period: 'week' | 'month' | 'year'): Promise<TimeSeriesData[]> {
+    const now = new Date();
+    let startDate: Date;
+    if (period === 'week') {
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+    } else if (period === 'month') {
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+    } else {
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+    }
 
     const appointments = await prisma.appointment.findMany({
-        where: {
-            appointmentDate: { gte: sixMonthsAgo },
-        },
-        select: {
-            appointmentDate: true,
-        },
+        where: { appointmentDate: { gte: startDate } },
+        select: { appointmentDate: true },
         orderBy: { appointmentDate: "asc" },
     });
 
-    const monthMap = new Map<string, number>();
+    const timeMap = new Map<string, number>();
 
-    // Initialize last 6 months
-    for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        monthMap.set(key, 0);
-    }
-
-    for (const appt of appointments) {
-        const date = new Date(appt.appointmentDate);
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        if (monthMap.has(key)) {
-            monthMap.set(key, (monthMap.get(key) ?? 0) + 1);
+    // Initialize map
+    if (period === 'week') {
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+        }
+    } else if (period === 'month') {
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+        }
+    } else {
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            timeMap.set(`T${d.getMonth() + 1}/${d.getFullYear()}`, 0);
         }
     }
 
-    return Array.from(monthMap.entries()).map(([month, count]) => ({
-        month,
+    for (const appt of appointments) {
+        const d = new Date(appt.appointmentDate);
+        let key = '';
+        if (period === 'year') {
+            key = `T${d.getMonth() + 1}/${d.getFullYear()}`;
+        } else {
+            key = `${d.getDate()}/${d.getMonth() + 1}`;
+        }
+        if (timeMap.has(key)) {
+            timeMap.set(key, (timeMap.get(key) ?? 0) + 1);
+        }
+    }
+
+    return Array.from(timeMap.entries()).map(([timeKey, count]) => ({
+        period: timeKey,
         count,
+    }));
+}
+
+async function getRevenueOverTime(period: 'week' | 'month' | 'year'): Promise<TimeSeriesData[]> {
+    const now = new Date();
+    let startDate: Date;
+    if (period === 'week') {
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+    } else if (period === 'month') {
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+    } else {
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+    }
+
+    const completedAppts = await prisma.appointment.findMany({
+        where: { status: 'COMPLETED', appointmentDate: { gte: startDate } },
+        select: { appointmentDate: true, amount: true, discountAmount: true },
+        orderBy: { appointmentDate: "asc" },
+    });
+
+    const timeMap = new Map<string, number>();
+
+    // Initialize map
+    if (period === 'week') {
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+        }
+    } else if (period === 'month') {
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+        }
+    } else {
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            timeMap.set(`T${d.getMonth() + 1}/${d.getFullYear()}`, 0);
+        }
+    }
+
+    for (const appt of completedAppts) {
+        const d = new Date(appt.appointmentDate);
+        let key = '';
+        if (period === 'year') {
+            key = `T${d.getMonth() + 1}/${d.getFullYear()}`;
+        } else {
+            key = `${d.getDate()}/${d.getMonth() + 1}`;
+        }
+        if (timeMap.has(key)) {
+            const revenue = appt.amount - (appt.discountAmount || 0);
+            timeMap.set(key, (timeMap.get(key) ?? 0) + revenue);
+        }
+    }
+
+    return Array.from(timeMap.entries()).map(([timeKey, revenue]) => ({
+        period: timeKey,
+        revenue,
     }));
 }
 

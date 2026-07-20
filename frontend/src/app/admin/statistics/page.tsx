@@ -6,7 +6,7 @@ import {
   AdminStatistics,
   AppointmentsByStatus,
   AppointmentsBySpecialty,
-  AppointmentsByMonth,
+  TimeSeriesData,
   CancellationStat,
 } from "@/types/admin";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
@@ -20,6 +20,8 @@ import {
   PieChart as PieChartIcon,
   TrendingUp,
   XCircle,
+  Banknote,
+  Filter,
 } from "lucide-react";
 import {
   PieChart,
@@ -35,6 +37,8 @@ import {
   LineChart,
   Line,
   Legend,
+  AreaChart,
+  Area,
 } from "recharts";
 
 
@@ -81,12 +85,13 @@ export default function AdminStatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
 
   const loadStatistics = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await adminService.getStatistics();
+      const res = await adminService.getStatistics(period);
       setStatistics(res.data);
     } catch (err: unknown) {
       const errorMsg =
@@ -97,7 +102,7 @@ export default function AdminStatisticsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => {
     loadStatistics();
@@ -142,7 +147,8 @@ export default function AdminStatisticsPage() {
 
   const safeAppointmentsByStatus = statistics.appointmentsByStatus ? Object.entries(statistics.appointmentsByStatus).map(([status, count]) => ({ status, count })) : [];
   const safeAppointmentsBySpecialty = Array.isArray(statistics.appointmentsBySpecialty) ? statistics.appointmentsBySpecialty : [];
-  const safeAppointmentsByMonth = Array.isArray(statistics.appointmentsByMonth) ? statistics.appointmentsByMonth : [];
+  const safeAppointmentsOverTime = Array.isArray(statistics.appointmentsOverTime) ? statistics.appointmentsOverTime : [];
+  const safeRevenueOverTime = Array.isArray(statistics.revenueOverTime) ? statistics.revenueOverTime : [];
   const safeCancellationStats = Array.isArray(statistics.cancellationStats) ? statistics.cancellationStats : [];
 
   const pieData = safeAppointmentsByStatus.map((s: {status: string, count: number}) => ({
@@ -157,9 +163,14 @@ export default function AdminStatisticsPage() {
     count: s.count,
   }));
 
-  const lineData = safeAppointmentsByMonth.map((m: AppointmentsByMonth) => ({
-    name: m.month,
-    count: m.count,
+  const lineData = safeAppointmentsOverTime.map((m) => ({
+    name: m.period,
+    count: m.count || 0,
+  }));
+
+  const revenueData = safeRevenueOverTime.map((m) => ({
+    name: m.period,
+    revenue: m.revenue || 0,
   }));
 
   const cancellationData = safeCancellationStats.map((c: CancellationStat) => ({
@@ -187,6 +198,12 @@ export default function AdminStatisticsPage() {
       icon: <CalendarRange className="h-6 w-6 text-blue-400" />,
       color: "border-blue-500/20 bg-blue-500/5",
     },
+    {
+      title: "Tổng Doanh thu",
+      value: `${(statistics.totalRevenue || 0).toLocaleString("vi-VN")}đ`,
+      icon: <Banknote className="h-6 w-6 text-emerald-400" />,
+      color: "border-emerald-500/20 bg-emerald-500/5",
+    },
   ];
 
   return (
@@ -199,17 +216,38 @@ export default function AdminStatisticsPage() {
             Phân tích dữ liệu hoạt động hệ thống y tế với các biểu đồ trực quan.
           </p>
         </div>
-        <button
-          onClick={handleExportFullCSV}
-          disabled={exporting}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" /> {exporting ? "Đang xuất..." : "Xuất toàn bộ CSV"}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-slate-900 border border-slate-700 rounded-xl p-1 shadow-sm">
+            {[
+              { id: 'week', label: 'Tuần' },
+              { id: 'month', label: 'Tháng' },
+              { id: 'year', label: 'Năm' }
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => setPeriod(p.id as any)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                  period === p.id
+                    ? 'bg-teal-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleExportFullCSV}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" /> {exporting ? "Đang xuất..." : "Xuất toàn bộ CSV"}
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {summaryCards.map((card) => (
           <div key={card.title} className={`border rounded-2xl p-5 space-y-4 shadow-sm ${card.color}`}>
             <div className="flex justify-between items-start">
@@ -383,6 +421,65 @@ export default function AdminStatisticsPage() {
           </div>
         )}
       </div>
+
+      {/* Area Chart - Revenue (Full Width) */}
+      <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Banknote className="h-5 w-5 text-yellow-400" />
+            <h3 className="font-bold text-white text-base">Biến động Doanh thu</h3>
+          </div>
+        </div>
+
+        {revenueData.length === 0 ? (
+          <div className="text-center py-10 text-slate-500 text-xs">Chưa có dữ liệu</div>
+        ) : (
+          <div className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={revenueData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#eab308" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#eab308" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  axisLine={{ stroke: "#1e293b" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  axisLine={{ stroke: "#1e293b" }}
+                  tickLine={false}
+                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #1e293b",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                    color: "#e2e8f0",
+                  }}
+                  formatter={(value: any) => [`${Number(value).toLocaleString("vi-VN")}đ`, "Doanh thu"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#eab308"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorRevenue)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
       <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">

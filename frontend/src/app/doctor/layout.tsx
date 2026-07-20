@@ -19,7 +19,8 @@ import {
   ArrowLeft,
   Award,
   BarChart2,
-  CheckCircle2
+  CheckCircle2,
+  ClipboardList
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { doctorService } from "@/services/doctor.service";
@@ -43,9 +44,9 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
     { name: "Hồ sơ cá nhân", href: "/doctor/profile", icon: <UserCircle className="h-5 w-5" /> },
     { name: "Lịch trực", href: "/doctor/schedules", icon: <Clock className="h-5 w-5" /> },
     { name: "Lịch khám", href: "/doctor/appointments", icon: <CalendarDays className="h-5 w-5" /> },
+    { name: "Bệnh án", href: "/doctor/patients", icon: <ClipboardList className="h-5 w-5" /> },
     { name: "Thống kê", href: "/doctor/statistics", icon: <BarChart2 className="h-5 w-5" /> },
-    { name: "Khám trực tuyến", href: "/doctor/video-call", icon: <Video className="h-5 w-5" /> },
-    { name: "Tin nhắn", href: "/doctor/chat", icon: <MessageCircle className="h-5 w-5" /> },
+    { name: "Tư vấn trực tuyến", href: "/doctor/chat", icon: <MessageCircle className="h-5 w-5" /> },
   ];
 
   const handleLogout = () => {

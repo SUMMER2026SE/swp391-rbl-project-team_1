@@ -30,6 +30,7 @@ export default function Button({
     <button
       disabled={disabled || isLoading}
       className={`${baseStyle} ${variants[variant]} ${className}`}
+      suppressHydrationWarning
       {...props}
     >
       {isLoading && <LoadingSpinner className="mr-2 h-4 w-4 text-current" />}

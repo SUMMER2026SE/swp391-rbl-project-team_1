@@ -180,8 +180,8 @@ export const adminService = {
   },
 
   // ─── Statistics ────────────────────────────────────────────────
-  async getStatistics(): Promise<AdminStatisticsResponse> {
-    const response = await api.get<AdminStatisticsResponse>("/admin/statistics");
+  async getStatistics(period: 'week' | 'month' | 'year' = 'month'): Promise<AdminStatisticsResponse> {
+    const response = await api.get<AdminStatisticsResponse>(`/admin/statistics?period=${period}`);
     return response.data;
   },
 

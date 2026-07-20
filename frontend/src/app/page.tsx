@@ -125,6 +125,7 @@ export default function HomePage() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="bg-transparent border-none outline-none w-full text-slate-900 placeholder:text-slate-400 text-sm"
+                      suppressHydrationWarning
                     />
                   </div>
                   <Button type="submit" variant="teal" className="py-3 px-6 rounded-xl font-medium shrink-0">

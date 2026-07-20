@@ -208,10 +208,13 @@ export type ComplaintStatus = "PENDING" | "RESOLVED";
 
 export interface AdminComplaint {
   id: string;
+  type?: "SYSTEM" | "SERVICE";
+  subject?: string;
   message: string;
   status: ComplaintStatus;
-  adminResponse: string | null;
   userId: string;
+  createdAt: string;
+  adminResponse?: string;
   user: {
     email: string;
     fullName: string | null;
@@ -220,8 +223,16 @@ export interface AdminComplaint {
     id: string;
     appointmentDate: string;
     status: string;
+    doctor: {
+      name: string;
+      specialty: {
+        name: string;
+      } | null;
+    } | null;
+    medicalPackage: {
+      name: string;
+    } | null;
   } | null;
-  createdAt: string;
 }
 
 export interface AdminComplaintsResponse {
@@ -242,9 +253,10 @@ export interface AppointmentsBySpecialty {
   count: number;
 }
 
-export interface AppointmentsByMonth {
-  month: string;
-  count: number;
+export interface TimeSeriesData {
+  period: string;
+  count?: number;
+  revenue?: number;
 }
 
 export interface CancellationStat {
@@ -256,9 +268,11 @@ export interface AdminStatistics {
   totalUsers: number;
   totalDoctors: number;
   totalAppointments: number;
+  totalRevenue: number;
   appointmentsByStatus: Record<string, number>;
   appointmentsBySpecialty: AppointmentsBySpecialty[];
-  appointmentsByMonth: AppointmentsByMonth[];
+  appointmentsOverTime: TimeSeriesData[];
+  revenueOverTime: TimeSeriesData[];
   cancellationStats: CancellationStat[];
 }
 

@@ -117,16 +117,24 @@ model Article {
   author    User?    @relation("ArticleAuthor", fields: [authorId], references: [id])
 }
 
+enum ComplaintType {
+  SYSTEM
+  SERVICE
+}
+
 model Complaint {
-  id            String          @id @default(cuid())
-  message       String
-  status        ComplaintStatus @default(PENDING)
-  userId        String
-  createdAt     DateTime        @default(now())
-  adminResponse String?
-  appointmentId String?
-  appointment   Appointment?    @relation(fields: [appointmentId], references: [id])
-  user          User            @relation(fields: [userId], references: [id])
+    id            String          @id @default(cuid())
+    type          ComplaintType   @default(SYSTEM)
+    subject       String?
+    message       String
+    images        String[]        @default([])
+    status        ComplaintStatus @default(PENDING)
+    userId        String
+    createdAt     DateTime        @default(now())
+    adminResponse String?
+    appointmentId String?
+    appointment   Appointment?    @relation(fields: [appointmentId], references: [id])
+    user          User            @relation(fields: [userId], references: [id])
 }
 
 model DoctorSchedule {

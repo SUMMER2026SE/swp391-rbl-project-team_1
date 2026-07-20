@@ -8,9 +8,15 @@ import Alert from "@/components/common/Alert";
 import { Search, MessageSquare, CheckCircle2, Clock } from "lucide-react";
 
 const STATUS_TABS: { label: string; value: ComplaintStatus | "ALL" }[] = [
-  { label: "Tất cả", value: "ALL" },
+  { label: "Tất cả trạng thái", value: "ALL" },
   { label: "Chờ xử lý", value: "PENDING" },
   { label: "Đã xử lý", value: "RESOLVED" },
+];
+
+const TYPE_TABS: { label: string; value: "ALL" | "SYSTEM" | "SERVICE" }[] = [
+  { label: "Tất cả loại", value: "ALL" },
+  { label: "Hệ thống", value: "SYSTEM" },
+  { label: "Dịch vụ", value: "SERVICE" },
 ];
 
 export default function AdminComplaintsPage() {
@@ -22,7 +28,8 @@ export default function AdminComplaintsPage() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<ComplaintStatus | "ALL">("ALL");
+  const [activeStatusTab, setActiveStatusTab] = useState<ComplaintStatus | "ALL">("ALL");
+  const [activeTypeTab, setActiveTypeTab] = useState<"ALL" | "SYSTEM" | "SERVICE">("ALL");
 
   // Modal State
   const [resolvingComplaint, setResolvingComplaint] = useState<AdminComplaint | null>(null);
@@ -60,9 +67,11 @@ export default function AdminComplaintsPage() {
     const matchesSearch =
       !searchQuery.trim() ||
       c.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTab = activeTab === "ALL" || c.status === activeTab;
-    return matchesSearch && matchesTab;
+    const matchesStatus = activeStatusTab === "ALL" || c.status === activeStatusTab;
+    const matchesType = activeTypeTab === "ALL" || (c as any).type === activeTypeTab; // Using any as type is added in backend recently
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   const handleResolve = async () => {
@@ -109,25 +118,40 @@ export default function AdminComplaintsPage() {
       {/* Status Tabs + Search */}
       <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
         {/* Status Tabs */}
-        <div className="flex flex-wrap gap-2">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                activeTab === tab.value
-                  ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20"
-                  : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-100"
-              }`}
-            >
-              {tab.label}
-              {tab.value !== "ALL" && (
-                <span className="ml-1.5">
-                  ({complaints.filter((c) => c.status === tab.value).length})
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-wrap gap-2">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveStatusTab(tab.value)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeStatusTab === tab.value
+                    ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20"
+                    : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-100"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          
+          <div className="hidden sm:block w-px bg-slate-800"></div>
+
+          <div className="flex flex-wrap gap-2">
+            {TYPE_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTypeTab(tab.value)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeTypeTab === tab.value
+                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                    : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-100"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Search */}
@@ -165,9 +189,23 @@ export default function AdminComplaintsPage() {
               <tbody className="text-xs divide-y divide-slate-900">
                 {filteredComplaints.map((complaint) => (
                   <tr key={complaint.id} className="hover:bg-slate-900/40 transition-colors">
-                    <td className="p-5 font-bold text-slate-200">{complaint.user.email}</td>
+                    <td className="p-5 font-bold text-slate-200">
+                      {complaint.user.email}
+                      <div className="mt-1">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase border ${
+                          (complaint as any).type === 'SYSTEM' 
+                            ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                          {(complaint as any).type === 'SYSTEM' ? 'HỆ THỐNG' : 'DỊCH VỤ'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="p-5 text-slate-400 max-w-[350px]">
-                      <p className="leading-relaxed text-slate-300 font-medium" title={complaint.message}>
+                      {complaint.subject && (
+                        <p className="font-bold text-slate-200 mb-1">{complaint.subject}</p>
+                      )}
+                      <p className="leading-relaxed text-slate-300 font-medium text-xs" title={complaint.message}>
                         {complaint.message.length > 150
                           ? `${complaint.message.substring(0, 150)}...`
                           : complaint.message}
@@ -176,6 +214,11 @@ export default function AdminComplaintsPage() {
                         <div className="mt-2 text-[10px] text-teal-400 border border-teal-500/20 bg-teal-500/10 p-2 rounded">
                           <p><span className="font-bold">Lịch khám:</span> {complaint.appointment.id}</p>
                           <p><span className="font-bold">Ngày:</span> {new Date(complaint.appointment.appointmentDate).toLocaleString("vi-VN")}</p>
+                          {complaint.appointment.doctor ? (
+                            <p><span className="font-bold">Bác sĩ:</span> {complaint.appointment.doctor.name} ({complaint.appointment.doctor.specialty?.name || "Đa khoa"})</p>
+                          ) : complaint.appointment.medicalPackage ? (
+                            <p><span className="font-bold">Gói khám:</span> {complaint.appointment.medicalPackage.name}</p>
+                          ) : null}
                         </div>
                       )}
                       {complaint.adminResponse && (

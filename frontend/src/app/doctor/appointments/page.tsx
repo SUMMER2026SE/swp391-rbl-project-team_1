@@ -681,11 +681,15 @@ export default function DoctorAppointmentsPage() {
                                 <p className="text-xs text-slate-500">{format(new Date(appt.appointmentDate), "HH:mm")}</p>
                               </div>
                             </div>
-                            <Link href={`/doctor/examination/${appt.id}`} onClick={() => setPatientDrawerOpen(false)}>
-                              <button className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:border-teal-300 hover:text-teal-700 hover:bg-teal-50 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm">
-                                <FileText className="w-3.5 h-3.5" />Bệnh án
-                              </button>
-                            </Link>
+                            {appt.medicalRecord?.status === 'COMPLETED' ? (
+                              <Link href={`/doctor/examination/${appt.id}?viewOnly=true`} onClick={() => setPatientDrawerOpen(false)}>
+                                <button className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:border-teal-300 hover:text-teal-700 hover:bg-teal-50 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm">
+                                  <FileText className="w-3.5 h-3.5" />Bệnh án
+                                </button>
+                              </Link>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Chưa lưu bệnh án</span>
+                            )}
                           </div>
                         ))}
                       </div>

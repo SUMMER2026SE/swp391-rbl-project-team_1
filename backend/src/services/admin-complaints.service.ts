@@ -17,6 +17,12 @@ type ComplaintWithUser = Prisma.ComplaintGetPayload<{
                 id: true;
                 appointmentDate: true;
                 status: true;
+                doctor: {
+                    select: { name: true, specialty: { select: { name: true } } }
+                };
+                medicalPackage: {
+                    select: { name: true }
+                };
             };
         };
     };
@@ -41,6 +47,12 @@ export async function getAllComplaints(): Promise<ComplaintWithUser[]> {
                     id: true,
                     appointmentDate: true,
                     status: true,
+                    doctor: {
+                        select: { name: true, specialty: { select: { name: true } } }
+                    },
+                    medicalPackage: {
+                        select: { name: true }
+                    },
                 },
             },
         },
@@ -82,6 +94,12 @@ export async function resolveComplaint(id: string, adminResponse?: string): Prom
                     id: true,
                     appointmentDate: true,
                     status: true,
+                    doctor: {
+                        select: { name: true, specialty: { select: { name: true } } }
+                    },
+                    medicalPackage: {
+                        select: { name: true }
+                    },
                 },
             },
         },

@@ -75,7 +75,6 @@ export default function DoctorDashboard() {
     { title: "Hoàn thành tháng này", value: stats?.completedAppointmentsThisMonth || 0, icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, bg: "bg-green-50", href: "/doctor/appointments" },
     { title: "Tổng bệnh nhân", value: stats?.totalPatients || 0, icon: <Users className="w-8 h-8 text-teal-500" />, bg: "bg-teal-50", href: "/doctor/patients" },
     { title: "Đánh giá TB", value: `${stats?.averageRating || 0} ★`, icon: <Star className="w-8 h-8 text-orange-500" />, bg: "bg-orange-50", href: "/doctor/reviews" },
-    { title: "Doanh thu tháng này", value: formatVND(stats?.monthlyRevenue || 0), icon: <DollarSign className="w-8 h-8 text-purple-500" />, bg: "bg-purple-50", href: "/doctor/payments" },
   ];
 
   return (
@@ -86,7 +85,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Row 1: KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map((card, idx) => (
           <Link href={card.href} key={idx} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md hover:border-teal-100 transition-all cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
@@ -96,7 +95,7 @@ export default function DoctorDashboard() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{card.title}</p>
-              <h3 className={`text-xl font-bold ${idx === 5 ? 'text-purple-700 text-lg' : 'text-slate-800'}`}>{card.value}</h3>
+              <h3 className={`text-xl font-bold text-slate-800`}>{card.value}</h3>
             </div>
           </Link>
         ))}

@@ -10,9 +10,10 @@ import AppointmentsTab from "@/components/profile/AppointmentsTab";
 import VouchersTab from "@/components/profile/VouchersTab";
 import ReviewsTab from "@/components/profile/ReviewsTab";
 import SecurityTab from "@/components/profile/SecurityTab";
+import SupportTab from "@/components/profile/SupportTab";
 import { useRouter } from "next/navigation";
 
-type TabId = "info" | "medical-records" | "appointments" | "vouchers" | "reviews" | "security";
+type TabId = "info" | "medical-records" | "appointments" | "vouchers" | "reviews" | "security" | "support";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "info", label: "Thông tin cá nhân", icon: <UserIcon className="w-4 h-4" /> },
@@ -20,6 +21,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "appointments", label: "Lịch hẹn", icon: <CalendarDays className="w-4 h-4" /> },
   { id: "vouchers", label: "Voucher", icon: <Ticket className="w-4 h-4" /> },
   { id: "reviews", label: "Đánh giá của tôi", icon: <Star className="w-4 h-4" /> },
+  { id: "support", label: "Trung tâm hỗ trợ", icon: <FileText className="w-4 h-4" /> },
   { id: "security", label: "Bảo mật", icon: <ShieldCheck className="w-4 h-4" /> },
 ];
 
@@ -126,6 +128,7 @@ function ProfileContent() {
           {activeTab === "appointments" && <AppointmentsTab />}
           {activeTab === "vouchers" && <VouchersTab />}
           {activeTab === "reviews" && <ReviewsTab />}
+          {activeTab === "support" && <SupportTab />}
           {activeTab === "security" && <SecurityTab />}
         </div>
       </div>

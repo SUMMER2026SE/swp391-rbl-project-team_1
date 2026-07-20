@@ -811,8 +811,7 @@ export const getPatientDetail = async (req: AuthenticatedRequest, res: Response)
             select: {
                 id: true, fullName: true, email: true, gender: true,
                 dateOfBirth: true, avatar: true, bloodType: true,
-                allergies: true, chronicDiseases: true, personalHistory: true,
-                phoneNumber: true, cccd: true
+                allergies: true, chronicDiseases: true, personalHistory: true
             }
         });
 
@@ -827,13 +826,49 @@ export const getPatientDetail = async (req: AuthenticatedRequest, res: Response)
         });
 
         res.json({
-            user: {
-                ...user,
-                phone: user.phoneNumber || null,
-                cccd: user.cccd || null,
-            },
+            user,
             pastAppointments
         });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+};
+
+// =====================================================================
+// GET /api/doctor/patients/:userId/records
+// Doctor views all medical records for a specific patient (by this doctor)
+// =====================================================================
+export const getPatientRecords = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const doctor = await getDoctor(req.user!.userId);
+        if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
+
+        const userId = req.params.userId as string;
+
+        const records = await prisma.medicalRecord.findMany({
+            where: {
+                userId,
+                doctorId: doctor.id,
+                status: 'COMPLETED'
+            },
+            include: {
+                appointment: {
+                    select: {
+                        id: true,
+                        appointmentDate: true,
+                        status: true,
+                        patientInfo: true
+                    }
+                },
+                prescriptions: {
+                    include: { medicine: true }
+                },
+                LabOrder: true,
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json({ success: true, data: records });
     } catch (error) {
         res.status(500).json({ message: "Server error", error });
     }

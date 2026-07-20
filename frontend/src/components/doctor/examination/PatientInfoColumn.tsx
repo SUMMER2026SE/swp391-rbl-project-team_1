@@ -1,11 +1,35 @@
-import React from 'react';
-import { User, Activity, AlertCircle, Droplet, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { User, Activity, AlertCircle, Droplet, Clock, FileText } from 'lucide-react';
+import api from '@/services/api';
+import Link from 'next/link';
 
 export default function PatientInfoColumn({ appointment }: { appointment: any }) {
   // patientInfo is a JSON snapshot; fall back to user fields
   const profile = (appointment.patientInfo as any) || {};
   const user = appointment.user || {};
   
+  const [pastAppointments, setPastAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user.id) return;
+      setLoading(true);
+      try {
+        const res = await api.get(`/doctor/patients/${user.id}`);
+        if (res.data?.pastAppointments) {
+          // Filter out the current appointment
+          setPastAppointments(res.data.pastAppointments.filter((a: any) => a.id !== appointment.id));
+        }
+      } catch (err) {
+        console.error('Failed to fetch patient history', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [user.id, appointment.id]);
+
   const calculateAge = (dob: string) => {
     if (!dob) return 'N/A';
     const diff = Date.now() - new Date(dob).getTime();
@@ -73,18 +97,39 @@ export default function PatientInfoColumn({ appointment }: { appointment: any })
         </div>
         
         <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="p-3 border border-slate-100 rounded-xl hover:border-teal-100 hover:bg-teal-50/30 transition-colors cursor-pointer">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-semibold text-slate-700">Khám tổng quát</span>
-                <span className="text-xs text-slate-400 flex items-center"><Clock className="w-3 h-3 mr-1" /> 12/05/2026</span>
+          {loading ? (
+            <p className="text-xs text-slate-500 text-center py-4">Đang tải...</p>
+          ) : pastAppointments.length > 0 ? (
+            pastAppointments.map((appt) => (
+              <div key={appt.id} className="p-3 border border-slate-100 rounded-xl hover:border-teal-100 hover:bg-teal-50/30 transition-colors">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold text-slate-700">Khám bệnh</span>
+                  <span className="text-xs text-slate-400 flex items-center">
+                    <Clock className="w-3 h-3 mr-1" /> 
+                    {new Date(appt.appointmentDate).toLocaleDateString('vi-VN')}
+                  </span>
+                </div>
+                {appt.medicalRecord?.status === 'COMPLETED' ? (
+                  <div className="flex justify-between items-end mt-2">
+                    <p className="text-xs text-slate-500 line-clamp-2 pr-2">
+                      Đã có bệnh án
+                    </p>
+                    <Link href={`/doctor/examination/${appt.id}?viewOnly=true`} target="_blank">
+                      <button className="text-[10px] bg-teal-50 text-teal-600 px-2 py-1 rounded hover:bg-teal-100 font-semibold flex items-center gap-1 shrink-0">
+                        <FileText className="w-3 h-3" /> Xem
+                      </button>
+                    </Link>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 mt-2">Chưa có bệnh án hoàn chỉnh</p>
+                )}
               </div>
-              <p className="text-xs text-slate-500 line-clamp-2">Viêm họng hạt, có triệu chứng ho khan về đêm. Kê đơn thuốc 5 ngày.</p>
+            ))
+          ) : (
+            <div className="p-3 border border-slate-100 rounded-xl bg-slate-50 text-center">
+               <p className="text-xs text-slate-500">Chưa có dữ liệu khám</p>
             </div>
-          ))}
-          <div className="p-3 border border-slate-100 rounded-xl bg-slate-50 text-center">
-             <p className="text-xs text-slate-500">Không còn dữ liệu cũ hơn</p>
-          </div>
+          )}
         </div>
       </div>
     </div>

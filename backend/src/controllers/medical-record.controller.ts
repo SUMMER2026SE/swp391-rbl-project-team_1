@@ -1,6 +1,101 @@
 import { Request, Response } from 'express';
 import { sendPrescriptionEmail } from '../utils/emailService';
 import prisma from '../prisma/client';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
+
+// =====================================================================
+// PATIENT-FACING: Get all my medical records
+// GET /api/medical-records/my
+// =====================================================================
+export const getMyMedicalRecords = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
+    const records = await prisma.medicalRecord.findMany({
+      where: { userId, status: 'COMPLETED' },
+      include: {
+        appointment: {
+          include: {
+            doctor: {
+              include: { specialty: true }
+            }
+          }
+        },
+        prescriptions: {
+          include: { medicine: true }
+        },
+        LabOrder: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.status(200).json({ success: true, data: records });
+  } catch (error: any) {
+    console.error('Error fetching my medical records:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// =====================================================================
+// PATIENT-FACING: Get one medical record by appointmentId
+// GET /api/medical-records/patient/appointment/:appointmentId
+// =====================================================================
+export const getMyRecordByAppointment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    const { appointmentId } = req.params;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId as string },
+      include: {
+        user: true,
+        doctor: {
+          include: { specialty: true }
+        }
+      }
+    });
+
+    if (!appointment) {
+      res.status(404).json({ success: false, message: 'Appointment not found' });
+      return;
+    }
+
+    // Security: patient can only view their own records
+    if (appointment.userId !== userId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+
+    const record = await prisma.medicalRecord.findUnique({
+      where: { appointmentId: appointmentId as string },
+      include: {
+        prescriptions: {
+          include: { medicine: true }
+        },
+        LabOrder: true,
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: { appointment, record }
+    });
+  } catch (error: any) {
+    console.error('Error fetching patient record:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+
 
 export const getRecordByAppointment = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -22,7 +117,7 @@ export const getRecordByAppointment = async (req: Request, res: Response): Promi
     const record = await prisma.medicalRecord.findUnique({
       where: { appointmentId: appointmentId as string },
       include: {
-        labOrders: true,
+        LabOrder: true,
         prescriptions: {
           include: {
             medicine: true

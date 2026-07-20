@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { appointmentService } from "@/services/appointment.service";
 import { Appointment } from "@/types/appointment";
-import { CalendarDays, Clock, MapPin, XCircle } from "lucide-react";
+import { CalendarDays, Clock, MapPin, XCircle, AlertTriangle } from "lucide-react";
 import Button from "@/components/common/Button";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
@@ -18,6 +18,10 @@ export default function AppointmentsTab() {
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [reportIssueId, setReportIssueId] = useState<string | null>(null);
+  const [reportSubject, setReportSubject] = useState("");
+  const [reportMessage, setReportMessage] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
@@ -56,6 +60,38 @@ export default function AppointmentsTab() {
       alert("Lỗi khi hủy lịch: " + (err.message || "Không thể hủy lịch này."));
     } finally {
       setCancelingId(null);
+    }
+  };
+
+  const handleReportIssue = async () => {
+    if (!reportIssueId || !reportSubject || !reportMessage) return;
+    setIsReporting(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/complaints", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          type: "SERVICE",
+          subject: reportSubject,
+          message: reportMessage,
+          appointmentId: reportIssueId
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Không thể gửi báo cáo.");
+      }
+      alert("Gửi báo cáo sự cố thành công!");
+      setReportIssueId(null);
+      setReportSubject("");
+      setReportMessage("");
+    } catch (err: any) {
+      alert("Lỗi: " + err.message);
+    } finally {
+      setIsReporting(false);
     }
   };
 
@@ -101,6 +137,48 @@ export default function AppointmentsTab() {
                 onClick={handleCancelConfirm}
               >
                 Xác nhận hủy
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Issue Modal */}
+      {reportIssueId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-500" /> Báo cáo sự cố dịch vụ
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">Mô tả sự cố bạn gặp phải trong quá trình khám.</p>
+            <input
+              type="text"
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-teal-500 mb-3"
+              placeholder="Tiêu đề sự cố..."
+              value={reportSubject}
+              onChange={(e) => setReportSubject(e.target.value)}
+            />
+            <textarea
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-teal-500 resize-none mb-4 min-h-[100px]"
+              placeholder="Mô tả chi tiết..."
+              value={reportMessage}
+              onChange={(e) => setReportMessage(e.target.value)}
+            />
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setReportIssueId(null); setReportSubject(""); setReportMessage(""); }}
+              >
+                Hủy
+              </Button>
+              <Button
+                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white border-none"
+                isLoading={isReporting}
+                onClick={handleReportIssue}
+                disabled={!reportSubject || !reportMessage}
+              >
+                Gửi báo cáo
               </Button>
             </div>
           </div>
@@ -187,6 +265,14 @@ export default function AppointmentsTab() {
                     className="flex items-center justify-center gap-1.5 text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                   >
                     <XCircle className="w-4 h-4" /> Hủy lịch
+                  </button>
+                )}
+                {["COMPLETED", "CANCELLED"].includes(appt.status) && (
+                  <button
+                    onClick={() => setReportIssueId(appt.id)}
+                    className="flex items-center justify-center gap-1.5 text-slate-600 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
+                  >
+                    <AlertTriangle className="w-4 h-4" /> Báo cáo sự cố
                   </button>
                 )}
               </div>

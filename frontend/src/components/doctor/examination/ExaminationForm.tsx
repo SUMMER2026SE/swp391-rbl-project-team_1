@@ -6,8 +6,7 @@ import PrescriptionTab from './tabs/PrescriptionTab';
 import ConclusionTab from './tabs/ConclusionTab';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-// @ts-ignore
-import html2pdf from 'html2pdf.js';
+import api from '@/services/api';
 
 interface ExaminationFormProps {
   appointmentId: string;
@@ -15,9 +14,10 @@ interface ExaminationFormProps {
   patientName: string;
   doctorName: string;
   appointmentDate: string;
+  viewOnly?: boolean;
 }
 
-export default function ExaminationForm({ appointmentId, initialRecord, patientName, doctorName, appointmentDate }: ExaminationFormProps) {
+export default function ExaminationForm({ appointmentId, initialRecord, patientName, doctorName, appointmentDate, viewOnly = false }: ExaminationFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('clinical');
   const [isSaving, setIsSaving] = useState(false);
@@ -46,10 +46,12 @@ export default function ExaminationForm({ appointmentId, initialRecord, patientN
   });
 
   // Complex states
-  const [labOrders, setLabOrders] = useState<any[]>(initialRecord?.labOrders || []);
+  const [labOrders, setLabOrders] = useState<any[]>(initialRecord?.LabOrder || initialRecord?.labOrders || []);
   const [prescriptions, setPrescriptions] = useState<any[]>(initialRecord?.prescriptions || []);
 
   const isCompleted = formData.status === 'COMPLETED';
+  // In viewOnly mode, treat everything as completed (no edits allowed)
+  const isReadOnly = viewOnly || isCompleted;
   const prescriptionRef = useRef<HTMLDivElement>(null);
 
   const handleUpdateField = (field: string, value: any) => {
@@ -65,7 +67,7 @@ export default function ExaminationForm({ appointmentId, initialRecord, patientN
       // If completing, generate PDF to attach to email
       if (status === 'COMPLETED' && prescriptionRef.current && prescriptions.length > 0) {
          try {
-           // We render the HTML to PDF then get base64
+           const html2pdf = (await import('html2pdf.js')).default;
            const opt = {
              margin: 10,
              filename: 'DonThuoc.pdf',
@@ -73,11 +75,17 @@ export default function ExaminationForm({ appointmentId, initialRecord, patientN
              html2canvas: { scale: 2 },
              jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' as const }
            };
-           // Temporarily show the hidden print ref
+           // Temporarily position off-screen instead of display: none
+           prescriptionRef.current.style.position = 'absolute';
+           prescriptionRef.current.style.left = '-9999px';
            prescriptionRef.current.style.display = 'block';
+           
            const pdfObj = html2pdf().from(prescriptionRef.current).set(opt);
            pdfBase64 = await pdfObj.outputPdf('datauristring');
+           
            prescriptionRef.current.style.display = 'none';
+           prescriptionRef.current.style.position = 'static';
+           prescriptionRef.current.style.left = 'auto';
          } catch(e) {
            console.error("PDF gen error", e);
          }
@@ -98,17 +106,10 @@ export default function ExaminationForm({ appointmentId, initialRecord, patientN
       if (payload.temperature) payload.temperature = parseFloat(payload.temperature as string);
       if (payload.spo2) payload.spo2 = parseFloat(payload.spo2 as string);
 
-      // In real app, call axios
-      const res = await fetch(`/api/medical-records/appointment/${appointmentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
+      // Call API using configured axios instance
+      const res = await api.put(`/medical-records/appointment/${appointmentId}`, payload);
       
-      const data = await res.json();
+      const data = res.data;
       if (data.success) {
         toast.success(status === 'DRAFT' ? 'Đã lưu nháp thành công' : 'Đã hoàn tất khám bệnh!');
         setFormData(prev => ({ ...prev, status }));
@@ -129,19 +130,31 @@ export default function ExaminationForm({ appointmentId, initialRecord, patientN
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (prescriptionRef.current && prescriptions.length > 0) {
-      const opt = {
-        margin: 10,
-        filename: `DonThuoc_${patientName.replace(/\s+/g, '')}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' as const }
-      };
-      prescriptionRef.current.style.display = 'block';
-      html2pdf().from(prescriptionRef.current).set(opt).save().then(() => {
-        if(prescriptionRef.current) prescriptionRef.current.style.display = 'none';
-      });
+      try {
+        const html2pdf = (await import('html2pdf.js')).default;
+        const opt = {
+          margin: 10,
+          filename: `DonThuoc_${patientName.replace(/\s+/g, '')}.pdf`,
+          image: { type: 'jpeg' as const, quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' as const }
+        };
+        
+        prescriptionRef.current.style.position = 'absolute';
+        prescriptionRef.current.style.left = '-9999px';
+        prescriptionRef.current.style.display = 'block';
+        
+        await html2pdf().from(prescriptionRef.current).set(opt).save();
+        
+        prescriptionRef.current.style.display = 'none';
+        prescriptionRef.current.style.position = 'static';
+        prescriptionRef.current.style.left = 'auto';
+      } catch (err) {
+        console.error('Lỗi khi in PDF:', err);
+        toast.error('Có lỗi xảy ra khi tạo PDF');
+      }
     } else {
       toast.error("Vui lòng kê ít nhất 1 loại thuốc để in");
     }
@@ -189,39 +202,41 @@ export default function ExaminationForm({ appointmentId, initialRecord, patientN
         )}
 
         <div className={activeTab === 'clinical' ? 'block' : 'hidden'}>
-          <ClinicalTab formData={formData} onUpdate={handleUpdateField} disabled={isCompleted} />
+          <ClinicalTab formData={formData} onUpdate={handleUpdateField} disabled={isReadOnly} />
         </div>
         
         <div className={activeTab === 'lab' ? 'block' : 'hidden'}>
-          <LabOrdersTab labOrders={labOrders} setLabOrders={setLabOrders} disabled={isCompleted} />
+          <LabOrdersTab labOrders={labOrders} setLabOrders={setLabOrders} disabled={isReadOnly} />
         </div>
         
         <div className={activeTab === 'prescription' ? 'block' : 'hidden'}>
           <PrescriptionTab 
             prescriptions={prescriptions} 
             setPrescriptions={setPrescriptions} 
-            disabled={isCompleted} 
+            disabled={isReadOnly} 
           />
         </div>
         
         <div className={activeTab === 'conclusion' ? 'block' : 'hidden'}>
-          <ConclusionTab formData={formData} onUpdate={handleUpdateField} disabled={isCompleted} />
+          <ConclusionTab formData={formData} onUpdate={handleUpdateField} disabled={isReadOnly} />
         </div>
       </div>
 
-      {/* Footer Actions */}
+      {/* Footer Actions — hidden in viewOnly mode */}
       <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
         <div>
-           <button
-            onClick={handlePrint}
-            className="flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors font-medium text-sm"
-          >
-            <Printer className="w-4 h-4" />
-            <span>In đơn thuốc</span>
-          </button>
+          {!viewOnly && (
+            <button
+              onClick={handlePrint}
+              className="flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors font-medium text-sm"
+            >
+              <Printer className="w-4 h-4" />
+              <span>In đơn thuốc</span>
+            </button>
+          )}
         </div>
         <div className="flex space-x-3">
-          {!isCompleted && (
+          {!isReadOnly && (
             <>
               <button
                 onClick={() => handleSave('DRAFT')}

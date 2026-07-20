@@ -13,7 +13,13 @@ export async function getStatisticsHandler(
     next: NextFunction
 ): Promise<void> {
     try {
-        const statistics = await getStatistics();
+        const period = (_req.query.period as string) || 'month';
+        if (!['week', 'month', 'year'].includes(period)) {
+            res.status(400).json({ message: "Invalid period. Use: week, month, year" });
+            return;
+        }
+
+        const statistics = await getStatistics(period as 'week' | 'month' | 'year');
         res.json({
             message: "Statistics retrieved successfully",
             data: statistics,

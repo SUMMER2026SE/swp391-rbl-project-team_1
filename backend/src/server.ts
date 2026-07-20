@@ -25,6 +25,7 @@ import videoCallRoutes from "./routes/video-call.routes";
 import notificationRoutes from "./routes/notification.routes";
 import voucherRoutes from "./routes/voucher.routes";
 import bookingProfileRoutes from "./routes/booking-profile.routes";
+import complaintRoutes from "./routes/complaint.routes";
 import { initReminderScheduler } from "./utils/emailService";
 import { startReminderJob } from "./jobs/reminderJob";
 import { verifyToken } from "./middleware/auth.middleware";
@@ -78,6 +79,7 @@ app.get("/api/profile", verifyToken, getProfile);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/vouchers", voucherRoutes);
 app.use("/api/booking-profiles", bookingProfileRoutes);
+app.use("/api/complaints", complaintRoutes);
 
 
 app.get("/", (req, res) => {

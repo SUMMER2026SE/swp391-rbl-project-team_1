@@ -5,15 +5,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { appointmentService } from "@/services/appointment.service";
 import { bookingProfileService, BookingProfile } from "@/services/booking-profile.service";
 import { Appointment } from "@/types/appointment";
-import { FileText, UserPlus, Activity, CalendarDays, Eye, Edit, Trash2 } from "lucide-react";
+import { FileText, UserPlus, Activity, CalendarDays, Eye, Edit, Trash2, CheckCircle2 } from "lucide-react";
 import Button from "@/components/common/Button";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
+import api from "@/services/api";
+import Link from "next/link";
 
 export default function MedicalRecordsTab() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [profiles, setProfiles] = useState<BookingProfile[]>([]);
+  const [recordsMap, setRecordsMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -30,8 +33,23 @@ export default function MedicalRecordsTab() {
         appointmentService.getMyAppointments(),
         bookingProfileService.getMyProfiles()
       ]);
-      setAppointments(apptsRes.appointments || []);
+      const appts = apptsRes.appointments || [];
+      setAppointments(appts);
       setProfiles(profsRes || []);
+
+      // Fetch medical records list to build appointmentId → record map
+      try {
+        const recRes = await api.get('/medical-records/my');
+        if (recRes.data.success) {
+          const map: Record<string, any> = {};
+          (recRes.data.data as any[]).forEach((r: any) => {
+            map[r.appointmentId] = r;
+          });
+          setRecordsMap(map);
+        }
+      } catch (_) {
+        // silent — records just won't show badge
+      }
     } catch (err: any) {
       setError(err.message || "Lỗi tải dữ liệu hồ sơ");;
     } finally {
@@ -161,24 +179,46 @@ export default function MedicalRecordsTab() {
                     <span className="text-xs font-semibold">{new Date(appt.appointmentDate).getDate()}</span>
                     <span className="text-[10px]">Thg {new Date(appt.appointmentDate).getMonth() + 1}</span>
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h4 className="font-bold text-slate-800">
-                      Bác sĩ {appt.doctor?.name || "N/A"}
+                      Bác sĩ {(appt as any).doctor?.name || "N/A"}
                     </h4>
                     <p className="text-sm text-slate-500">
-                      Chuyên khoa: {appt.doctor?.specialty?.name || "N/A"}
+                      Chuyên khoa: {(appt as any).doctor?.specialty?.name || "N/A"}
                     </p>
+                    {/* Badge bệnh án */}
+                    {recordsMap[appt.id] ? (
+                      <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full font-medium">
+                        <CheckCircle2 className="w-3 h-3" /> Đã có bệnh án
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full font-medium">
+                        Chưa có bệnh án
+                      </span>
+                    )}
                   </div>
                 </div>
                 
-                <Button 
-                  variant="outline" 
-                  className="w-full md:w-auto flex items-center justify-center gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
-                  onClick={() => { /* TODO: Open medical record modal */ }}
-                >
-                  <Eye className="w-4 h-4" />
-                  Xem bệnh án
-                </Button>
+                {recordsMap[appt.id] ? (
+                  <Link href={`/patient/records/${appt.id}`}>
+                    <Button
+                      variant="outline"
+                      className="w-full md:w-auto flex items-center justify-center gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Xem bệnh án
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full md:w-auto flex items-center justify-center gap-2 text-slate-400 border-slate-200 cursor-not-allowed"
+                    disabled
+                  >
+                    <Eye className="w-4 h-4" />
+                    Chưa có bệnh án
+                  </Button>
+                )}
               </div>
             ))}
           </div>
