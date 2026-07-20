@@ -562,11 +562,12 @@ export const getDashboardCharts = async (req: AuthenticatedRequest, res: Respons
         const upcomingAppointments = await prisma.appointment.findMany({
             where: {
                 doctorId: doctor.id,
-                appointmentDate: { gte: today, lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
+                appointmentDate: { gte: today },
                 status: 'CONFIRMED'
             },
             include: { user: { select: { fullName: true, avatar: true } } },
-            orderBy: { appointmentDate: 'asc' }
+            orderBy: { appointmentDate: 'asc' },
+            take: 5
         });
 
         // 5. Latest Reviews
