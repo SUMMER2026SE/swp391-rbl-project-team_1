@@ -9,7 +9,12 @@ const admin_statistics_service_1 = require("../services/admin-statistics.service
  */
 async function getStatisticsHandler(_req, res, next) {
     try {
-        const statistics = await (0, admin_statistics_service_1.getStatistics)();
+        const period = _req.query.period || 'month';
+        if (!['week', 'month', 'year'].includes(period)) {
+            res.status(400).json({ message: "Invalid period. Use: week, month, year" });
+            return;
+        }
+        const statistics = await (0, admin_statistics_service_1.getStatistics)(period);
         res.json({
             message: "Statistics retrieved successfully",
             data: statistics,

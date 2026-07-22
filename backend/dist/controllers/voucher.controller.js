@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPublicVouchers = exports.getSavedVouchers = exports.saveVoucher = exports.adminGetVoucherUsages = exports.adminDeleteVoucher = exports.adminUpdateVoucher = exports.adminCreateVoucher = exports.adminListVouchers = exports.getMyVouchers = exports.applyVoucher = exports.validateVoucher = void 0;
+exports.getPublicVouchers = exports.getSavedVouchers = exports.saveVoucher = exports.adminGetVoucherUsages = exports.adminDeleteVoucher = exports.adminUpdateVoucher = exports.adminCreateVoucher = exports.adminGetVoucherChartData = exports.adminListVouchers = exports.getMyVouchers = exports.applyVoucher = exports.validateVoucher = void 0;
 const voucherService = __importStar(require("../services/voucher.service"));
 const validateVoucher = async (req, res) => {
     try {
@@ -91,9 +91,23 @@ const adminListVouchers = async (req, res) => {
     }
 };
 exports.adminListVouchers = adminListVouchers;
+const adminGetVoucherChartData = async (req, res) => {
+    try {
+        const period = req.query.period || 'month';
+        if (!['week', 'month', 'year'].includes(period)) {
+            return res.status(400).json({ message: "Invalid period. Use: week, month, year" });
+        }
+        const data = await voucherService.getVoucherChartData(period);
+        return res.json(data);
+    }
+    catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+exports.adminGetVoucherChartData = adminGetVoucherChartData;
 const adminCreateVoucher = async (req, res) => {
     try {
-        const { code, type, discountValue, applyTo, specialtyId, minDepositAmount, maxUses, isFirstBooking, startDate, endDate } = req.body;
+        const { code, type, discountValue, applyTo, specialtyId, minDepositAmount, maxUses, isFirstBooking, startDate, endDate, category, description, avatarColor, avatarIcon } = req.body;
         const { voucher, capped } = await voucherService.createVoucher({
             code,
             type,
@@ -105,6 +119,10 @@ const adminCreateVoucher = async (req, res) => {
             isFirstBooking: Boolean(isFirstBooking),
             startDate: new Date(startDate),
             endDate: new Date(endDate),
+            category,
+            description,
+            avatarColor,
+            avatarIcon,
         });
         return res.status(201).json({ voucher, capped, message: capped ? "Ngày kết thúc đã được tự động điều chỉnh theo giới hạn cho phép." : "Tạo voucher thành công." });
     }

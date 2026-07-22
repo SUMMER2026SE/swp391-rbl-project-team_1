@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const path_1 = __importDefault(require("path"));
 const http_1 = require("http");
 const socket_1 = require("./utils/socket");
@@ -26,13 +27,14 @@ const medical_record_routes_1 = __importDefault(require("./routes/medical-record
 const video_call_routes_1 = __importDefault(require("./routes/video-call.routes"));
 const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
 const voucher_routes_1 = __importDefault(require("./routes/voucher.routes"));
+const booking_profile_routes_1 = __importDefault(require("./routes/booking-profile.routes"));
+const complaint_routes_1 = __importDefault(require("./routes/complaint.routes"));
 const emailService_1 = require("./utils/emailService");
 const reminderJob_1 = require("./jobs/reminderJob");
 const auth_middleware_1 = require("./middleware/auth.middleware");
 const error_middleware_1 = require("./middleware/error.middleware");
 const auth_controller_1 = require("./controllers/auth.controller");
 const appointment_service_1 = require("./services/appointment.service");
-dotenv_1.default.config();
 // Patch BigInt to be serialized as string in JSON responses
 BigInt.prototype.toJSON = function () {
     return this.toString();
@@ -70,6 +72,8 @@ app.use("/api/video-calls", video_call_routes_1.default);
 app.get("/api/profile", auth_middleware_1.verifyToken, auth_controller_1.getProfile);
 app.use("/api/notifications", notification_routes_1.default);
 app.use("/api/vouchers", voucher_routes_1.default);
+app.use("/api/booking-profiles", booking_profile_routes_1.default);
+app.use("/api/complaints", complaint_routes_1.default);
 app.get("/", (req, res) => {
     res.send("Healthcare Booking API Running...");
 });

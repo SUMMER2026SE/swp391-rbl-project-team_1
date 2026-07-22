@@ -79,9 +79,9 @@ export async function getStatistics(period: 'week' | 'month' | 'year' = 'month')
 async function getRevenueTotal(): Promise<number> {
     const completedAppts = await prisma.appointment.findMany({
         where: { status: 'COMPLETED' },
-        select: { amount: true, discountAmount: true }
+        select: { amount: true }
     });
-    return completedAppts.reduce((sum, appt) => sum + (appt.amount - (appt.discountAmount || 0)), 0);
+    return completedAppts.reduce((sum, appt) => sum + appt.amount, 0);
 }
 
 async function getAppointmentsByStatus(): Promise<AppointmentsByStatus> {
@@ -210,7 +210,7 @@ async function getRevenueOverTime(period: 'week' | 'month' | 'year'): Promise<Ti
 
     const completedAppts = await prisma.appointment.findMany({
         where: { status: 'COMPLETED', appointmentDate: { gte: startDate } },
-        select: { appointmentDate: true, amount: true, discountAmount: true },
+        select: { appointmentDate: true, amount: true },
         orderBy: { appointmentDate: "asc" },
     });
 
@@ -246,7 +246,7 @@ async function getRevenueOverTime(period: 'week' | 'month' | 'year'): Promise<Ti
             key = `${d.getDate()}/${d.getMonth() + 1}`;
         }
         if (timeMap.has(key)) {
-            const revenue = appt.amount - (appt.discountAmount || 0);
+            const revenue = appt.amount;
             timeMap.set(key, (timeMap.get(key) ?? 0) + revenue);
         }
     }
