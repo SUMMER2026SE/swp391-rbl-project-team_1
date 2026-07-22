@@ -213,15 +213,21 @@ export async function getPublicPrescriptionHandler(
                 },
                 medicalRecord: {
                     select: {
-                        diagnosis: true,
-                        notes: true,
+                        finalDiagnosis: true,
+                        preliminaryDiagnosis: true,
+                        doctorNotes: true,
                         prescriptions: {
                             select: {
                                 id: true,
-                                medicationName: true,
                                 dosage: true,
                                 frequency: true,
-                                duration: true,
+                                durationDays: true,
+                                instructions: true,
+                                medicine: {
+                                    select: {
+                                        name: true,
+                                    },
+                                },
                             },
                         },
                         createdAt: true,
