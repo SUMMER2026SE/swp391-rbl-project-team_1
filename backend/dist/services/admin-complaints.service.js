@@ -27,6 +27,12 @@ async function getAllComplaints() {
                     id: true,
                     appointmentDate: true,
                     status: true,
+                    doctor: {
+                        select: { name: true, specialty: { select: { name: true } } }
+                    },
+                    medicalPackage: {
+                        select: { name: true }
+                    },
                 },
             },
         },
@@ -64,6 +70,12 @@ async function resolveComplaint(id, adminResponse) {
                     id: true,
                     appointmentDate: true,
                     status: true,
+                    doctor: {
+                        select: { name: true, specialty: { select: { name: true } } }
+                    },
+                    medicalPackage: {
+                        select: { name: true }
+                    },
                 },
             },
         },

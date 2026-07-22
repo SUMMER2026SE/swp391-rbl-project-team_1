@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPatientDetail = exports.getDoctorReviews = exports.getDoctorStatistics = exports.updateBulkAppointmentStatus = exports.getDashboardCharts = exports.createPrescription = exports.createMedicalRecord = exports.getPatientMedicalRecords = exports.getDoctorPatients = exports.updateAppointmentStatus = exports.getDoctorAppointments = exports.deleteDoctorSchedule = exports.updateDoctorSchedule = exports.createDoctorSchedule = exports.getDoctorSchedules = exports.updateDoctorProfile = exports.getAvailableSpecialtiesAndClinics = exports.getDoctorProfile = exports.getDashboardStats = void 0;
+exports.getPatientRecords = exports.getPatientDetail = exports.getDoctorReviews = exports.getDoctorStatistics = exports.updateBulkAppointmentStatus = exports.getDashboardCharts = exports.createPrescription = exports.createMedicalRecord = exports.getPatientMedicalRecords = exports.getDoctorPatients = exports.updateAppointmentStatus = exports.getDoctorAppointments = exports.deleteDoctorSchedule = exports.updateDoctorSchedule = exports.createDoctorSchedule = exports.getDoctorSchedules = exports.updateDoctorProfile = exports.getAvailableSpecialtiesAndClinics = exports.getDoctorProfile = exports.getDashboardStats = void 0;
 const client_1 = require("@prisma/client");
 const emailService_1 = require("../utils/emailService");
 const prisma = new client_1.PrismaClient();
@@ -529,11 +529,12 @@ const getDashboardCharts = async (req, res) => {
         const upcomingAppointments = await prisma.appointment.findMany({
             where: {
                 doctorId: doctor.id,
-                appointmentDate: { gte: today, lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
+                appointmentDate: { gte: today },
                 status: 'CONFIRMED'
             },
             include: { user: { select: { fullName: true, avatar: true } } },
-            orderBy: { appointmentDate: 'asc' }
+            orderBy: { appointmentDate: 'asc' },
+            take: 5
         });
         // 5. Latest Reviews
         const latestReviews = await prisma.review.findMany({
@@ -760,8 +761,7 @@ const getPatientDetail = async (req, res) => {
             select: {
                 id: true, fullName: true, email: true, gender: true,
                 dateOfBirth: true, avatar: true, bloodType: true,
-                allergies: true, chronicDiseases: true, personalHistory: true,
-                phoneNumber: true, cccd: true
+                allergies: true, chronicDiseases: true, personalHistory: true
             }
         });
         if (!user)
@@ -774,11 +774,7 @@ const getPatientDetail = async (req, res) => {
             orderBy: { appointmentDate: 'desc' }
         });
         res.json({
-            user: {
-                ...user,
-                phone: user.phoneNumber || null,
-                cccd: user.cccd || null,
-            },
+            user,
             pastAppointments
         });
     }
@@ -787,3 +783,42 @@ const getPatientDetail = async (req, res) => {
     }
 };
 exports.getPatientDetail = getPatientDetail;
+// =====================================================================
+// GET /api/doctor/patients/:userId/records
+// Doctor views all medical records for a specific patient (by this doctor)
+// =====================================================================
+const getPatientRecords = async (req, res) => {
+    try {
+        const doctor = await getDoctor(req.user.userId);
+        if (!doctor)
+            return res.status(404).json({ message: "Doctor profile not found" });
+        const userId = req.params.userId;
+        const records = await prisma.medicalRecord.findMany({
+            where: {
+                userId,
+                doctorId: doctor.id,
+                status: 'COMPLETED'
+            },
+            include: {
+                appointment: {
+                    select: {
+                        id: true,
+                        appointmentDate: true,
+                        status: true,
+                        patientInfo: true
+                    }
+                },
+                prescriptions: {
+                    include: { medicine: true }
+                },
+                LabOrder: true,
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ success: true, data: records });
+    }
+    catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+};
+exports.getPatientRecords = getPatientRecords;

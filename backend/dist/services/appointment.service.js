@@ -39,7 +39,7 @@ function generateTransactionCode() {
     return code;
 }
 async function createAppointment(params) {
-    const { userId, patientInfo, doctorId, packageId, appointmentDate, notes } = params;
+    const { userId, patientInfo, patientProfileType = 'SELF', doctorId, packageId, appointmentDate, notes } = params;
     if (doctorId) {
         const doctor = await client_1.default.doctor.findUnique({ where: { id: doctorId } });
         if (!doctor)
@@ -62,27 +62,42 @@ async function createAppointment(params) {
     else if (!packageId) {
         throw new apiError_1.ApiError("Doctor ID or Package ID is required", 400);
     }
-    // Transaction to update user profile and create appointment
+    // Transaction to (optionally) update user profile and create appointment
     return client_1.default.$transaction(async (tx) => {
-        // 1. Update user profile
-        await tx.user.update({
-            where: { id: userId },
-            data: {
-                fullName: patientInfo.fullName,
-                gender: patientInfo.gender,
-                dateOfBirth: patientInfo.dateOfBirth,
-                province: patientInfo.province,
-                district: patientInfo.district,
-                ward: patientInfo.ward,
-                street: patientInfo.street,
-                address: `${patientInfo.street}, ${patientInfo.ward}, ${patientInfo.district}, ${patientInfo.province}`,
-                bloodType: patientInfo.bloodType,
-                allergies: patientInfo.allergies,
-                chronicDiseases: patientInfo.chronicDiseases,
-                personalHistory: patientInfo.personalHistory,
-                familyHistory: patientInfo.familyHistory,
-            },
-        });
+        // 1. Only update user profile fields if booking for SELF
+        if (patientProfileType === 'SELF') {
+            const updateData = {};
+            if (patientInfo.fullName)
+                updateData.fullName = patientInfo.fullName;
+            if (patientInfo.gender)
+                updateData.gender = patientInfo.gender;
+            if (patientInfo.dateOfBirth)
+                updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
+            if (patientInfo.bloodType)
+                updateData.bloodType = patientInfo.bloodType;
+            if (patientInfo.allergies)
+                updateData.allergies = patientInfo.allergies;
+            if (patientInfo.chronicDiseases)
+                updateData.chronicDiseases = patientInfo.chronicDiseases;
+            if (patientInfo.personalHistory)
+                updateData.personalHistory = patientInfo.personalHistory;
+            if (patientInfo.familyHistory)
+                updateData.familyHistory = patientInfo.familyHistory;
+            if (patientInfo.province)
+                updateData.province = patientInfo.province;
+            if (patientInfo.district)
+                updateData.district = patientInfo.district;
+            if (patientInfo.ward)
+                updateData.ward = patientInfo.ward;
+            if (patientInfo.street)
+                updateData.street = patientInfo.street;
+            if (Object.keys(updateData).length > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: updateData,
+                });
+            }
+        }
         // 2. Create appointment
         let transactionCode = generateTransactionCode();
         let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
@@ -110,7 +125,7 @@ async function createAppointment(params) {
         const createdAppointment = await tx.appointment.create({
             data: {
                 userId,
-                patientProfileType: "SELF",
+                patientProfileType: patientProfileType,
                 patientInfo: patientInfo, // Store snapshot
                 doctorId,
                 packageId,

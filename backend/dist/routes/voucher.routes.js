@@ -14,6 +14,7 @@ router.get("/saved", auth_middleware_1.verifyToken, voucher_controller_1.getSave
 router.get("/public", voucher_controller_1.getPublicVouchers);
 // Admin routes
 router.get("/admin", auth_middleware_1.verifyToken, voucher_controller_1.adminListVouchers);
+router.get("/admin/chart-data", auth_middleware_1.verifyToken, voucher_controller_1.adminGetVoucherChartData);
 router.post("/admin", auth_middleware_1.verifyToken, voucher_controller_1.adminCreateVoucher);
 router.put("/admin/:id", auth_middleware_1.verifyToken, voucher_controller_1.adminUpdateVoucher);
 router.delete("/admin/:id", auth_middleware_1.verifyToken, voucher_controller_1.adminDeleteVoucher);

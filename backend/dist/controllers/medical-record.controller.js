@@ -3,9 +3,95 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveRecord = exports.getRecordByAppointment = void 0;
+exports.saveRecord = exports.getRecordByAppointment = exports.getMyRecordByAppointment = exports.getMyMedicalRecords = void 0;
 const emailService_1 = require("../utils/emailService");
 const client_1 = __importDefault(require("../prisma/client"));
+// =====================================================================
+// PATIENT-FACING: Get all my medical records
+// GET /api/medical-records/my
+// =====================================================================
+const getMyMedicalRecords = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
+        const records = await client_1.default.medicalRecord.findMany({
+            where: { userId, status: 'COMPLETED' },
+            include: {
+                appointment: {
+                    include: {
+                        doctor: {
+                            include: { specialty: true }
+                        }
+                    }
+                },
+                prescriptions: {
+                    include: { medicine: true }
+                },
+                LabOrder: true,
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.status(200).json({ success: true, data: records });
+    }
+    catch (error) {
+        console.error('Error fetching my medical records:', error);
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    }
+};
+exports.getMyMedicalRecords = getMyMedicalRecords;
+// =====================================================================
+// PATIENT-FACING: Get one medical record by appointmentId
+// GET /api/medical-records/patient/appointment/:appointmentId
+// =====================================================================
+const getMyRecordByAppointment = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const { appointmentId } = req.params;
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
+        const appointment = await client_1.default.appointment.findUnique({
+            where: { id: appointmentId },
+            include: {
+                user: true,
+                doctor: {
+                    include: { specialty: true }
+                }
+            }
+        });
+        if (!appointment) {
+            res.status(404).json({ success: false, message: 'Appointment not found' });
+            return;
+        }
+        // Security: patient can only view their own records
+        if (appointment.userId !== userId) {
+            res.status(403).json({ success: false, message: 'Access denied' });
+            return;
+        }
+        const record = await client_1.default.medicalRecord.findUnique({
+            where: { appointmentId: appointmentId },
+            include: {
+                prescriptions: {
+                    include: { medicine: true }
+                },
+                LabOrder: true,
+            }
+        });
+        res.status(200).json({
+            success: true,
+            data: { appointment, record }
+        });
+    }
+    catch (error) {
+        console.error('Error fetching patient record:', error);
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+    }
+};
+exports.getMyRecordByAppointment = getMyRecordByAppointment;
 const getRecordByAppointment = async (req, res) => {
     try {
         const { appointmentId } = req.params;
@@ -23,7 +109,7 @@ const getRecordByAppointment = async (req, res) => {
         const record = await client_1.default.medicalRecord.findUnique({
             where: { appointmentId: appointmentId },
             include: {
-                labOrders: true,
+                LabOrder: true,
                 prescriptions: {
                     include: {
                         medicine: true
