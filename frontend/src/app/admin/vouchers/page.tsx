@@ -92,11 +92,7 @@ export default function AdminVoucherPage() {
     description: "", avatarColor: "#0d9488", avatarIcon: "🎁",
   });
 
-  useEffect(() => { loadData(); }, []);
 
-  useEffect(() => {
-    loadChartData();
-  }, [chartPeriod]);
 
   const loadData = async () => {
     setLoading(true);
@@ -111,6 +107,7 @@ export default function AdminVoucherPage() {
   };
 
   const loadChartData = async () => {
+    await Promise.resolve();
     setChartLoading(true);
     try {
       const data = await voucherService.adminGetChartData(chartPeriod);
@@ -121,6 +118,16 @@ export default function AdminVoucherPage() {
       setChartLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadChartData();
+  }, [chartPeriod]);
 
   const filteredVouchers = categoryFilter === "ALL"
     ? vouchers
@@ -157,7 +164,9 @@ export default function AdminVoucherPage() {
     const cfg = CATEGORY_CONFIG[cat];
     const today = format(new Date(), "yyyy-MM-dd'T'HH:mm");
     const monthsLater = cat === "FIRST_BOOKING" ? 2 : 3;
-    const endDate = format(new Date(Date.now() + monthsLater * 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd'T'HH:mm");
+    const end = new Date();
+    end.setDate(end.getDate() + monthsLater * 30);
+    const endDate = format(end, "yyyy-MM-dd'T'HH:mm");
     setFormData(prev => ({
       ...prev,
       category: cat,
