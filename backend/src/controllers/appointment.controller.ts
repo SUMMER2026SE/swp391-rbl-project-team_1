@@ -214,6 +214,7 @@ export async function getPublicPrescriptionHandler(
                 medicalRecord: {
                     select: {
                         finalDiagnosis: true,
+                        preliminaryDiagnosis: true,
                         doctorNotes: true,
                         prescriptions: {
                             select: {
@@ -221,6 +222,7 @@ export async function getPublicPrescriptionHandler(
                                 dosage: true,
                                 frequency: true,
                                 durationDays: true,
+                                instructions: true,
                                 medicine: {
                                     select: {
                                         name: true,
