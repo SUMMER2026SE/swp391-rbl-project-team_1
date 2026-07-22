@@ -173,15 +173,19 @@ async function getPublicPrescriptionHandler(req, res, next) {
                 },
                 medicalRecord: {
                     select: {
-                        diagnosis: true,
-                        notes: true,
+                        finalDiagnosis: true,
+                        doctorNotes: true,
                         prescriptions: {
                             select: {
                                 id: true,
-                                medicationName: true,
                                 dosage: true,
                                 frequency: true,
-                                duration: true,
+                                durationDays: true,
+                                medicine: {
+                                    select: {
+                                        name: true,
+                                    },
+                                },
                             },
                         },
                         createdAt: true,
@@ -195,10 +199,25 @@ async function getPublicPrescriptionHandler(req, res, next) {
         if (appointment.status !== "COMPLETED" || !appointment.medicalRecord) {
             throw new apiError_1.ApiError("No completed prescription found for this appointment", 404);
         }
+        const formattedPrescription = {
+            ...appointment,
+            medicalRecord: {
+                diagnosis: appointment.medicalRecord.finalDiagnosis || "Không có chẩn đoán",
+                notes: appointment.medicalRecord.doctorNotes,
+                createdAt: appointment.medicalRecord.createdAt,
+                prescriptions: appointment.medicalRecord.prescriptions.map((p) => ({
+                    id: p.id,
+                    medicationName: p.medicine?.name || "Không rõ tên thuốc",
+                    dosage: p.dosage,
+                    frequency: p.frequency,
+                    duration: `${p.durationDays} ngày`,
+                })),
+            },
+        };
         res.json({
             message: "Prescription verified successfully",
             verified: true,
-            prescription: appointment,
+            prescription: formattedPrescription,
         });
     }
     catch (error) {
