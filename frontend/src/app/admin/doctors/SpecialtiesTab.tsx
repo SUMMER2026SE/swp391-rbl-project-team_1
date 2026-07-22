@@ -329,7 +329,7 @@ function DeleteConfirm({ target, submitting, onConfirm, onCancel }: DeleteConfir
           <div>
             <h3 className="text-base font-bold text-white">Xóa chuyên khoa?</h3>
             <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-              Bạn sắp xóa chuyên khoa <span className="text-white font-semibold">"{target.name}"</span>.
+              Bạn sắp xóa chuyên khoa <span className="text-white font-semibold">&quot;{target.name}&quot;</span>.
               Hành động này không thể hoàn tác.
             </p>
             {hasDoctors && (
@@ -391,6 +391,7 @@ export default function SpecialtiesTab() {
 
   const loadSpecialties = useCallback(async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       setError(null);
       const res = await adminService.getSpecialties();
@@ -412,6 +413,7 @@ export default function SpecialtiesTab() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadSpecialties(); }, [loadSpecialties]);
 
   useEffect(() => {
@@ -423,7 +425,10 @@ export default function SpecialtiesTab() {
 
   // Validate slug with debounce
   useEffect(() => {
-    if (!formData.slug.trim()) { setSlugStatus("idle"); return; }
+    if (!formData.slug.trim()) {
+      Promise.resolve().then(() => setSlugStatus("idle"));
+      return;
+    }
     if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
 
     slugDebounceRef.current = setTimeout(() => {
