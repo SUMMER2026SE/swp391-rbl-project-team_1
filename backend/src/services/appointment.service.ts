@@ -93,79 +93,76 @@ export async function createAppointment(
         throw new ApiError("Doctor ID or Package ID is required", 400);
     }
 
-    // Transaction to (optionally) update user profile and create appointment
-    return prisma.$transaction(async (tx) => {
-        // 1. Only update user profile fields if booking for SELF
-        if (patientProfileType === 'SELF') {
-            const updateData: Record<string, unknown> = {};
-            if (patientInfo.fullName) updateData.fullName = patientInfo.fullName;
-            if (patientInfo.gender) updateData.gender = patientInfo.gender;
-            if (patientInfo.dateOfBirth) updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
-            if (patientInfo.bloodType) updateData.bloodType = patientInfo.bloodType;
-            if (patientInfo.allergies) updateData.allergies = patientInfo.allergies;
-            if (patientInfo.chronicDiseases) updateData.chronicDiseases = patientInfo.chronicDiseases;
-            if (patientInfo.personalHistory) updateData.personalHistory = patientInfo.personalHistory;
-            if (patientInfo.familyHistory) updateData.familyHistory = patientInfo.familyHistory;
-            if (patientInfo.province) updateData.province = patientInfo.province;
-            if (patientInfo.district) updateData.district = patientInfo.district;
-            if (patientInfo.ward) updateData.ward = patientInfo.ward;
-            if (patientInfo.street) updateData.street = patientInfo.street;
+    // 1. Only update user profile fields if booking for SELF
+    if (patientProfileType === 'SELF') {
+        const updateData: Record<string, unknown> = {};
+        if (patientInfo.fullName) updateData.fullName = patientInfo.fullName;
+        if (patientInfo.gender) updateData.gender = patientInfo.gender;
+        if (patientInfo.dateOfBirth) updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
+        if (patientInfo.bloodType) updateData.bloodType = patientInfo.bloodType;
+        if (patientInfo.allergies) updateData.allergies = patientInfo.allergies;
+        if (patientInfo.chronicDiseases) updateData.chronicDiseases = patientInfo.chronicDiseases;
+        if (patientInfo.personalHistory) updateData.personalHistory = patientInfo.personalHistory;
+        if (patientInfo.familyHistory) updateData.familyHistory = patientInfo.familyHistory;
+        if (patientInfo.province) updateData.province = patientInfo.province;
+        if (patientInfo.district) updateData.district = patientInfo.district;
+        if (patientInfo.ward) updateData.ward = patientInfo.ward;
+        if (patientInfo.street) updateData.street = patientInfo.street;
 
-            if (Object.keys(updateData).length > 0) {
-                await tx.user.update({
-                    where: { id: userId },
-                    data: updateData,
-                });
-            }
+        if (Object.keys(updateData).length > 0) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: updateData,
+            });
         }
+    }
 
-        // 2. Create appointment
-        let transactionCode = generateTransactionCode();
-        let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
-        while (codeConflict) {
-            transactionCode = generateTransactionCode();
-            codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
-        }
+    // 2. Create appointment
+    let transactionCode = generateTransactionCode();
+    let codeConflict = await prisma.appointment.findFirst({ where: { transactionCode } });
+    while (codeConflict) {
+        transactionCode = generateTransactionCode();
+        codeConflict = await prisma.appointment.findFirst({ where: { transactionCode } });
+    }
 
-        let bookingCode = generateBookingCode();
-        let bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
-        while (bookingCodeConflict) {
-            bookingCode = generateBookingCode();
-            bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
-        }
+    let bookingCode = generateBookingCode();
+    let bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
+    while (bookingCodeConflict) {
+        bookingCode = generateBookingCode();
+        bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
+    }
 
-        let amount = 5000;
-        if (doctorId) {
-            const doc = await tx.doctor.findUnique({ where: { id: doctorId } });
-            if (doc?.price) amount = doc.price;
-        } else if (packageId) {
-            const pkg = await tx.medicalPackage.findUnique({ where: { id: packageId } });
-            if (pkg) amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
-        }
+    let amount = 5000;
+    if (doctorId) {
+        const doc = await prisma.doctor.findUnique({ where: { id: doctorId } });
+        if (doc?.price) amount = doc.price;
+    } else if (packageId) {
+        const pkg = await prisma.medicalPackage.findUnique({ where: { id: packageId } });
+        if (pkg) amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+    }
 
-        const createdAppointment = await tx.appointment.create({
-            data: {
-                userId,
-                patientProfileType: patientProfileType as any,
-                patientInfo: patientInfo as any, // Store snapshot
-                doctorId,
-                packageId,
-                appointmentDate,
-                status: "PENDING_PAYMENT",
-                notes,
-                amount,
-                transactionCode,
-                bookingCode,
-            },
-            include: {
-                doctor: { include: { userAccount: true } },
-                medicalPackage: true,
-                user: true,
-            },
-        });
-
-        return createdAppointment;
+    const createdAppointment = await prisma.appointment.create({
+        data: {
+            userId,
+            patientProfileType: patientProfileType as any,
+            patientInfo: patientInfo as any, // Store snapshot
+            doctorId,
+            packageId,
+            appointmentDate,
+            status: "PENDING_PAYMENT",
+            notes,
+            amount,
+            transactionCode,
+            bookingCode,
+        },
+        include: {
+            doctor: { include: { userAccount: true } },
+            medicalPackage: true,
+            user: true,
+        },
     });
+
+    return createdAppointment;
 }
 
 export async function uploadPaymentProof(

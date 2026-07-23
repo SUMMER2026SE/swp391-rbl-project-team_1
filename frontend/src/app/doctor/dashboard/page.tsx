@@ -70,11 +70,11 @@ export default function DoctorDashboard() {
   };
 
   const statCards = [
-    { title: "Lịch hẹn hôm nay", value: stats?.totalAppointmentsToday || 0, icon: <CalendarCheck className="w-8 h-8 text-blue-500" />, bg: "bg-blue-50", href: "/doctor/appointments" },
-    { title: "Chờ xác nhận", value: stats?.pendingAppointments || 0, icon: <Clock className="w-8 h-8 text-yellow-500" />, bg: "bg-yellow-50", href: "/doctor/appointments" },
-    { title: "Hoàn thành tháng này", value: stats?.completedAppointmentsThisMonth || 0, icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, bg: "bg-green-50", href: "/doctor/appointments" },
-    { title: "Tổng bệnh nhân", value: stats?.totalPatients || 0, icon: <Users className="w-8 h-8 text-teal-500" />, bg: "bg-teal-50", href: "/doctor/patients" },
-    { title: "Đánh giá TB", value: `${stats?.averageRating || 0} ★`, icon: <Star className="w-8 h-8 text-orange-500" />, bg: "bg-orange-50", href: "/doctor/reviews" },
+    { title: "Lịch hẹn hôm nay", value: stats?.totalAppointmentsToday || 0, icon: <CalendarCheck className="w-8 h-8 text-white" />, bg: "bg-gradient-to-br from-blue-400 to-blue-600", shadow: "shadow-blue-200", href: "/doctor/appointments" },
+    { title: "Chờ xác nhận", value: stats?.pendingAppointments || 0, icon: <Clock className="w-8 h-8 text-white" />, bg: "bg-gradient-to-br from-amber-400 to-amber-600", shadow: "shadow-amber-200", href: "/doctor/appointments" },
+    { title: "Hoàn thành tháng này", value: stats?.completedAppointmentsThisMonth || 0, icon: <CheckCircle2 className="w-8 h-8 text-white" />, bg: "bg-gradient-to-br from-emerald-400 to-emerald-600", shadow: "shadow-emerald-200", href: "/doctor/appointments" },
+    { title: "Tổng bệnh nhân", value: stats?.totalPatients || 0, icon: <Users className="w-8 h-8 text-white" />, bg: "bg-gradient-to-br from-teal-400 to-teal-600", shadow: "shadow-teal-200", href: "/doctor/patients" },
+    { title: "Đánh giá TB", value: `${stats?.averageRating || 0} ★`, icon: <Star className="w-8 h-8 text-white" />, bg: "bg-gradient-to-br from-orange-400 to-orange-600", shadow: "shadow-orange-200", href: "/doctor/reviews" },
   ];
 
   return (
@@ -87,15 +87,15 @@ export default function DoctorDashboard() {
       {/* Row 1: KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map((card, idx) => (
-          <Link href={card.href} key={idx} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md hover:border-teal-100 transition-all cursor-pointer group">
+          <Link href={card.href} key={idx} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100/50 flex flex-col justify-between hover:shadow-xl transition-all cursor-pointer group hover:-translate-y-1 duration-300">
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-xl ${card.bg} group-hover:scale-110 transition-transform`}>
+              <div className={`p-3 rounded-2xl ${card.bg} shadow-lg ${card.shadow} group-hover:scale-110 transition-transform duration-300`}>
                 {card.icon}
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{card.title}</p>
-              <h3 className={`text-xl font-bold text-slate-800`}>{card.value}</h3>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">{card.title}</p>
+              <h3 className={`text-2xl font-black text-slate-800`}>{card.value}</h3>
             </div>
           </Link>
         ))}
@@ -198,9 +198,11 @@ export default function DoctorDashboard() {
                     <div className="flex-1">
                       <p className="font-semibold text-sm text-slate-800 line-clamp-1">{(app.patientInfo as any)?.fullName || app.user?.fullName}</p>
                       {(app.patientProfileType as any) === 'OTHER' && (
-                        <p className="text-xs text-slate-400 mt-0.5">Đặt bởi: {app.user?.email}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Đặt bởi: {app.user?.email}</p>
                       )}
-                      <p className="text-xs text-slate-500 mt-0.5">{new Date(app.appointmentDate).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</p>
+                      <p className="text-xs text-teal-600 font-medium mt-0.5 bg-teal-50 inline-block px-2 py-0.5 rounded-full border border-teal-100">
+                        {new Date(app.appointmentDate).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})} - {new Date(app.appointmentDate).toLocaleDateString('vi-VN')}
+                      </p>
                     </div>
                     <Link href={`/video-call?appointmentId=${app.id}`}>
                       <button className="px-3 py-1.5 bg-teal-100 text-teal-700 text-xs font-bold rounded-lg hover:bg-teal-200 transition-colors shrink-0">

@@ -11,7 +11,6 @@ import { removeVietnameseTones } from "@/utils/stringUtils";
 
 export default function AdminAppointmentsPage() {
   const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<AdminAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -25,6 +24,7 @@ export default function AdminAppointmentsPage() {
 
   async function loadAppointments() {
     try {
+      await Promise.resolve();
       setLoading(true);
       setError(null);
       const res = await adminService.getAppointments();
@@ -46,11 +46,12 @@ export default function AdminAppointmentsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAppointments();
   }, []);
 
   // Filter list
-  useEffect(() => {
+  const filteredAppointments = React.useMemo(() => {
     let result = [...appointments];
 
     if (searchQuery.trim()) {
@@ -67,7 +68,7 @@ export default function AdminAppointmentsPage() {
       result = result.filter((app) => app.status === selectedStatus);
     }
 
-    setFilteredAppointments(result);
+    return result;
   }, [searchQuery, selectedStatus, appointments]);
 
   // Handle status update

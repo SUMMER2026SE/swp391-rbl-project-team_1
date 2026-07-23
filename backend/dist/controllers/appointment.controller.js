@@ -13,6 +13,7 @@ const appointment_service_1 = require("../services/appointment.service");
 const emailService_1 = require("../utils/emailService");
 const apiError_1 = require("../utils/apiError");
 const client_1 = __importDefault(require("../prisma/client"));
+const notificationService_1 = require("../services/notificationService");
 /**
  * POST /api/appointments
  * Protected (USER role): Books a new appointment.
@@ -23,7 +24,7 @@ async function createAppointmentHandler(req, res, next) {
         if (!userId) {
             throw new apiError_1.ApiError("Authentication required", 401);
         }
-        const { doctorId, appointmentDate, notes, packageId, patientInfo } = req.body;
+        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType } = req.body;
         if (!patientInfo || !patientInfo.fullName) {
             throw new apiError_1.ApiError("Vui lòng điền đầy đủ thông tin người khám", 400);
         }
@@ -45,6 +46,7 @@ async function createAppointmentHandler(req, res, next) {
         const appointment = await (0, appointment_service_1.createAppointment)({
             userId,
             patientInfo: patientInfo,
+            patientProfileType: patientProfileType === 'OTHER' ? 'OTHER' : 'SELF',
             doctorId,
             appointmentDate: date,
             notes,
@@ -171,15 +173,19 @@ async function getPublicPrescriptionHandler(req, res, next) {
                 },
                 medicalRecord: {
                     select: {
-                        diagnosis: true,
-                        notes: true,
+                        finalDiagnosis: true,
+                        doctorNotes: true,
                         prescriptions: {
                             select: {
                                 id: true,
-                                medicationName: true,
                                 dosage: true,
                                 frequency: true,
-                                duration: true,
+                                durationDays: true,
+                                medicine: {
+                                    select: {
+                                        name: true,
+                                    },
+                                },
                             },
                         },
                         createdAt: true,
@@ -193,10 +199,25 @@ async function getPublicPrescriptionHandler(req, res, next) {
         if (appointment.status !== "COMPLETED" || !appointment.medicalRecord) {
             throw new apiError_1.ApiError("No completed prescription found for this appointment", 404);
         }
+        const formattedPrescription = {
+            ...appointment,
+            medicalRecord: {
+                diagnosis: appointment.medicalRecord.finalDiagnosis || "Không có chẩn đoán",
+                notes: appointment.medicalRecord.doctorNotes,
+                createdAt: appointment.medicalRecord.createdAt,
+                prescriptions: appointment.medicalRecord.prescriptions.map((p) => ({
+                    id: p.id,
+                    medicationName: p.medicine?.name || "Không rõ tên thuốc",
+                    dosage: p.dosage,
+                    frequency: p.frequency,
+                    duration: `${p.durationDays} ngày`,
+                })),
+            },
+        };
         res.json({
             message: "Prescription verified successfully",
             verified: true,
-            prescription: appointment,
+            prescription: formattedPrescription,
         });
     }
     catch (error) {
@@ -312,6 +333,16 @@ async function cancelAppointmentHandler(req, res, next) {
                 amount: updatedAppointment.amount
             }).catch(console.error);
         }
+        // Create in-app notification for the user
+        (0, notificationService_1.createNotification)({
+            userId,
+            type: "APPOINTMENT_CANCELLED_BY_PATIENT",
+            title: "Lịch hẹn đã bị huỷ ❌",
+            message: isRefundable
+                ? `Lịch hẹn #${updatedAppointment.bookingCode} đã huỷ thành công. Tiền đặt cọc sẽ được hoàn trả trong vòng 3-5 ngày làm việc.`
+                : `Lịch hẹn #${updatedAppointment.bookingCode} đã huỷ thành công. Lưu ý: huỷ trong vòng 24h trước giờ khám nên không hoàn cọc.`,
+            data: { appointmentId: updatedAppointment.id }
+        }).catch(console.error);
         res.json({
             message: "Huỷ lịch hẹn thành công",
             appointment: updatedAppointment

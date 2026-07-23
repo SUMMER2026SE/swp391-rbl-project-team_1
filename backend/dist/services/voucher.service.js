@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPublicVouchers = exports.getSavedVouchers = exports.saveVoucher = exports.getVoucherUsages = exports.deleteVoucher = exports.updateVoucher = exports.createVoucher = exports.getVoucherStats = exports.listVouchers = exports.getUserVouchers = exports.applyVoucher = exports.validateVoucher = void 0;
+exports.getPublicVouchers = exports.getSavedVouchers = exports.saveVoucher = exports.getVoucherUsages = exports.deleteVoucher = exports.updateVoucher = exports.createVoucher = exports.getVoucherChartData = exports.getVoucherStats = exports.listVouchers = exports.getUserVouchers = exports.applyVoucher = exports.validateVoucher = void 0;
 const client_1 = __importDefault(require("../prisma/client"));
 const date_fns_1 = require("date-fns");
 const MAX_MONTHS_NORMAL = 2;
@@ -174,6 +174,60 @@ const getVoucherStats = async () => {
     return { active, totalUsed, totalDiscounted, expiring };
 };
 exports.getVoucherStats = getVoucherStats;
+const getVoucherChartData = async (period) => {
+    const now = new Date();
+    let startDate;
+    if (period === 'week') {
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+    }
+    else if (period === 'month') {
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+    }
+    else {
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+    }
+    const usages = await client_1.default.voucherUsage.findMany({
+        where: { usedAt: { gte: startDate } },
+        include: { voucher: { select: { code: true, category: true } } },
+        orderBy: { usedAt: 'asc' },
+    });
+    // Bar chart: usages per voucher code
+    const usagesByCode = {};
+    const allVouchers = await client_1.default.voucher.findMany({ select: { id: true, code: true, usedCount: true, category: true } });
+    for (const v of allVouchers) {
+        usagesByCode[v.code] = { code: v.code, count: 0, totalCount: v.usedCount, category: v.category };
+    }
+    for (const u of usages) {
+        const code = u.voucher.code;
+        if (usagesByCode[code])
+            usagesByCode[code].count += 1;
+    }
+    const barData = Object.values(usagesByCode).filter(v => v.count > 0);
+    // Line chart: discount amount over time
+    const lineDataMap = {};
+    for (const u of usages) {
+        let key;
+        const d = new Date(u.usedAt);
+        if (period === 'week') {
+            key = `${d.getDate()}/${d.getMonth() + 1}`;
+        }
+        else if (period === 'month') {
+            key = `${d.getDate()}/${d.getMonth() + 1}`;
+        }
+        else {
+            key = `${d.getMonth() + 1}/${d.getFullYear()}`;
+        }
+        lineDataMap[key] = (lineDataMap[key] || 0) + u.discountAmount;
+    }
+    const lineData = Object.entries(lineDataMap).map(([date, amount]) => ({ date, amount }));
+    const totalUsed = usages.length;
+    const totalDiscount = usages.reduce((s, u) => s + u.discountAmount, 0);
+    return { barData, lineData, totalUsed, totalDiscount };
+};
+exports.getVoucherChartData = getVoucherChartData;
 const createVoucher = async (data) => {
     // Enforce max percent
     if (data.type === "PERCENT" && data.discountValue > MAX_PERCENT) {
@@ -199,6 +253,10 @@ const createVoucher = async (data) => {
             isFirstBooking: data.isFirstBooking || false,
             startDate: data.startDate,
             endDate: data.endDate,
+            category: data.category || "FIRST_BOOKING",
+            description: data.description || null,
+            avatarColor: data.avatarColor || null,
+            avatarIcon: data.avatarIcon || null,
         },
     });
     return { voucher, capped };
