@@ -143,7 +143,7 @@ export default function LoginPage() {
         }, 1000);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Đăng nhập thất bại. Vui lòng kiểm tra lại email hoặc mật khẩu.";
+      const message = err instanceof Error ? err.message : "Đăng nhập thất bại.Bạn vui lòng kiểm tra lại email hoặc mật khẩu.";
       setError(message);
     } finally {
       setLoading(false);
