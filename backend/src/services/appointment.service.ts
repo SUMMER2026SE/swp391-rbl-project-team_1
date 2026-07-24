@@ -70,99 +70,113 @@ export async function createAppointment(
 ): Promise<Appointment> {
     const { userId, patientInfo, patientProfileType = 'SELF', doctorId, packageId, appointmentDate, notes } = params;
 
-    if (doctorId) {
-        const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
-        if (!doctor) throw new ApiError("Doctor not found", 404);
+    return await prisma.$transaction(async (tx) => {
+        if (doctorId) {
+            const doctor = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (!doctor) throw new ApiError("Doctor not found", 404);
 
-        const doctorUser = await prisma.user.findUnique({ where: { doctorId } });
-        if (doctorUser?.id === userId) {
-            throw new ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
+            const doctorUser = await tx.user.findUnique({ where: { doctorId } });
+            if (doctorUser?.id === userId) {
+                throw new ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
+            }
+
+            const count = await tx.appointment.count({
+                where: {
+                    doctorId,
+                    appointmentDate,
+                    status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
+                },
+            });
+            if (count >= 20) {
+                throw new ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
+            }
+        } else if (!packageId) {
+            throw new ApiError("Doctor ID or Package ID is required", 400);
         }
 
-        const count = await prisma.appointment.count({
-            where: {
+        // 1. Only update user profile fields if booking for SELF
+        if (patientProfileType === 'SELF') {
+            const updateData: Record<string, unknown> = {};
+            if (patientInfo.fullName) updateData.fullName = patientInfo.fullName;
+            if (patientInfo.gender) updateData.gender = patientInfo.gender;
+            if (patientInfo.dateOfBirth) updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
+            if (patientInfo.bloodType) updateData.bloodType = patientInfo.bloodType;
+            if (patientInfo.allergies) updateData.allergies = patientInfo.allergies;
+            if (patientInfo.chronicDiseases) updateData.chronicDiseases = patientInfo.chronicDiseases;
+            if (patientInfo.personalHistory) updateData.personalHistory = patientInfo.personalHistory;
+            if (patientInfo.familyHistory) updateData.familyHistory = patientInfo.familyHistory;
+            if (patientInfo.province) updateData.province = patientInfo.province;
+            if (patientInfo.district) updateData.district = patientInfo.district;
+            if (patientInfo.ward) updateData.ward = patientInfo.ward;
+            if (patientInfo.street) updateData.street = patientInfo.street;
+
+            if (Object.keys(updateData).length > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: updateData,
+                });
+            }
+        }
+
+        // 2. Create appointment - generate unique codes with max retry limit
+        const MAX_CODE_RETRIES = 10;
+
+        let transactionCode = generateTransactionCode();
+        let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        let txnRetries = 0;
+        while (codeConflict) {
+            if (++txnRetries > MAX_CODE_RETRIES) {
+                throw new ApiError("Không thể tạo mã giao dịch duy nhất. Vui lòng thử lại.", 500);
+            }
+            transactionCode = generateTransactionCode();
+            codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        }
+
+        let bookingCode = generateBookingCode();
+        let bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        let bookingRetries = 0;
+        while (bookingCodeConflict) {
+            if (++bookingRetries > MAX_CODE_RETRIES) {
+                throw new ApiError("Không thể tạo mã đặt lịch duy nhất. Vui lòng thử lại.", 500);
+            }
+            bookingCode = generateBookingCode();
+            bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        }
+
+        let amount = 5000;
+        if (doctorId) {
+            const doc = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (doc?.price) amount = doc.price;
+        } else if (packageId) {
+            const pkg = await tx.medicalPackage.findUnique({ where: { id: packageId } });
+            if (pkg) amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+
+        const createdAppointment = await tx.appointment.create({
+            data: {
+                userId,
+                patientProfileType: patientProfileType as any,
+                patientInfo: patientInfo as any, // Store snapshot
                 doctorId,
+                packageId,
                 appointmentDate,
-                status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
+                status: "PENDING_PAYMENT",
+                notes,
+                amount,
+                transactionCode,
+                bookingCode,
+            },
+            include: {
+                doctor: { include: { userAccount: true } },
+                medicalPackage: true,
+                user: true,
             },
         });
-        if (count >= 20) {
-            throw new ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
-        }
-    } else if (!packageId) {
-        throw new ApiError("Doctor ID or Package ID is required", 400);
-    }
 
-    // 1. Only update user profile fields if booking for SELF
-    if (patientProfileType === 'SELF') {
-        const updateData: Record<string, unknown> = {};
-        if (patientInfo.fullName) updateData.fullName = patientInfo.fullName;
-        if (patientInfo.gender) updateData.gender = patientInfo.gender;
-        if (patientInfo.dateOfBirth) updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
-        if (patientInfo.bloodType) updateData.bloodType = patientInfo.bloodType;
-        if (patientInfo.allergies) updateData.allergies = patientInfo.allergies;
-        if (patientInfo.chronicDiseases) updateData.chronicDiseases = patientInfo.chronicDiseases;
-        if (patientInfo.personalHistory) updateData.personalHistory = patientInfo.personalHistory;
-        if (patientInfo.familyHistory) updateData.familyHistory = patientInfo.familyHistory;
-        if (patientInfo.province) updateData.province = patientInfo.province;
-        if (patientInfo.district) updateData.district = patientInfo.district;
-        if (patientInfo.ward) updateData.ward = patientInfo.ward;
-        if (patientInfo.street) updateData.street = patientInfo.street;
-
-        if (Object.keys(updateData).length > 0) {
-            await prisma.user.update({
-                where: { id: userId },
-                data: updateData,
-            });
-        }
-    }
-
-    // 2. Create appointment
-    let transactionCode = generateTransactionCode();
-    let codeConflict = await prisma.appointment.findFirst({ where: { transactionCode } });
-    while (codeConflict) {
-        transactionCode = generateTransactionCode();
-        codeConflict = await prisma.appointment.findFirst({ where: { transactionCode } });
-    }
-
-    let bookingCode = generateBookingCode();
-    let bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
-    while (bookingCodeConflict) {
-        bookingCode = generateBookingCode();
-        bookingCodeConflict = await prisma.appointment.findFirst({ where: { bookingCode } });
-    }
-
-    let amount = 5000;
-    if (doctorId) {
-        const doc = await prisma.doctor.findUnique({ where: { id: doctorId } });
-        if (doc?.price) amount = doc.price;
-    } else if (packageId) {
-        const pkg = await prisma.medicalPackage.findUnique({ where: { id: packageId } });
-        if (pkg) amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
-    }
-
-    const createdAppointment = await prisma.appointment.create({
-        data: {
-            userId,
-            patientProfileType: patientProfileType as any,
-            patientInfo: patientInfo as any, // Store snapshot
-            doctorId,
-            packageId,
-            appointmentDate,
-            status: "PENDING_PAYMENT",
-            notes,
-            amount,
-            transactionCode,
-            bookingCode,
-        },
-        include: {
-            doctor: { include: { userAccount: true } },
-            medicalPackage: true,
-            user: true,
-        },
+        return createdAppointment;
+    }, {
+        isolationLevel: "Serializable"
     });
-
-    return createdAppointment;
 }
 
 export async function uploadPaymentProof(

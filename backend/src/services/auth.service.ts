@@ -195,6 +195,10 @@ export async function authenticateUser(
         throw new ApiError("Invalid credentials", 401);
     }
 
+    if (user.isLocked) {
+        throw new ApiError("This account is locked. Please contact the administrator.", 403);
+    }
+
     const payload: AuthTokenPayload = {
         userId: user.id,
         role: user.role,
@@ -393,6 +397,9 @@ export async function googleLogin(idToken: string): Promise<AuthResult> {
                 },
             });
         } else {
+            if (user.isLocked) {
+                throw new ApiError("This account is locked. Please contact the administrator.", 403);
+            }
             // Update profile fields if they are missing
             const dataToUpdate: { fullName?: string; avatar?: string } = {};
             if (!user.fullName && payload.name) dataToUpdate.fullName = payload.name;

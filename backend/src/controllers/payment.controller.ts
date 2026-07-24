@@ -187,6 +187,10 @@ export async function mockPayHandler(
     next: NextFunction
 ): Promise<void> {
     try {
+        if (process.env.NODE_ENV === "production") {
+            throw new ApiError("Tính năng thanh toán giả lập không được hỗ trợ trên môi trường production", 403);
+        }
+
         const userId = req.user?.userId;
         const { appointmentId } = req.body;
 
@@ -208,6 +212,10 @@ export async function mockPayHandler(
 
         if (appointment.userId !== userId && req.user?.role !== "ADMIN") {
             throw new ApiError("Bạn không có quyền thanh toán cho lịch hẹn này", 403);
+        }
+
+        if (appointment.status !== "PENDING_PAYMENT") {
+            throw new ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
         }
 
         const result = await processMockPayment(appointmentId);
@@ -240,6 +248,19 @@ export async function createPayOSPaymentUrlHandler(
 
         if (!appointmentId) {
             throw new ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
+        }
+
+        // Verify appointment ownership
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: appointmentId },
+        });
+
+        if (!appointment) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        if (appointment.userId !== userId && req.user?.role !== "ADMIN") {
+            throw new ApiError("Bạn không có quyền thanh toán cho lịch hẹn này", 403);
         }
 
         const result = await createPayOSPaymentLink(

@@ -57,13 +57,24 @@ export async function createVNPayUrl(params: VNPayUrlParams): Promise<string> {
         throw new ApiError("Lịch hẹn không tồn tại", 404);
     }
 
+    if (appointment.status !== "PENDING_PAYMENT") {
+        throw new ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
+    }
+
     // Default to 150,000 VND if doctor price is not set
     const amount = appointment.doctor?.price || 150000;
 
-    const tmnCode = process.env.VNP_TMNCODE || "2QXUIBJZ";
-    const secretKey = process.env.VNP_HASHSECRET || "GETPNO2UY8Z239634TDUO2B86E88U11Y";
+    const tmnCode = process.env.VNP_TMNCODE;
+    const secretKey = process.env.VNP_HASHSECRET;
     let vnpUrl = process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    const returnUrl = process.env.VNP_RETURNURL || "http://localhost:5000/api/payment/vnpay-return";
+    const returnUrl = process.env.VNP_RETURNURL;
+
+    if (!tmnCode || !secretKey || !returnUrl) {
+        throw new ApiError(
+            "Cấu hình VNPay bị thiếu. Vui lòng cấu hình VNP_TMNCODE, VNP_HASHSECRET và VNP_RETURNURL trong biến môi trường.",
+            500
+        );
+    }
 
     const date = new Date();
     const createDate = getFormattedDate(date);
@@ -153,7 +164,10 @@ export function verifyVNPaySignature(vnpParams: any): boolean {
     delete cleanParams["vnp_SecureHashType"];
 
     const sortedParams = sortObject(cleanParams);
-    const secretKey = process.env.VNP_HASHSECRET || "GETPNO2UY8Z239634TDUO2B86E88U11Y";
+    const secretKey = process.env.VNP_HASHSECRET;
+    if (!secretKey) {
+        throw new Error("VNP_HASHSECRET environment variable is required");
+    }
 
     // Build signData query string
     const signData = Object.keys(sortedParams)
@@ -621,7 +635,7 @@ export async function cancelExpiredPayOSPayments() {
             }),
             prisma.appointment.update({
                 where: { id: p.appointmentId },
-                data: { status: AppointmentStatus.CANCELLED, cancellationReason: "Quá hạn thanh toán PayOS" }
+                data: { status: AppointmentStatus.EXPIRED, cancellationReason: "Quá hạn thanh toán PayOS" }
             })
         ]);
 

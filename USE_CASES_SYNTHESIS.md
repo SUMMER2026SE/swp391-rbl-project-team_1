@@ -1,4 +1,4 @@
-# TỔNG HỢP USE CASES - HỆ THỐNG ĐẶT LỊCH KHÁM BỆNH SWP391
+1# TỔNG HỢP USE CASES - HỆ THỐNG ĐẶT LỊCH KHÁM BỆNH SWP391
 > **Dự án**: SUMMER2026SE – Team 1  
 > **Phân loại theo role**: USER (Bệnh nhân) | ADMIN (Quản trị viên) | DOCTOR (Bác sĩ) | PUBLIC (Công khai)
 
