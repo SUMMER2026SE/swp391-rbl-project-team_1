@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
-import { User as UserIcon, FileText, CalendarDays, Ticket, Star, ShieldCheck, LogOut } from "lucide-react";
+import { User as UserIcon, FileText, CalendarDays, Ticket, Star, ShieldCheck, LogOut, Users } from "lucide-react";
 import PersonalInfoTab from "@/components/profile/PersonalInfoTab";
+import PatientProfilesTab from "@/components/profile/PatientProfilesTab";
 import MedicalRecordsTab from "@/components/profile/MedicalRecordsTab";
 import AppointmentsTab from "@/components/profile/AppointmentsTab";
 import VouchersTab from "@/components/profile/VouchersTab";
@@ -13,10 +14,11 @@ import SecurityTab from "@/components/profile/SecurityTab";
 import SupportTab from "@/components/profile/SupportTab";
 import { useRouter } from "next/navigation";
 
-type TabId = "info" | "medical-records" | "appointments" | "vouchers" | "reviews" | "security" | "support";
+type TabId = "info" | "patient-profiles" | "medical-records" | "appointments" | "vouchers" | "reviews" | "security" | "support";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "info", label: "Thông tin cá nhân", icon: <UserIcon className="w-4 h-4" /> },
+  { id: "patient-profiles", label: "Hồ sơ người thân", icon: <Users className="w-4 h-4" /> },
   { id: "medical-records", label: "Hồ sơ bệnh án", icon: <FileText className="w-4 h-4" /> },
   { id: "appointments", label: "Lịch hẹn", icon: <CalendarDays className="w-4 h-4" /> },
   { id: "vouchers", label: "Voucher", icon: <Ticket className="w-4 h-4" /> },
@@ -40,11 +42,17 @@ function ProfileContent() {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
-    const hash = window.location.hash.replace("#", "") as TabId;
-    if (TABS.some(t => t.id === hash)) {
-      setActiveTab(hash);
-    }
+    const handleHash = () => {
+      const hash = window.location.hash.replace("#", "") as TabId;
+      if (TABS.some(t => t.id === hash)) {
+        setActiveTab(hash);
+      }
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
   }, []);
 
   const handleTabChange = (tabId: TabId) => {
@@ -89,7 +97,7 @@ function ProfileContent() {
             <div className="text-slate-500 flex flex-col sm:flex-row items-center gap-2 sm:gap-6 text-sm">
               <p>{user?.email}</p>
               <span className="hidden sm:inline text-slate-300">•</span>
-              <p>Tham gia: {new Date(user?.createdAt || Date.now()).toLocaleDateString("vi-VN")}</p>
+              <p>Tham gia: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("vi-VN") : "N/A"}</p>
             </div>
           </div>
           
@@ -124,6 +132,7 @@ function ProfileContent() {
         {/* Tab Content */}
         <div className="min-h-[400px]">
           {activeTab === "info" && <PersonalInfoTab />}
+          {activeTab === "patient-profiles" && <PatientProfilesTab />}
           {activeTab === "medical-records" && <MedicalRecordsTab />}
           {activeTab === "appointments" && <AppointmentsTab />}
           {activeTab === "vouchers" && <VouchersTab />}

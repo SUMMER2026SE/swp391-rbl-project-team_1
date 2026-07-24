@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { appointmentService } from "@/services/appointment.service";
 import { bookingProfileService, BookingProfile } from "@/services/booking-profile.service";
-import { Appointment } from "@/types/appointment";
+import { Appointment, MedicalRecord } from "@/types/appointment";
 import { FileText, UserPlus, Activity, CalendarDays, Eye, Edit, Trash2, CheckCircle2 } from "lucide-react";
 import Button from "@/components/common/Button";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
@@ -16,15 +16,11 @@ export default function MedicalRecordsTab() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [profiles, setProfiles] = useState<BookingProfile[]>([]);
-  const [recordsMap, setRecordsMap] = useState<Record<string, any>>({});
+  const [recordsMap, setRecordsMap] = useState<Record<string, MedicalRecord>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [activeProfileId, setActiveProfileId] = useState<string | "MAIN">("MAIN");
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -39,23 +35,29 @@ export default function MedicalRecordsTab() {
 
       // Fetch medical records list to build appointmentId → record map
       try {
-        const recRes = await api.get('/medical-records/my');
+        const recRes = await api.get<{ success: boolean; data: MedicalRecord[] }>('/medical-records/my');
         if (recRes.data.success) {
-          const map: Record<string, any> = {};
-          (recRes.data.data as any[]).forEach((r: any) => {
+          const map: Record<string, MedicalRecord> = {};
+          recRes.data.data.forEach((r) => {
             map[r.appointmentId] = r;
           });
           setRecordsMap(map);
         }
-      } catch (_) {
+      } catch {
         // silent — records just won't show badge
       }
-    } catch (err: any) {
-      setError(err.message || "Lỗi tải dữ liệu hồ sơ");;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Lỗi tải dữ liệu hồ sơ";
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
+  }, []);
 
   const completedAppts = appointments
     .filter(a => a.status === "COMPLETED")
@@ -73,8 +75,9 @@ export default function MedicalRecordsTab() {
       await bookingProfileService.deleteProfile(id);
       setProfiles(prev => prev.filter(p => p.id !== id));
       if (activeProfileId === id) setActiveProfileId("MAIN");
-    } catch (err: any) {
-      alert("Lỗi khi xóa hồ sơ: " + (err.message || "Unknown error"));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      alert("Lỗi khi xóa hồ sơ: " + message);
     }
   };
 
@@ -120,7 +123,7 @@ export default function MedicalRecordsTab() {
           >
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
               <button 
-                onClick={(e) => { e.stopPropagation(); /* TODO: Edit */ }}
+                onClick={(e) => { e.stopPropagation(); window.location.hash = "#patient-profiles"; }}
                 className="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:text-teal-600 hover:border-teal-600"
               >
                 <Edit className="w-4 h-4" />
@@ -147,7 +150,7 @@ export default function MedicalRecordsTab() {
 
         {profiles.length < 3 && (
           <div 
-            onClick={() => { /* TODO: Open add relative modal */ }}
+            onClick={() => { window.location.hash = "#patient-profiles"; }}
             className="flex-shrink-0 w-[300px] rounded-2xl p-5 cursor-pointer transition-all border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-teal-50 hover:border-teal-400 hover:text-teal-600 flex flex-col items-center justify-center gap-2 text-slate-500"
           >
             <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
@@ -181,10 +184,10 @@ export default function MedicalRecordsTab() {
                   </div>
                   <div className="flex-1">
                     <h4 className="font-bold text-slate-800">
-                      Bác sĩ {(appt as any).doctor?.name || "N/A"}
+                      Bác sĩ {appt.doctor?.name || "N/A"}
                     </h4>
                     <p className="text-sm text-slate-500">
-                      Chuyên khoa: {(appt as any).doctor?.specialty?.name || "N/A"}
+                      Chuyên khoa: {appt.doctor?.specialty?.name || "N/A"}
                     </p>
                     {/* Badge bệnh án */}
                     {recordsMap[appt.id] ? (

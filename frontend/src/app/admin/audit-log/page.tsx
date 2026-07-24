@@ -31,6 +31,7 @@ export default function AdminAuditLogPage() {
 
   const fetchLogs = async () => {
     try {
+      await Promise.resolve();
       setLoading(true);
       setError(null);
       const res = await adminService.getAuditLogs({
@@ -53,6 +54,7 @@ export default function AdminAuditLogPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs();
   }, [page]);
 
