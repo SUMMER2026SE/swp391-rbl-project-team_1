@@ -188,47 +188,86 @@ export function verifyVNPaySignature(vnpParams: any): boolean {
 }
 
 /**
- * Handle successful payment transaction
+ * Handle successful payment transaction (idempotent, Serializable isolation)
  */
 export async function processPaymentSuccess(appointmentId: string, transactionId: string) {
-    // Start database transaction to make sure both models are updated atomically
-    await prisma.$transaction([
-        prisma.payment.update({
+    await prisma.$transaction(async (tx) => {
+        const appt = await tx.appointment.findUnique({
+            where: { id: appointmentId },
+            include: { payment: true },
+        });
+
+        if (!appt) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        // Idempotency: already PAID & CONFIRMED → nothing to do
+        if (appt.payment?.status === PaymentStatus.PAID && appt.status === AppointmentStatus.CONFIRMED) {
+            return;
+        }
+
+        // Guard: only confirm if appointment is still waiting for payment
+        if (appt.status !== "PENDING_PAYMENT") {
+            throw new ApiError(
+                `Không thể xác nhận thanh toán cho lịch hẹn ở trạng thái ${appt.status}`,
+                400
+            );
+        }
+
+        await tx.payment.update({
             where: { appointmentId },
             data: {
                 status: PaymentStatus.PAID,
                 transactionId,
                 payDate: new Date(),
             },
-        }),
-        prisma.appointment.update({
+        });
+
+        await tx.appointment.update({
             where: { id: appointmentId },
-            data: {
-                status: AppointmentStatus.CONFIRMED,
-            },
-        }),
-    ]);
+            data: { status: AppointmentStatus.CONFIRMED },
+        });
+    }, { isolationLevel: "Serializable" });
 }
 
 /**
- * Handle failed payment transaction
+ * Handle failed payment transaction (idempotent, Serializable isolation)
  */
 export async function processPaymentFailed(appointmentId: string, transactionId: string) {
-    // Update payment and reset appointment back to PENDING_PAYMENT so user can retry
-    await prisma.$transaction([
-        prisma.payment.update({
+    await prisma.$transaction(async (tx) => {
+        const appt = await tx.appointment.findUnique({
+            where: { id: appointmentId },
+            include: { payment: true },
+        });
+
+        if (!appt) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        // If payment is already PAID or appointment already CONFIRMED, do NOT revert
+        if (
+            appt.payment?.status === PaymentStatus.PAID ||
+            appt.status === AppointmentStatus.CONFIRMED
+        ) {
+            return;
+        }
+
+        // If appointment is already CANCELLED or EXPIRED, do not reset
+        if (appt.status !== "PENDING_PAYMENT") {
+            return;
+        }
+
+        await tx.payment.update({
             where: { appointmentId },
-            data: {
-                status: PaymentStatus.FAILED,
-                transactionId,
-            },
-        }),
+            data: { status: PaymentStatus.FAILED, transactionId },
+        });
+
         // Reset appointment so user can retry payment
-        prisma.appointment.update({
+        await tx.appointment.update({
             where: { id: appointmentId },
             data: { status: "PENDING_PAYMENT" },
-        }),
-    ]);
+        });
+    }, { isolationLevel: "Serializable" });
 }
 
 /**

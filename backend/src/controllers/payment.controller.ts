@@ -98,14 +98,20 @@ export async function vnpayReturnHandler(
         // Extract appointmentId from txnRef (formatted as {appointmentId}__{timestamp})
         const appointmentId = txnRef.split("__")[0];
 
-        if (responseCode === "00") {
-            // Success
-            await processPaymentSuccess(appointmentId, transactionNo);
-            res.redirect(`${frontendRedirectUrl}?status=success&appointmentId=${appointmentId}&txnRef=${transactionNo}`);
-        } else {
-            // Failed/Cancelled
-            await processPaymentFailed(appointmentId, transactionNo);
-            res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&responseCode=${responseCode}`);
+        try {
+            if (responseCode === "00") {
+                // Success
+                await processPaymentSuccess(appointmentId, transactionNo);
+                res.redirect(`${frontendRedirectUrl}?status=success&appointmentId=${appointmentId}&txnRef=${transactionNo}`);
+            } else {
+                // Failed/Cancelled
+                await processPaymentFailed(appointmentId, transactionNo);
+                res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&responseCode=${responseCode}`);
+            }
+        } catch (innerErr: any) {
+            console.error("[VNPay Return] Error processing transaction:", innerErr);
+            const errMsg = encodeURIComponent(innerErr?.message || "Lỗi xử lý giao dịch");
+            res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&message=${errMsg}`);
         }
     } catch (error) {
         next(error);

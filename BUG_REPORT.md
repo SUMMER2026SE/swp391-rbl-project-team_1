@@ -101,43 +101,31 @@ const result = await createPayOSPaymentLink(appointmentId, ...); // Thiếu owne
 
 ## 2. Lỗi Logic Nghiệp Vụ
 
-### 🟠 BUG-005: VNPay Return URL xử lý payment thành công không idempotent
+### 🟢 BUG-005: VNPay Return URL xử lý payment thành công không idempotent [ĐÃ SỬA]
 **File:** `backend/src/controllers/payment.controller.ts` & `backend/src/services/payment.service.ts`
 
-**Mô tả:** VNPay gửi kết quả qua 2 kênh song song:
-1. **IPN (Server-to-Server)** - `vnpayIpnHandler` - CÓ kiểm tra idempotency
-2. **Return URL (Browser Redirect)** - `vnpayReturnHandler` - **KHÔNG** kiểm tra idempotency
+**Trạng thái:** ✅ Đã sửa - Đã áp dụng 3 lớp bảo vệ:
+1. `processPaymentSuccess()` và `processPaymentFailed()` được bọc trong `prisma.$transaction` với `isolationLevel: "Serializable"` — đảm bảo chỉ một request được thực thi đồng thời.
+2. Cả hai hàm kiểm tra trạng thái hiện tại (idempotency check) trước khi thực hiện bất kỳ UPDATE nào.
+3. `vnpayReturnHandler` bọc lệnh gọi bên trong `try/catch` riêng — nếu `processPaymentSuccess` ném lỗi (lịch hẹn đã hết hạn, bị hủy...), người dùng được redirect về frontend kèm thông báo lỗi thay vì nhận trang lỗi 500 của backend.
 
-```typescript
-// vnpayReturnHandler - KHÔNG có guard:
-if (responseCode === "00") {
-    await processPaymentSuccess(appointmentId, transactionNo); // Gọi ngay không check
-}
-
-// vnpayIpnHandler - CÓ guard (đúng):
-if (appointment.payment && appointment.payment.status !== PaymentStatus.PENDING) {
-    res.status(200).json({ RspCode: "02", Message: "Order already confirmed" });
-    return;
-}
-```
-
-**Hậu quả:** `processPaymentSuccess` có thể bị gọi 2 lần, gây lỗi DB nếu `prisma.payment.update` thất bại do payment đã PAID.
+**Mô tả gốc:** VNPay gửi kết quả qua 2 kênh song song — IPN (server-to-server) và Return URL (browser redirect). Khi cả 2 kênh đều tới cùng lúc, `processPaymentSuccess` bị gọi 2 lần. `vnpayReturnHandler` không có idempotency guard.
 
 ---
 
-### 🟠 BUG-006: processPaymentSuccess không kiểm tra trạng thái hiện tại
+### 🟢 BUG-006: processPaymentSuccess không kiểm tra trạng thái hiện tại [ĐÃ SỬA]
 **File:** `backend/src/services/payment.service.ts`  
 **Hàm:** `processPaymentSuccess()`
 
-**Mô tả:** Hàm chỉ gọi `prisma.$transaction` mà không kiểm tra xem appointment/payment đang ở trạng thái nào. Nếu appointment đã CONFIRMED, hàm vẫn chạy không lỗi (idempotent về mặt kết quả, nhưng gây thêm DB write không cần thiết).
+**Trạng thái:** ✅ Đã sửa — Hàm giờ đọc trạng thái appointment/payment trong transaction Serializable và bỏ qua (return sớm) nếu đã `PAID+CONFIRMED`, ném lỗi 400 nếu appointment không ở trạng thái `PENDING_PAYMENT`.
 
 ---
 
-### 🟠 BUG-007: processPaymentFailed không có idempotency check
+### 🟢 BUG-007: processPaymentFailed không có idempotency check [ĐÃ SỬA]
 **File:** `backend/src/services/payment.service.ts`  
 **Hàm:** `processPaymentFailed()`
 
-**Mô tả:** Nếu VNPay gọi cả IPN và Return URL đều thất bại, hàm này chạy 2 lần. Lần thứ 2 update payment FAILED→FAILED và appointment PENDING_PAYMENT→PENDING_PAYMENT (có thể gây lỗi nếu appointment đã bị EXPIRED bởi cron job).
+**Trạng thái:** ✅ Đã sửa — Hàm kiểm tra trạng thái trong transaction Serializable. Nếu payment đã `PAID` hoặc appointment đã `CONFIRMED`, hàm trả về sớm mà không revert. Nếu appointment đã `CANCELLED`/`EXPIRED`, hàm cũng không reset về `PENDING_PAYMENT`.
 
 ---
 
