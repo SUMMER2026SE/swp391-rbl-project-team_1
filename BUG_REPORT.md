@@ -129,12 +129,14 @@ const result = await createPayOSPaymentLink(appointmentId, ...); // Thiếu owne
 
 ---
 
-### 🟠 BUG-008: Hai cơ chế hủy lịch hẹn mâu thuẫn nhau về trạng thái
+### 🟢 BUG-008: Hai cơ chế hủy lịch hẹn mâu thuẫn nhau về trạng thái [ĐÃ SỬA]
 **File:** `backend/src/services/appointment.service.ts` & `backend/src/services/payment.service.ts`
+
+**Trạng thái:** ✅ Đã sửa - Đã thống nhất trạng thái hủy tự động về `"EXPIRED"` cho cả hai cơ chế.
 
 **Mô tả:** 
 - `autoCancelExpiredAppointments()` (appointment.service.ts) → set status = `"EXPIRED"`
-- `cancelExpiredPayOSPayments()` (payment.service.ts) → set status = `AppointmentStatus.CANCELLED`
+- `cancelExpiredPayOSPayments()` (payment.service.ts) → set status = `"EXPIRED"`
 
 Cùng là "appointment hết hạn thanh toán" nhưng một nơi set EXPIRED, một nơi set CANCELLED.
 
@@ -145,10 +147,8 @@ Cùng là "appointment hết hạn thanh toán" nhưng một nơi set EXPIRED, m
 data: { status: "EXPIRED", cancellationReason: "Hủy tự động do quá hạn 5 phút..." }
 
 // payment.service.ts:
-data: { status: AppointmentStatus.CANCELLED, cancellationReason: "Quá hạn thanh toán PayOS" }
+data: { status: "EXPIRED", cancellationReason: "Quá hạn thanh toán PayOS" }
 ```
-
-**Fix:** Thống nhất dùng `"EXPIRED"` cho cả hai trường hợp.
 
 ---
 
@@ -179,17 +179,17 @@ if (appointment.status !== "PENDING_PAYMENT") {
 
 ---
 
-### 🟠 BUG-011: OTP verification window = thời gian sống của OTP (không reset sau verify)
+### 🟢 BUG-011: OTP verification window = thời gian sống của OTP (không reset sau verify) [ĐÃ SỬA]
 **File:** `backend/src/services/auth.service.ts`  
 **Hàm:** `registerUser()`, `resetPassword()`
+
+**Trạng thái:** ✅ Đã sửa - Khi người dùng xác thực OTP thành công (`verifyOtp` và `verifyResetOtp`), `expiresAt` của OTP record sẽ được gia hạn thêm 10 phút để người dùng có đủ thời gian hoàn tất việc đăng ký hoặc đặt lại mật khẩu.
 
 **Mô tả:** Sau khi OTP được verify (`verifyOtp`), trạng thái `verified: true` được đặt nhưng `expiresAt` không được reset/gia hạn. Khi user gọi `registerUser`, hệ thống check:
 ```typescript
 expiresAt: { gt: new Date() } // OTP must not be expired
 ```
 Nếu user verify OTP vào phút thứ 4, họ chỉ còn 1 phút để hoàn tất đặt mật khẩu. Nếu chậm 1 phút, OTP hết hạn dù đã verify thành công.
-
-**Fix:** Khi verify OTP thành công, gia hạn thêm `expiresAt` (ví dụ +10 phút) để cho user đủ thời gian điền mật khẩu.
 
 ---
 
@@ -380,11 +380,14 @@ Trường `id` optional gây nhầm lẫn. Khi decode token, một số middlewa
 
 ---
 
-### 🟡 BUG-024: saveFileLocally dùng hardcoded localhost URL
+### 🟢 BUG-024: saveFileLocally dùng hardcoded localhost URL [ĐÃ SỬA]
 **File:** `backend/src/services/appointment.service.ts`
 
+**Trạng thái:** ✅ Đã sửa - Đã thay thế localhost hardcode bằng biến môi trường `BACKEND_URL` (cấu hình trong `.env`, fallback về localhost).
+
 ```typescript
-return `http://localhost:${port}/public/payment-proofs/...`;
+const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+return `${backendUrl}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
 ```
 
 URL được lưu vào DB là `http://localhost:...`. Nếu server chạy trên domain khác, URL này không truy cập được từ client.

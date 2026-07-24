@@ -98,10 +98,11 @@ export async function verifyOtp(email: string, otp: string): Promise<{ isValid: 
         throw new ApiError("OTP has expired", 400);
     }
 
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete registration
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
 
     return { isValid: true };
@@ -304,10 +305,11 @@ export async function verifyResetOtp(email: string, otp: string): Promise<{ isVa
         throw new ApiError("OTP has expired", 400);
     }
 
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete password reset
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
 
     return { isValid: true };

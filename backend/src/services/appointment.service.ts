@@ -22,8 +22,8 @@ async function saveFileLocally(appointmentId: string, fileName: string, fileBuff
     fs.writeFileSync(filePath, fileBuffer);
 
     // Return relative URL served by Express static middleware
-    const port = process.env.PORT || 5000;
-    return `http://localhost:${port}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    return `${backendUrl}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
 }
 
 export interface PatientInfo {
