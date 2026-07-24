@@ -19,9 +19,9 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
       if (!isAuthenticated) {
         router.push("/login");
       } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        // If USER tries to access /my-appointments (DOCTOR only), redirect to their profile appointments tab
+        // Nếu role không được phép: USER → chuyển về /profile, các role khác → về trang chủ
         if (user.role === "USER") {
-          router.push("/profile#appointments");
+          router.push("/profile");
         } else {
           router.push("/");
         }

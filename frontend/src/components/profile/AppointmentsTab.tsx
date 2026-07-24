@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { appointmentService } from "@/services/appointment.service";
 import { Appointment } from "@/types/appointment";
-import { CalendarDays, Clock, MapPin, XCircle, AlertTriangle } from "lucide-react";
+import { CalendarDays, Clock, MapPin, XCircle, AlertTriangle, MessageSquare, Video, FileText } from "lucide-react";
 import Button from "@/components/common/Button";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
@@ -67,7 +68,7 @@ export default function AppointmentsTab() {
     if (!reportIssueId || !reportSubject || !reportMessage) return;
     setIsReporting(true);
     try {
-      const res = await fetch("http://localhost:5000/api/complaints", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/complaints`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -258,19 +259,53 @@ export default function AppointmentsTab() {
               </div>
 
               {/* Actions */}
-              <div className="shrink-0 flex flex-col justify-center gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-5">
-                {["PENDING", "CONFIRMED"].includes(appt.status) && (
+              <div className="shrink-0 flex flex-col justify-center gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-5 min-w-[160px]">
+                {/* Thanh toán ngay - PENDING_PAYMENT */}
+                {appt.status === "PENDING_PAYMENT" && (
+                  <Link href={`/payment/${appt.id}`}>
+                    <button className="w-full flex items-center justify-center gap-1.5 text-white bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
+                      Thanh toán ngay
+                    </button>
+                  </Link>
+                )}
+                {/* Vào phòng khám - CONFIRMED */}
+                {appt.status === "CONFIRMED" && (
+                  <Link href={`/video-call?appointmentId=${appt.id}`}>
+                    <button className="w-full flex items-center justify-center gap-1.5 text-white bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
+                      <Video className="w-4 h-4" /> Vào phòng khám
+                    </button>
+                  </Link>
+                )}
+                {/* Xem đơn thuốc - COMPLETED */}
+                {appt.status === "COMPLETED" && (
+                  <Link href="/my-appointments">
+                    <button className="w-full flex items-center justify-center gap-1.5 text-teal-700 border border-teal-200 hover:bg-teal-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
+                      <FileText className="w-4 h-4" /> Xem đơn thuốc
+                    </button>
+                  </Link>
+                )}
+                {/* Chat với bác sĩ - PENDING, CONFIRMED, COMPLETED */}
+                {["PENDING", "CONFIRMED", "COMPLETED"].includes(appt.status) && appt.doctor?.id && (
+                  <Link href={`/messages?doctorId=${appt.doctor.id}`}>
+                    <button className="w-full flex items-center justify-center gap-1.5 text-indigo-700 border border-indigo-200 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
+                      <MessageSquare className="w-4 h-4" /> Chat với bác sĩ
+                    </button>
+                  </Link>
+                )}
+                {/* Hủy lịch - PENDING_PAYMENT, PENDING, CONFIRMED */}
+                {["PENDING_PAYMENT", "PENDING", "CONFIRMED"].includes(appt.status) && (
                   <button
                     onClick={() => setCancelConfirmId(appt.id)}
-                    className="flex items-center justify-center gap-1.5 text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
+                    className="w-full flex items-center justify-center gap-1.5 text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                   >
                     <XCircle className="w-4 h-4" /> Hủy lịch
                   </button>
                 )}
+                {/* Báo cáo sự cố - COMPLETED, CANCELLED */}
                 {["COMPLETED", "CANCELLED"].includes(appt.status) && (
                   <button
                     onClick={() => setReportIssueId(appt.id)}
-                    className="flex items-center justify-center gap-1.5 text-slate-600 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
+                    className="w-full flex items-center justify-center gap-1.5 text-slate-600 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
                   >
                     <AlertTriangle className="w-4 h-4" /> Báo cáo sự cố
                   </button>
