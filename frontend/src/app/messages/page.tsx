@@ -203,6 +203,8 @@ export default function MessagesPage() {
   const activeConvIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const isDoctor = user?.role === "DOCTOR";
+
   // Keep activeConvIdRef updated
   useEffect(() => {
     activeConvIdRef.current = activeConversation?.id || null;
@@ -219,10 +221,10 @@ export default function MessagesPage() {
           await api.post("/messages/conversations", { doctorId: initialDoctorId });
         }
         const res = await api.get("/messages/conversations");
-        const convs = res.data.conversations;
+        const convs = (res.data.conversations || []).filter((c: any) => c && c.id);
         setConversations(convs);
         if (initialDoctorId && user?.role === "USER") {
-          const target = convs.find((c: any) => c.doctor?.id === initialDoctorId);
+          const target = convs.find((c: any) => c && c.doctor?.id === initialDoctorId);
           if (target) { setActiveConversation(target); setShowSidebar(false); }
         } else if (convs.length > 0) {
           setActiveConversation(convs[0]);
@@ -249,13 +251,16 @@ export default function MessagesPage() {
 
     socket.on("receive-direct-message", (data: { conversationId: string; message: Message }) => {
       const { conversationId, message: msg } = data;
+      if (!msg) return;
       setMessages((prev) => {
         if (conversationId !== activeConvIdRef.current) return prev;
-        if (prev.find((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
+        const validPrev = (prev || []).filter((m) => m && m.id);
+        if (validPrev.find((m) => m.id === msg.id)) return validPrev;
+        return [...validPrev, msg];
       });
       setConversations((prev) =>
-        prev
+        (prev || [])
+          .filter((c) => c && c.id)
           .map((c) => c.id === conversationId ? { ...c, messages: [msg], updatedAt: new Date().toISOString() } : c)
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       );
@@ -294,7 +299,7 @@ export default function MessagesPage() {
     const fetchMessages = async () => {
       try {
         const res = await api.get(`/messages/${activeConversation.id}`);
-        setMessages(res.data.messages);
+        setMessages((res.data.messages || []).filter((m: any) => m && m.id));
         socketRef.current?.emit("join-chat", { conversationId: activeConversation.id });
       } catch (err) {
         console.error("Lỗi tải tin nhắn", err);
@@ -317,13 +322,16 @@ export default function MessagesPage() {
     try {
       const res = await api.post(`/messages/${activeConversation.id}`, { content });
       const newMsg = res.data.message;
-      setMessages((prev) => [...prev, newMsg]);
-      socketRef.current?.emit("send-direct-message", { conversationId: activeConversation.id, message: newMsg });
-      setConversations((prev) =>
-        prev
-          .map((c) => c.id === activeConversation.id ? { ...c, messages: [newMsg], updatedAt: new Date().toISOString() } : c)
-          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      );
+      if (newMsg) {
+        setMessages((prev) => [...(prev || []).filter((m) => m && m.id), newMsg]);
+        socketRef.current?.emit("send-direct-message", { conversationId: activeConversation.id, message: newMsg });
+        setConversations((prev) =>
+          (prev || [])
+            .filter((c) => c && c.id)
+            .map((c) => c.id === activeConversation.id ? { ...c, messages: [newMsg], updatedAt: new Date().toISOString() } : c)
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        );
+      }
     } catch (err) {
       console.error("Lỗi gửi tin nhắn", err);
     }
@@ -355,13 +363,15 @@ export default function MessagesPage() {
   };
 
   const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
+    const validConvs = conversations.filter((c) => c && c.id);
+    if (!searchQuery.trim()) return validConvs;
     const q = searchQuery.toLowerCase();
-    return conversations.filter((c) => {
-      const name = isDoctor ? c.user?.fullName : c.doctor?.name;
-      return name?.toLowerCase().includes(q);
+    return validConvs.filter((c) => {
+      const target = isDoctor ? c.user : c.doctor;
+      const name = isDoctor ? (target as any)?.fullName : (target as any)?.name;
+      return name?.toLowerCase()?.includes(q) ?? false;
     });
-  }, [conversations, searchQuery]);
+  }, [conversations, isDoctor, searchQuery]);
 
   if (authLoading || loading)
     return (
@@ -375,8 +385,6 @@ export default function MessagesPage() {
         <Alert type="error" message={error} />
       </div>
     );
-
-  const isDoctor = user?.role === "DOCTOR";
 
   const activeTarget = activeConversation
     ? isDoctor ? activeConversation.user : activeConversation.doctor
@@ -460,12 +468,13 @@ export default function MessagesPage() {
               </div>
             ) : (
               filteredConversations.map((conv) => {
+                if (!conv || !conv.id) return null;
                 const target = isDoctor ? conv.user : conv.doctor;
                 const targetName = isDoctor ? (target as any)?.fullName : (target as any)?.name;
                 const specialty = !isDoctor ? (conv.doctor as any)?.specialty?.name : null;
                 const lastMsg = conv.messages?.[0];
                 const isActive = activeConversation?.id === conv.id;
-                const unreadCount = conv.messages?.filter((m) => !m.isRead && m.senderId !== user?.id).length || 0;
+                const unreadCount = conv.messages?.filter((m) => m && !m.isRead && m.senderId !== user?.id).length || 0;
 
                 return (
                   <div
@@ -591,14 +600,15 @@ export default function MessagesPage() {
                 ) : (
                   <>
                     {messages.map((msg, idx) => {
-                      const isMe = msg.senderId === user!.id;
+                      if (!msg || !msg.id) return null;
+                      const isMe = msg.senderId === user?.id;
                       const isDoctorMsg = (isDoctor && isMe) || (!isDoctor && !isMe);
                       const prevMsg = messages[idx - 1];
-                      const showAvatar = !isMe && (idx === 0 || prevMsg?.senderId !== msg.senderId);
-                      const showTime = idx === messages.length - 1 || messages[idx + 1]?.senderId !== msg.senderId;
+                      const showAvatar = !isMe && (idx === 0 || (prevMsg && prevMsg.senderId !== msg.senderId));
+                      const showTime = idx === messages.length - 1 || (messages[idx + 1] && messages[idx + 1].senderId !== msg.senderId);
 
                       return (
-                        <div key={msg.id} className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"} ${idx > 0 && messages[idx - 1].senderId === msg.senderId ? "mt-0.5" : "mt-3"}`}>
+                        <div key={msg.id} className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"} ${idx > 0 && messages[idx - 1] && messages[idx - 1].senderId === msg.senderId ? "mt-0.5" : "mt-3"}`}>
                           {/* Avatar: Only show for patient's message. Wait, prompt says: bubble bệnh nhân có ảnh 32px, bubble bác sĩ không ảnh. */}
                           {!isDoctorMsg && (
                             <div className="w-8 h-8 shrink-0">

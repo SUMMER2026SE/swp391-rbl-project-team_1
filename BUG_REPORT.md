@@ -445,17 +445,71 @@ Với PayOS, cả 2 đều có thể chạy → appointment bị update 2 lần.
 
 ---
 
-## 8. Tóm Tắt Mức Độ Ưu Tiên
+## 8. Lỗi Frontend (UI / Routing)
 
-| Mức Độ | Số Lỗi | Danh Sách |
-|--------|--------|-----------|
-| 🔴 Critical | 4 | BUG-001, BUG-002, BUG-003, BUG-013 |
-| 🟠 High | 12 | BUG-004~012, BUG-014, BUG-016, BUG-019~020 |
-| 🟡 Medium | 12 | BUG-015, BUG-017~018, BUG-021~028 |
+### 🟢 BUG-029: ProtectedRoute chặn bệnh nhân khỏi trang "Lịch Hẹn Của Tôi" [ĐÃ SỬA]
+**File:** `frontend/src/app/my-appointments/page.tsx`
+
+**Trạng thái:** ✅ Đã sửa - Đã xóa `allowedRoles={["DOCTOR", "ADMIN"]}`. `ProtectedRoute` giờ không giới hạn role, chỉ yêu cầu đăng nhập.
+
+**Mô tả:** Trang `/my-appointments` — hiển thị danh sách lịch hẹn của bệnh nhân — bị bao bởi:
+```tsx
+<ProtectedRoute allowedRoles={["DOCTOR", "ADMIN"]}>
+```
+Điều này có nghĩa là bệnh nhân (role `USER`) khi truy cập `/my-appointments` sẽ bị **redirect về `/profile`** thay vì thấy lịch hẹn của mình. Đây là lỗi nghiêm trọng về UX và tính năng cốt lõi.
+
+**Hậu quả:** Toàn bộ trang "Lịch Hẹn Của Tôi" — với đầy đủ nút Thanh toán, Video call, Xem đơn thuốc, Đánh giá bác sĩ, Hủy lịch — **hoàn toàn không dùng được** với bệnh nhân.
 
 ---
 
-## Đề Xuất Sửa Theo Thứ Tự Ưu Tiên
+### 🟢 BUG-030: AppointmentsTab.tsx thiếu các nút action quan trọng [ĐÃ SỬA]
+**File:** `frontend/src/components/profile/AppointmentsTab.tsx`
+
+**Trạng thái:** ✅ Đã sửa - Đã thêm đầy đủ các nút:
+- **PENDING_PAYMENT**: Nút "Thanh toán ngay" → link `/payment/{id}`
+- **CONFIRMED**: Nút "Vào phòng khám" → link `/video-call?appointmentId={id}`
+- **COMPLETED**: Nút "Xem đơn thuốc" → link `/my-appointments`
+- **PENDING / CONFIRMED / COMPLETED**: Nút "Chat với bác sĩ" → link `/messages?doctorId={id}`
+- **PENDING_PAYMENT**: Đã thêm vào danh sách trạng thái cho phép hủy lịch
+
+**Mô tả:** Tab "Lịch Hẹn" trong trang Profile (`/profile`) chỉ có 2 loại nút:
+1. "Hủy lịch" — chỉ hiện cho `["PENDING", "CONFIRMED"]`, **thiếu `PENDING_PAYMENT`**
+2. "Báo cáo sự cố" — cho `["COMPLETED", "CANCELLED"]`
+
+Các chức năng cốt lõi như **Thanh toán**, **Vào phòng khám video call**, **Chat với bác sĩ**, **Xem đơn thuốc** đều **không có nút** trong component này.
+
+---
+
+### 🟢 BUG-031: AppointmentsTab.tsx dùng URL hardcoded thay vì biến môi trường [ĐÃ SỬA]
+**File:** `frontend/src/components/profile/AppointmentsTab.tsx`  
+**Line:** ~70
+
+**Trạng thái:** ✅ Đã sửa - Thay thế bằng `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/complaints`.
+
+**Mô tả:**
+```typescript
+// Trước (sai):
+const res = await fetch("http://localhost:5000/api/complaints", {...});
+
+// Sau (đúng):
+const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/complaints`, {...});
+```
+
+**Hậu quả:** Khi deploy lên server production hoặc staging (không chạy ở `localhost:5000`), API gọi "Báo cáo sự cố" sẽ **luôn thất bại** với lỗi network (CORS hoặc connection refused).
+
+---
+
+## 9. Tóm Tắt Mức Độ Ưu Tiên
+
+| Mức Độ | Số Lỗi | Danh Sách |
+|--------|--------|-----------|
+| 🔴 Critical | 5 | BUG-001, BUG-002, BUG-003, BUG-013, **BUG-029** |
+| 🟠 High | 13 | BUG-004~012, BUG-014, BUG-016, BUG-019~020, **BUG-030** |
+| 🟡 Medium | 13 | BUG-015, BUG-017~018, BUG-021~028, **BUG-031** |
+
+---
+
+## Đề Xuất Sửa Theo Thứ Tự Ưu Tiên (đã cập nhật)
 
 ### Sửa ngay (Critical):
 1. **BUG-001** - Thêm `if (user.isLocked) throw new ApiError(...)` vào `authenticateUser` và `googleLogin`
@@ -478,4 +532,11 @@ Với PayOS, cả 2 đều có thể chạy → appointment bị update 2 lần.
 
 ---
 
-*Báo cáo tạo bởi phân tích code tĩnh - ngày 24/07/2026*
+### Sửa ngay — Frontend Critical:
+- **BUG-029** ✅ — Xóa `allowedRoles` sai trong `/my-appointments/page.tsx`
+- **BUG-030** ✅ — Thêm các nút action vào `AppointmentsTab.tsx`
+- **BUG-031** ✅ — Thay hardcoded URL bằng biến môi trường `NEXT_PUBLIC_API_URL`
+
+---
+
+*Báo cáo tạo bởi phân tích code tĩnh - cập nhật ngày 24/07/2026*
