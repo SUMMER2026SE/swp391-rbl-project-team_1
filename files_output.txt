@@ -1,0 +1,1471 @@
+=== USE_CASES_SYNTHESIS.md ===
+1# TỔNG HỢP USE CASES - HỆ THỐNG ĐẶT LỊCH KHÁM BỆNH SWP391
+> **Dự án**: SUMMER2026SE – Team 1  
+> **Phân loại theo role**: USER (Bệnh nhân) | ADMIN (Quản trị viên) | DOCTOR (Bác sĩ) | PUBLIC (Công khai)
+
+---
+
+## 👤 USE CASES – USER (Bệnh Nhân)
+
+### 🔐 Xác Thực & Tài Khoản
+| ID | Use Case | Mô Tả | API |
+|----|----------|--------|-----|
+| UC-U01 | Gửi OTP xác thực email | Gửi mã OTP 6 số đến email để xác minh trước khi đăng ký | POST `/api/auth/send-otp` |
+| UC-U02 | Xác minh mã OTP | Nhập mã OTP nhận qua email để xác thực tài khoản | POST `/api/auth/verify-otp` |
+| UC-U03 | Đăng ký tài khoản | Tạo tài khoản mới bằng email/password sau khi xác minh OTP | POST `/api/auth/register` |
+| UC-U04 | Đăng nhập | Đăng nhập bằng email/password, nhận JWT token | POST `/api/auth/login` |
+| UC-U05 | Đăng nhập Google | Đăng nhập bằng tài khoản Google (OAuth) | POST `/api/auth/google` |
+| UC-U06 | Xem hồ sơ cá nhân | Xem thông tin tài khoản hiện tại | GET `/api/auth/me` |
+| UC-U07 | Quên mật khẩu | Yêu cầu gửi OTP reset mật khẩu về email | POST `/api/auth/forgot-password` |
+| UC-U08 | Xác minh OTP reset mật khẩu | Nhập OTP nhận qua email để xác nhận reset | POST `/api/auth/verify-reset-otp` |
+| UC-U09 | Đặt lại mật khẩu mới | Cập nhật mật khẩu mới sau khi xác minh OTP | POST `/api/auth/reset-password` |
+| UC-U10 | Cập nhật hồ sơ cá nhân | Chỉnh sửa thông tin: họ tên, ngày sinh, giới tính, địa chỉ, nhóm máu, dị ứng, tiền sử bệnh | PUT `/api/user/profile` |
+| UC-U11 | Đổi mật khẩu | Thay đổi mật khẩu hiện tại | PUT `/api/user/change-password` |
+| UC-U12 | Cập nhật ảnh đại diện | Upload avatar mới | PUT `/api/user/avatar` |
+
+### 👥 Quản Lý Hồ Sơ Người Thân (Booking Profile)
+| ID | Use Case | Mô Tả | API |
+|----|----------|--------|-----|
+| UC-U13 | Xem danh sách hồ sơ người thân | Xem các hồ sơ người được khám đã lưu | GET `/api/booking-profiles` |
+| UC-U14 | Tạo hồ sơ người thân | Thêm hồ sơ mới (họ tên, ngày sinh, giới tính, SĐT, CCCD, địa chỉ, tiền sử bệnh, dị ứng) | POST `/api/booking-profiles` |
+| UC-U15 | Cập nhật hồ sơ người thân | Chỉnh sửa thông tin hồ sơ người thân | PUT `/api/booking-profiles/:id` |
+| UC-U16 | Xóa hồ sơ người thân | Xóa hồ sơ không dùng nữa | DELETE `/api/booking-profiles/:id` |
+
+### 🔍 Tìm Kiếm & Khám Phá
+| ID | Use Case | Mô Tả | API |
+|----|----------|--------|-----|
+| UC-U17 | Xem danh sách bác sĩ | Lọc bác sĩ theo chuyên khoa, bệnh viện; xem bác sĩ nổi bật | GET `/api/doctors` |
+| UC-U18 | Xem chi tiết bác sĩ | Xem hồ sơ bác sĩ: tên, chuyên khoa, bệnh viện, đánh giá, chứng chỉ | GET `/api/doctors/:id` |
+| UC-U19 | Xem danh sách chuyên khoa | Xem tất cả chuyên khoa hiện có | GET `/api/doctors/specialties` |
+| UC-U20 | Xem danh sách gói khám | Xem các gói khám sức khỏe: tên, giá, dịch vụ, % cọc | GET `/api/packages` |
+| UC-U21 | Xem chi tiết gói khám | Xem đầy đủ thông tin gói: dịch vụ bao gồm, thời gian ước tính, hướng dẫn chuẩn bị, điều khoản hoàn cọc | GET `/api/packages/:id` |
+| UC-U22 | Xem lịch trống theo gói | Xem các khung giờ đã đặt của gói khám | GET `/api/packages/:id/booked-slots` |
+| UC-U23 | Xem danh sách phòng khám | Xem danh sách bệnh viện/phòng khám | GET `/api/clinics` |
+| UC-U24 | Xem lịch khám của bác sĩ | Xem các khung giờ còn trống của bác sĩ | GET `/api/schedules` |
+| UC-U25 | Đọc bài viết y tế | Xem bài viết/tin tức sức khỏe | GET `/api/articles` |
+
+### 📅 Đặt Lịch Hẹn
+| ID | Use Case | Mô Tả | API |
+|----|----------|--------|-----|
+| UC-U26 | Đặt lịch hẹn theo bác sĩ | Chọn bác sĩ + ngày giờ + thông tin người khám (SELF/OTHER) – phải cách hiện tại ≥ 2 giờ; giới hạn 20 lịch/slot | POST `/api/appointments` |
+| UC-U27 | Đặt lịch hẹn theo gói khám | Chọn gói khám + ngày giờ + thông tin người khám | POST `/api/appointments` |
+| UC-U28 | Áp dụng voucher khi đặt | Nhập mã voucher để giảm giá trước khi đặt lịch | POST `/api/vouchers/validate` |
+| UC-U29 | Xem danh sách lịch hẹn của mình | Xem tất cả lịch hẹn đã đặt kèm trạng thái, hồ sơ bệnh án, đánh giá | GET `/api/my-appointments` |
+| UC-U30 | Xem chi tiết lịch hẹn | Xem đầy đủ thông tin lịch hẹn; hiển thị thông tin ngân hàng nếu đang ở trạng thái `PENDING_PAYMENT` | GET `/api/appointments/:id` |
+| UC-U31 | Hủy lịch hẹn | Hủy lịch hẹn kèm lý do; ≥24h trước → hoàn tiền cọc; <24h → mất cọc | POST `/api/appointments/:id/cancel` |
+
+### 💳 Thanh Toán
+| ID | Use Case | Mô Tả | API |
+|----|----------|--------|-----|
+| UC-U32 | Upload biên lai chuyển khoản | Upload ảnh biên lai ngân hàng (BIDV) để xác nhận đã cọc tiền | POST `/api/appointments/:id/pay-proof` |
+| UC-U33 | Thanh toán qua VNPay | Tạo link thanh toán VNPay và redirect bệnh nhân | POST `/api/payment/create-url` |
+| UC-U34 | Thanh toán qua PayOS | Tạo link thanh toán PayOS (QR code) | POST `/api/payment/payos/create` |
+| UC-U35 | Xem trạng thái thanh toán | Kiểm tra trạng thái thanh toán theo OrderCode | GET `/api/payment/status/:orderCode` |
+| UC-U36 | Xác nhận thanh toán thành công | Hệ thống auto xử lý sau khi VNPay/PayOS callback | GET `/api/payment/return`, POST `/api/paymen
+
+
+=== BUG_REPORT.md ===
+# BÁO CÁO LỖI & PHÂN TÍCH LOGIC - SWP391 Medical Booking System
+
+> Phân tích dựa trên các file đã đọc: `auth.service.ts`, `appointment.service.ts`, `payment.service.ts`, `payment.controller.ts`, `appointment.controller.ts`, Prisma schema, và các routes.
+
+---
+
+## 📋 MỤC LỤC
+
+1. [Lỗi Bảo Mật Nghiêm Trọng (Critical Security)](#1-lỗi-bảo-mật-nghiêm-trọng)
+2. [Lỗi Logic Nghiệp Vụ (Business Logic)](#2-lỗi-logic-nghiệp-vụ)
+3. [Lỗi Race Condition / Concurrency](#3-lỗi-race-condition--concurrency)
+4. [Lỗi Thanh Toán (Payment Flow)](#4-lỗi-thanh-toán-payment-flow)
+5. [Lỗi Thiếu Validation / Guard](#5-lỗi-thiếu-validation--guard)
+6. [Lỗi Code / Kỹ Thuật](#6-lỗi-code--kỹ-thuật)
+7. [Vấn Đề UX & Thiết Kế](#7-vấn-đề-ux--thiết-kế)
+8. [Tóm Tắt Mức Độ Ưu Tiên](#8-tóm-tắt-mức-độ-ưu-tiên)
+
+---
+
+## 1. Lỗi Bảo Mật Nghiêm Trọng
+
+### 🟢 BUG-001: Tài khoản bị khóa (isLocked) vẫn đăng nhập được [ĐÃ SỬA]
+**File:** `backend/src/services/auth.service.ts`  
+**Hàm:** `authenticateUser()`, `googleLogin()`
+
+**Trạng thái:** ✅ Đã sửa - Đã thêm kiểm tra `isLocked` và ném ra lỗi `ApiError 403` nếu tài khoản bị khóa trong cả đăng nhập thông thường và Google login.
+
+**Mô tả:** Hệ thống có trường `isLocked: Boolean` trong model `User` (Prisma schema), nhưng cả hai hàm đăng nhập đều **không kiểm tra** `user.isLocked` trước khi tạo JWT token.
+
+**Hậu quả:** Admin khóa tài khoản một người dùng nhưng người dùng đó vẫn đăng nhập bình thường được.
+
+```typescript
+// auth.service.ts - authenticateUser() - THIẾU KIỂM TRA NÀY:
+if (user.isLocked) {
+    throw new ApiError("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.", 403);
+}
+
+// Cần thêm vào TRƯỚC bước tạo JWT token trong cả authenticateUser() VÀ googleLogin()
+```
+
+---
+
+### 🟢 BUG-002: Mock Payment endpoint không có bảo vệ môi trường production [ĐÃ SỬA]
+**File:** `backend/src/controllers/payment.controller.ts`  
+**Route:** `POST /api/payment/mock-pay`
+
+**Trạng thái:** ✅ Đã sửa - Đã thêm guard kiểm tra môi trường `NODE_ENV === "production"` và chặn mock payment ở môi trường này.
+
+**Mô tả:** Endpoint `mockPayHandler` cho phép bỏ qua toàn bộ quy trình thanh toán. Nếu endpoint này được deploy lên production, bất kỳ user nào cũng có thể "thanh toán" miễn phí.
+
+**Hậu quả:** Gian lận thanh toán. Không mất tiền mà vẫn có lịch hẹn CONFIRMED.
+
+```typescript
+// Cần thêm guard:
+if (process.env.NODE_ENV === 'production') {
+    throw new ApiError("Endpoint này chỉ dùng cho môi trường development", 403);
+}
+```
+
+---
+
+### 🟢 BUG-003: Hardcoded VNPay credentials trong source code [ĐÃ SỬA]
+**File:** `backend/src/services/payment.service.ts`  
+**Lines:** 63-66
+
+**Trạng thái:** ✅ Đã sửa - Đã loại bỏ các giá trị fallback hardcode. Hệ thống sẽ ném ra lỗi cấu hình `ApiError 500` nếu các biến VNPay trong env không được cài đặt.
+
+**Mô tả:** Secret key và TMN code của VNPay được hardcode trực tiếp vào code:
+```typescript
+const tmnCode = process.env.VNP_TMNCODE || "2QXUIBJZ";
+const secretKey = process.env.VNP_HASHSECRET || "GETPNO2UY8Z239634TDUO2B86E88U11Y";
+```
+
+**Hậu quả:** Nếu không set env variable, ứng dụng vẫn chạy nhưng dùng credentials sandbox có thể bị lộ khi push lên GitHub. Credentials bị lộ trong repository.
+
+**Fix:** Throw error nếu biến môi trường không được set, như đã làm với `JWT_SECRET`.
+
+---
+
+### 🟢 BUG-004: Thiếu kiểm tra quyền sở hữu trong createPayOSPaymentUrlHandler [ĐÃ SỬA]
+**File:** `backend/src/controllers/payment.controller.ts`  
+**Hàm:** `createPayOSPaymentUrlHandler()`
+
+**Trạng thái:** ✅ Đã sửa - Đã thêm kiểm tra quyền sở hữu lịch hẹn (appointment ownership) trong `createPayOSPaymentUrlHandler`. Chỉ chủ nhân lịch hẹn hoặc Admin mới được tạo link thanh toán PayOS.
+
+**Mô tả:** Hàm `createVNPayUrl` có kiểm tra `appointment.userId !== userId`, nhưng `createPayOSPaymentUrlHandler` **không kiểm tra** xem appointment có thuộc về user đang đăng nhập không.
+
+```typescript
+// VNPay handler có check này (đúng):
+if (appointment.userId !== userId && req.user?.role !== "ADMIN") {
+    throw new ApiError("Bạn không có quyền...", 403);
+}
+
+// PayOS handler KHÔNG có check này (lỗi):
+const result = await createPayOSPaymentLink(appointmentId, ...); // Thiếu ownership check
+```
+
+**Hậu quả:** User A có thể tạo PayOS payment link cho appointment của User B.
+
+---
+
+## 2. Lỗi Logic Nghiệp Vụ
+
+### 🟢 BUG-005: VNPay Return URL xử lý payment thành công không idempotent [ĐÃ SỬA]
+**File:** `backend/src/controllers/payment.controller.ts` & `backend/src/services/payment.service.ts`
+
+**Trạng thái:** ✅ Đã sửa - Đã áp dụng 3 lớp bảo vệ:
+1. `processPaymentSuccess()` và `processPaymentFailed()` được bọc trong `prisma.$transaction` với `isolationLevel: "Serializable"` — đảm bảo chỉ một request được thực thi đồng thời.
+2. Cả hai hàm kiểm tra trạng thái hiện tại (idempotency check) trước khi thực hiện bất kỳ UPDATE nào.
+3. `vnpayReturnHandler` bọc lệnh gọi bên trong `try/catch` riêng — nếu `processPaymentSuccess` ném lỗi (lịch hẹn đã hết hạn, bị hủy...), người dùng được redirect về frontend kèm thông báo lỗi thay vì nhận trang lỗi 500 của backe
+
+
+=== backend/src/services/auth.service.ts ===
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
+import { User, Role } from "@prisma/client";
+
+import prisma from "../prisma/client";
+import { ApiError } from "../utils/apiError";
+import { generateOtp, sendOtpEmail, sendResetPasswordOtpEmail } from "../utils/emailService";
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET environment variable is required");
+}
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export interface AuthTokenPayload {
+    userId: string;
+    id?: string;
+    role: Role;
+    iat?: number;
+    exp?: number;
+}
+
+export interface RegisterResult {
+    id: string;
+    email: string;
+    role: Role;
+    doctorId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface AuthResult {
+    token: string;
+    user: Omit<User, "password">;
+}
+
+/**
+ * Step 1: Send OTP to email
+ */
+export async function sendOtpToEmail(email: string): Promise<void> {
+    const normalizedEmail = email.toLowerCase();
+
+    // Check if email already registered in User table
+    const existingUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+        throw new ApiError("Email already registered", 409);
+    }
+
+    // Generate OTP (6 digits)
+    const otp = generateOtp();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Clear old OTPs for this email to avoid clutter
+    await prisma.oTP.deleteMany({
+        where: { email: normalizedEmail },
+    });
+
+    // Save OTP to database
+    await prisma.oTP.create({
+        data: {
+            email: normalizedEmail,
+            code: otp,
+            expiresAt: otpExpiresAt,
+            verified: false,
+        },
+    });
+
+    // Send OTP via email
+    await sendOtpEmail(normalizedEmail, otp);
+}
+
+/**
+ * Step 2: Verify OTP
+ */
+export async function verifyOtp(email: string, otp: string): Promise<{ isValid: boolean }> {
+    const normalizedEmail = email.toLowerCase();
+
+    const otpRecord = await prisma.oTP.findFirst({
+        where: { email: normalizedEmail },
+        orderBy: { createdAt: "desc" },
+    });
+
+    if (!otpRecord) {
+        throw new ApiError("No OTP requested for this email", 400);
+    }
+
+    if (otpRecord.code !== otp) {
+        throw new ApiError("Invalid OTP code", 400);
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+        throw new ApiError("OTP has expired", 400);
+    }
+
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete registration
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await prisma.oTP.update({
+        where: { id: otpRecord.id },
+        data: { verified: true, expiresAt: extendedExpiresAt },
+    });
+
+    return { isValid: true };
+}
+
+/**
+ * Step 3: Complete registration with password (save user to database)
+ */
+export async function registerUser(
+    email: string,
+    password: string,
+    otp: string
+): Promise<RegisterResult> {
+    const normalizedEmail = email.toLowerCase();
+
+    // 1. Verify email is not registered
+    const existingUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+        throw new ApiError("Email already registered", 409);
+    }
+
+    // 2. Verify there is a verified OTP for this email
+    const verifiedOtp = await prisma.oTP.findFirst({
+        where: {
+            email: normalizedEmail,
+            verified: true,
+            expiresAt: { gt: new Date() }, // OTP must not be expired
+        },
+        orderBy: { createdAt: "desc" },
+    });
+
+    if (!verifiedOtp || verifiedOtp.code !== otp) {
+        throw new ApiError("OTP not verified or verification has expired. Please verify OTP first.", 400);
+    }
+
+    // 3. Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // 4. Create real User record
+    const user = await prisma.user.create({
+        data: {
+            email: normalizedEmail,
+            password: hashedPassword,
+            role: Role.USER,
+        },
+        select: {
+            id: true,
+            email: true,
+            role: true,
+            doctorId: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+
+    // 5. Delete OTP records for this email after registration is complete
+    await prisma.oTP.deleteMany({
+        where: { email: normalizedEmail },
+    });
+
+    return user;
+}
+
+/**
+ * Login with email
+ */
+export async function authenticateUser(
+    email: string,
+    password: string
+): Promise<AuthResult> {
+    const normalizedEmail = email.toLowerCase();
+
+    const user = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+        throw new ApiError("Invalid credentials", 401);
+    }
+
+    if (!user.password) {
+        throw new ApiError("This account is registered via Google. Please log in using Google.", 400);
+    }
+
+
+=== backend/src/controllers/appointment.controller.ts ===
+import { NextFunction, Response, Request } from "express";
+
+import { AuthenticatedRequest } from "../middleware/auth.middleware";
+import { createAppointment, getAppointmentsByUser, getAppointmentById, uploadPaymentProof } from "../services/appointment.service";
+import { sendBookingStatusUpdateEmail, sendCancellationEmail } from "../utils/emailService";
+import { ApiError } from "../utils/apiError";
+import prisma from "../prisma/client";
+import { createNotification } from "../services/notificationService";
+
+interface CreateAppointmentRequestBody {
+    doctorId?: string;
+    appointmentDate: string;
+    notes?: string;
+    packageId?: string;
+    patientInfo: any;
+    patientProfileType?: 'SELF' | 'OTHER';
+}
+
+/**
+ * POST /api/appointments
+ * Protected (USER role): Books a new appointment.
+ */
+export async function createAppointmentHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            throw new ApiError("Authentication required", 401);
+        }
+
+        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType } = req.body as any;
+
+        if (!patientInfo || !patientInfo.fullName) {
+            throw new ApiError("Vui lòng điền đầy đủ thông tin người khám", 400);
+        }
+        if (!doctorId && !packageId) {
+            throw new ApiError("Doctor ID or Package ID is required", 400);
+        }
+        if (!appointmentDate) {
+            throw new ApiError("Appointment date is required", 400);
+        }
+
+        const date = new Date(appointmentDate);
+
+        if (Number.isNaN(date.getTime())) {
+            throw new ApiError("Invalid appointment date format", 400);
+        }
+
+        const nowPlus2Hours = new Date();
+        nowPlus2Hours.setHours(nowPlus2Hours.getHours() + 2);
+
+        if (date < nowPlus2Hours) {
+            throw new ApiError("Appointment date must be at least 2 hours from now", 400);
+        }
+
+        const appointment = await createAppointment({
+            userId,
+            patientInfo: patientInfo,
+            patientProfileType: patientProfileType === 'OTHER' ? 'OTHER' : 'SELF',
+            doctorId,
+            appointmentDate: date,
+            notes,
+            packageId,
+        });
+
+        res.status(201).json({
+            message: "Appointment created successfully",
+            appointment,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/my-appointments
+ * Protected (USER role): Returns the authenticated user's appointments.
+ */
+export async function getMyAppointments(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            throw new ApiError("Authentication required", 401);
+        }
+
+        const appointments = await getAppointmentsByUser(userId);
+        res.json({
+            message: "Appointments fetched successfully",
+            count: appointments.length,
+            appointments,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/appointments/:id
+ * Protected: Returns appointment details.
+ */
+export async function getAppointmentByIdHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        const userRole = req.user?.role;
+
+        if (!userId) {
+            throw new ApiError("Authentication required", 401);
+        }
+
+        const { id } = req.params;
+
+        if (!id) {
+            throw new ApiError("Appointment ID is required", 400);
+        }
+
+        const appointment = await getAppointmentById(id as string);
+
+        if (!appointment) {
+            throw new ApiError("Appointment not found", 404);
+        }
+
+        let isAuthorized = false;
+
+        if (appointment.userId === userId) {
+            isAuthorized = true;
+        } else if (userRole === "DOCTOR") {
+            const doctorUser = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { doctorId: true }
+            });
+            if (doctorUser && doctorUser.doctorId === appointment.doctorId) {
+                isAuthorized = true;
+            }
+        } else if (userRole === "ADMIN") {
+            isAuthorized = true;
+        }
+
+        if (!isAuthorized) {
+            throw new ApiError("You are not authorized to view this appointment", 403);
+        }
+
+        const responseData: any = {
+            message: "Appointment fetched successfully",
+            appointment,
+        };
+
+        if (appointment.status === "PENDING_PAYMENT") {
+            responseData.bankDetails = {
+                bankName: "BIDV",
+                bankAccount: "5624715454",
+                bankOwner: "NGUYEN DAC DUNG",
+            };
+        }
+
+        res.json(responseData);
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * G
+
+
+=== backend/src/services/appointment.service.ts ===
+import { Appointment } from "@prisma/client";
+import fs from "fs";
+import path from "path";
+
+import prisma from "../prisma/client";
+import { ApiError } from "../utils/apiError";
+import { sendBookingConfirmationEmail } from "../utils/emailService";
+import { generateBookingCode } from "../utils/generateBookingCode";
+import { supabase } from "../config/supabase";
+
+async function saveFileLocally(appointmentId: string, fileName: string, fileBuffer: Buffer): Promise<string> {
+    const uploadDir = path.join(__dirname, "../../public/payment-proofs", `appointment-${appointmentId}`);
+
+    // Ensure directory exists
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const baseName = path.basename(fileName);
+    const filePath = path.join(uploadDir, baseName);
+
+    fs.writeFileSync(filePath, fileBuffer);
+
+    // Return relative URL served by Express static middleware
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    return `${backendUrl}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
+}
+
+export interface PatientInfo {
+    fullName: string;
+    phoneNumber?: string;
+    gender?: string;
+    dateOfBirth?: Date | string;
+    province?: string;
+    district?: string;
+    ward?: string;
+    street?: string;
+    address?: string;
+    bloodType?: string;
+    allergies?: string;
+    chronicDiseases?: string;
+    personalHistory?: string;
+    familyHistory?: string;
+    // For OTHER type
+    yearOfBirth?: number;
+    relationship?: string;
+}
+
+export interface CreateAppointmentParams {
+    userId: string;
+    patientInfo: PatientInfo;
+    patientProfileType?: 'SELF' | 'OTHER';
+    doctorId?: string;
+    appointmentDate: Date;
+    notes?: string;
+    packageId?: string;
+}
+
+function generateTransactionCode(): string {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "MB-";
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+export async function createAppointment(
+    params: CreateAppointmentParams
+): Promise<Appointment> {
+    const { userId, patientInfo, patientProfileType = 'SELF', doctorId, packageId, appointmentDate, notes } = params;
+
+    return await prisma.$transaction(async (tx) => {
+        if (doctorId) {
+            const doctor = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (!doctor) throw new ApiError("Doctor not found", 404);
+
+            const doctorUser = await tx.user.findUnique({ where: { doctorId } });
+            if (doctorUser?.id === userId) {
+                throw new ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
+            }
+
+            const count = await tx.appointment.count({
+                where: {
+                    doctorId,
+                    appointmentDate,
+                    status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
+                },
+            });
+            if (count >= 20) {
+                throw new ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
+            }
+        } else if (!packageId) {
+            throw new ApiError("Doctor ID or Package ID is required", 400);
+        }
+
+        // 1. Only update user profile fields if booking for SELF
+        if (patientProfileType === 'SELF') {
+            const updateData: Record<string, unknown> = {};
+            if (patientInfo.fullName) updateData.fullName = patientInfo.fullName;
+            if (patientInfo.gender) updateData.gender = patientInfo.gender;
+            if (patientInfo.dateOfBirth) updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
+            if (patientInfo.bloodType) updateData.bloodType = patientInfo.bloodType;
+            if (patientInfo.allergies) updateData.allergies = patientInfo.allergies;
+            if (patientInfo.chronicDiseases) updateData.chronicDiseases = patientInfo.chronicDiseases;
+            if (patientInfo.personalHistory) updateData.personalHistory = patientInfo.personalHistory;
+            if (patientInfo.familyHistory) updateData.familyHistory = patientInfo.familyHistory;
+            if (patientInfo.province) updateData.province = patientInfo.province;
+            if (patientInfo.district) updateData.district = patientInfo.district;
+            if (patientInfo.ward) updateData.ward = patientInfo.ward;
+            if (patientInfo.street) updateData.street = patientInfo.street;
+
+            if (Object.keys(updateData).length > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: updateData,
+                });
+            }
+        }
+
+        // 2. Create appointment - generate unique codes with max retry limit
+        const MAX_CODE_RETRIES = 10;
+
+        let transactionCode = generateTransactionCode();
+        let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        let txnRetries 
+
+
+=== backend/src/services/payment.service.ts ===
+import crypto from "crypto";
+import { PaymentStatus, PaymentMethod, AppointmentStatus } from "@prisma/client";
+import prisma from "../prisma/client";
+import { ApiError } from "../utils/apiError";
+import { getIO } from "../utils/socket";
+import { createNotification } from "./notificationService";
+import { sendBookingConfirmationEmail } from "../utils/emailService";
+const PayOS = require("@payos/node");
+
+const payos = new PayOS(
+    process.env.PAYOS_CLIENT_ID || "",
+    process.env.PAYOS_API_KEY || "",
+    process.env.PAYOS_CHECKSUM_KEY || ""
+);
+
+// Helper to format Date to yyyyMMddHHmmss
+function getFormattedDate(date: Date): string {
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return (
+        date.getFullYear() +
+        pad(date.getMonth() + 1) +
+        pad(date.getDate()) +
+        pad(date.getHours()) +
+        pad(date.getMinutes()) +
+        pad(date.getSeconds())
+    );
+}
+
+// Helper to sort object keys alphabetically
+export function sortObject(obj: any): any {
+    const sorted: any = {};
+    const keys = Object.keys(obj).sort();
+    for (const key of keys) {
+        sorted[key] = obj[key];
+    }
+    return sorted;
+}
+
+export interface VNPayUrlParams {
+    appointmentId: string;
+    ipAddr: string;
+}
+
+/**
+ * Service to generate VNPay Payment URL
+ */
+export async function createVNPayUrl(params: VNPayUrlParams): Promise<string> {
+    const { appointmentId, ipAddr } = params;
+
+    // 1. Fetch Appointment and Doctor's Price
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { doctor: true, user: true },
+    });
+
+    if (!appointment) {
+        throw new ApiError("Lịch hẹn không tồn tại", 404);
+    }
+
+    if (appointment.status !== "PENDING_PAYMENT") {
+        throw new ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
+    }
+
+    // Default to 150,000 VND if doctor price is not set
+    const amount = appointment.doctor?.price || 150000;
+
+    const tmnCode = process.env.VNP_TMNCODE;
+    const secretKey = process.env.VNP_HASHSECRET;
+    let vnpUrl = process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    const returnUrl = process.env.VNP_RETURNURL;
+
+    if (!tmnCode || !secretKey || !returnUrl) {
+        throw new ApiError(
+            "Cấu hình VNPay bị thiếu. Vui lòng cấu hình VNP_TMNCODE, VNP_HASHSECRET và VNP_RETURNURL trong biến môi trường.",
+            500
+        );
+    }
+
+    const date = new Date();
+    const createDate = getFormattedDate(date);
+    
+    // Append timestamp to txnRef to avoid duplicate transaction code errors in sandbox
+    const txnRef = `${appointmentId}__${date.getTime()}`;
+
+    // 2. Prepare VNPay Parameters
+    const vnpParams: any = {
+        vnp_Version: "2.1.0",
+        vnp_Command: "pay",
+        vnp_TmnCode: tmnCode,
+        vnp_Locale: "vn",
+        vnp_CurrCode: "VND",
+        vnp_TxnRef: txnRef,
+        vnp_OrderInfo: `Thanh toan dat lich kham bac si ${appointment.doctor?.name || ""}`,
+        vnp_OrderType: "250000", // Medical services
+        vnp_Amount: amount * 100, // VNPay requires amount * 100
+        vnp_ReturnUrl: returnUrl,
+        vnp_IpAddr: ipAddr || "127.0.0.1",
+        vnp_CreateDate: createDate,
+    };
+
+    // Sort params
+    const sortedParams = sortObject(vnpParams);
+
+    // 3. Build signData query string
+    const signData = Object.keys(sortedParams)
+        .map((key) => {
+            const val = sortedParams[key];
+            if (val !== undefined && val !== null && val !== "") {
+                return `${encodeURIComponent(key)}=${encodeURIComponent(val.toString()).replace(/%20/g, "+")}`;
+            }
+            return "";
+        })
+        .filter(Boolean)
+        .join("&");
+
+    // 4. Generate HMAC SHA512 signature
+    const hmac = crypto.createHmac("sha512", secretKey);
+    const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
+
+    // 5. Append secure hash to query parameters
+    const queryParams = Object.keys(sortedParams)
+        .map((key) => {
+            const val = sortedParams[key];
+            if (val !== undefined && val !== null && val !== "") {
+                return `${encodeURIComponent(key)}=${encodeURIComponent(val.toString()).replace(/%20/g, "+")}`;
+            }
+            return "";
+        })
+        .filter(Boolean)
+        .join("&");
+
+    vnpUrl += `?${queryParams}&vnp_SecureHash=${signed}`;
+
+    // 6. Upsert Payment record as PENDING
+    await prisma.payment.upsert({
+        where: { appointmentId },
+        update: {
+            amount,
+            method: PaymentMethod.VNPAY,
+            status: PaymentStatus.PENDING,
+            paymentGateway: "VNPAY",
+        },
+        create: {
+            appointmentId,
+            amount,
+            method: PaymentMethod.VNPAY,
+            status: PaymentStatus.PENDING,
+            paymentGateway: "VNPAY",
+        },
+    });
+
+    return vnpUrl;
+}
+
+/**
+ * Verify signature from VNPay redirect/IPN
+ */
+export function verifyVNPaySign
+
+
+=== backend/src/controllers/payment.controller.ts ===
+import { Request, Response, NextFunction } from "express";
+import { AuthenticatedRequest } from "../middleware/auth.middleware";
+import {
+    createVNPayUrl,
+    verifyVNPaySignature,
+    processPaymentSuccess,
+    processPaymentFailed,
+    processMockPayment,
+    createPayOSPaymentLink,
+    getPaymentStatusByOrderCode,
+    processPayOSWebhook
+} from "../services/payment.service";
+import { ApiError } from "../utils/apiError";
+import prisma from "../prisma/client";
+import { PaymentStatus } from "@prisma/client";
+
+/**
+ * POST /api/payment/create-url
+ * Generates VNPay payment URL for a given appointment.
+ * Protected (USER/DOCTOR roles)
+ */
+export async function createPaymentUrlHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        const { appointmentId } = req.body;
+
+        if (!userId) {
+            throw new ApiError("Yêu cầu đăng nhập", 401);
+        }
+
+        if (!appointmentId) {
+            throw new ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
+        }
+
+        // Verify appointment ownership
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: appointmentId },
+        });
+
+        if (!appointment) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        if (appointment.userId !== userId && req.user?.role !== "ADMIN") {
+            throw new ApiError("Bạn không có quyền thanh toán cho lịch hẹn này", 403);
+        }
+
+        // Get client IP address
+        let ipAddr =
+            (req.headers["x-forwarded-for"] as string) ||
+            req.socket.remoteAddress ||
+            "127.0.0.1";
+        if (ipAddr.includes(",")) {
+            ipAddr = ipAddr.split(",")[0].trim();
+        }
+
+        const paymentUrl = await createVNPayUrl({ appointmentId, ipAddr });
+
+        res.status(200).json({
+            message: "Tạo link thanh toán thành công",
+            paymentUrl,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/payment/vnpay-return
+ * Redirect URL from VNPay after user completes the transaction.
+ * Public endpoint.
+ */
+export async function vnpayReturnHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const vnpParams = req.query;
+        const isValid = verifyVNPaySignature(vnpParams);
+        const frontendRedirectUrl =
+            process.env.FRONTEND_PAYMENT_REDIRECT_URL || "http://localhost:3000/payment/success";
+
+        if (!isValid) {
+            console.error("VNPay signature verification failed");
+            res.redirect(`${frontendRedirectUrl}?status=error&message=Ch%E1%BB%AF+k%C3%BD+kh%C3%B4ng+h%E1%BB%A3p+l%E1%BB%87`);
+            return;
+        }
+
+        const responseCode = vnpParams["vnp_ResponseCode"] as string;
+        const transactionNo = vnpParams["vnp_TransactionNo"] as string;
+        const txnRef = vnpParams["vnp_TxnRef"] as string;
+        
+        // Extract appointmentId from txnRef (formatted as {appointmentId}__{timestamp})
+        const appointmentId = txnRef.split("__")[0];
+
+        try {
+            if (responseCode === "00") {
+                // Success
+                await processPaymentSuccess(appointmentId, transactionNo);
+                res.redirect(`${frontendRedirectUrl}?status=success&appointmentId=${appointmentId}&txnRef=${transactionNo}`);
+            } else {
+                // Failed/Cancelled
+                await processPaymentFailed(appointmentId, transactionNo);
+                res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&responseCode=${responseCode}`);
+            }
+        } catch (innerErr: any) {
+            console.error("[VNPay Return] Error processing transaction:", innerErr);
+            const errMsg = encodeURIComponent(innerErr?.message || "Lỗi xử lý giao dịch");
+            res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&message=${errMsg}`);
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/payment/vnpay-ipn
+ * Instant Payment Notification endpoint. Called asynchronously by VNPay servers.
+ * Public endpoint.
+ */
+export async function vnpayIpnHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const vnpParams = req.query;
+        const isValid = verifyVNPaySignature(vnpParams);
+
+        if (!isValid) {
+            res.status(200).json({ RspCode: "97", Message: "Invalid checksum" });
+            return;
+        }
+
+        const responseCode = vnpParams["vnp_ResponseCode"] as string;
+        const transactionNo = vnpParams["vnp_TransactionNo"] as string;
+        const txnRef = vnpParams["vnp_TxnRef"] as string;
+        const amount = parseInt(vnpParams["vnp_Amount"] as string, 10) / 100;
+        
+        const appointmentId = txnRef.split("__")[0];
+
+        // 1. Check if appointment exists
+        const appointment = aw
+
+
+=== frontend/src/components/common/ProtectedRoute.tsx ===
+"use client";
+
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { useEffect, ReactNode } from "react";
+import LoadingSpinner from "./LoadingSpinner";
+
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRoles?: string[];
+}
+
+export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push("/login");
+      } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+        // Nếu role không được phép: USER → chuyển về /profile, các role khác → về trang chủ
+        if (user.role === "USER") {
+          router.push("/profile");
+        } else {
+          router.push("/");
+        }
+      }
+    }
+  }, [isLoading, isAuthenticated, router, user, allowedRoles]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <LoadingSpinner className="mx-auto h-12 w-12 text-teal-600" />
+          <p className="mt-4 text-sm font-medium text-slate-600">Đang xác thực thông tin...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || (allowedRoles && user && !allowedRoles.includes(user.role))) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
+
+
+=== frontend/src/app/admin/layout.tsx ===
+"use client";
+
+import React, { ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import AdminRoute from "@/components/common/AdminRoute";
+import { useAuth } from "@/hooks/useAuth";
+import toast from "react-hot-toast";
+import {
+  LayoutDashboard,
+  Users,
+  CalendarRange,
+  ArrowLeft,
+  Activity,
+  ShieldCheck,
+  Stethoscope,
+  BookOpen,
+  Building2,
+  MessageSquare,
+  BarChart3,
+  Landmark,
+  Ticket,
+  LogOut,
+  Menu,
+} from "lucide-react";
+import AdminNotificationBell from "@/components/admin/AdminNotificationBell";
+
+interface AdminLayoutProps {
+  children: ReactNode;
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
+  const pathname = usePathname();
+  const { logout } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Đã đăng xuất thành công");
+    window.location.href = "/";
+  };
+
+  const menuItems = [
+    {
+      name: "Tổng quan Dashboard",
+      href: "/admin",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+    },
+    {
+      name: "Quản lý Thành viên",
+      href: "/admin/users",
+      icon: <Users className="h-5 w-5" />,
+    },
+    {
+      name: "Quản lý Lịch hẹn",
+      href: "/admin/appointments",
+      icon: <CalendarRange className="h-5 w-5" />,
+    },
+    {
+      name: "Duyệt Thanh toán",
+      href: "/admin/payments",
+      icon: <Landmark className="h-5 w-5" />,
+    },
+    {
+      name: "Quản lý Bác sĩ & Chuyên khoa",
+      href: "/admin/doctors",
+      icon: <Stethoscope className="h-5 w-5" />,
+    },
+    {
+      name: "Phản hồi & Khiếu nại",
+      href: "/admin/complaints",
+      icon: <MessageSquare className="h-5 w-5" />,
+    },
+    {
+      name: "Thống kê & Báo cáo",
+      href: "/admin/statistics",
+      icon: <BarChart3 className="h-5 w-5" />,
+    },
+    {
+      name: "Quản lý Voucher",
+      href: "/admin/vouchers",
+      icon: <Ticket className="h-5 w-5" />,
+    },
+  ];
+
+  const isActive = (href: string) => {
+    if (href === "/admin") return pathname === "/admin";
+    return pathname.startsWith(href);
+  };
+
+  return (
+    <AdminRoute>
+      <div className="min-h-screen flex bg-slate-900 text-slate-100 font-sans">
+        {/* Sidebar */}
+        <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 hidden md:flex h-screen sticky top-0">
+          {/* Brand header */}
+          <div className="h-16 px-6 border-b border-slate-800 flex items-center gap-2 text-teal-400 font-bold text-lg tracking-wider uppercase shrink-0">
+            <Activity className="h-5 w-5 shrink-0" />
+            <span>MedAdmin Zone</span>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="flex-grow p-4 space-y-1.5 pt-6 overflow-y-auto">
+            {menuItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  isActive(item.href)
+                    ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20"
+                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                }`}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* Back to Client Home & Logout */}
+          <div className="p-4 border-t border-slate-800 space-y-2">
+            <Link
+              href="/"
+              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-slate-800 text-xs font-semibold text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Quay lại trang chủ</span>
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-rose-950 text-xs font-semibold text-rose-400 hover:text-rose-100 hover:bg-rose-950/30 hover:border-rose-900 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Đăng xuất</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Right side container */}
+        <div className="flex-grow flex flex-col min-w-0">
+          {/* Top Bar Header */}
+          <header className="h-16 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-6 sm:px-8 flex items-center justify-between shrink-0 relative">
+            <div className="flex items-center gap-3">
+              <button
+                className="md:hidden p-2 -ml-2 text-slate-400 hover:bg-slate-900 rounded-lg"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <div className="flex
+
+
+=== frontend/src/app/my-appointments/page.tsx ===
+"use client";
+
+import React, { useEffect, useState } from "react";
+import ProtectedRoute from "@/components/common/ProtectedRoute";
+import { appointmentService } from "@/services/appointment.service";
+import { Appointment, AppointmentStatus } from "@/types/appointment";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import Alert from "@/components/common/Alert";
+import { CalendarRange, Stethoscope, Clock, ShieldAlert, Award, FileText, ArrowRight, CalendarDays, CheckCircle2, Video, Package, User, MessageSquare } from "lucide-react";
+import Link from "next/link";
+import Button from "@/components/common/Button";
+import BookingProgress from "@/components/ui/BookingProgress";
+import PrescriptionModal from "@/components/ui/PrescriptionModal";
+import SubmitReviewModal from "@/components/ui/SubmitReviewModal";
+import CancelAppointmentModal from "@/components/appointments/CancelAppointmentModal";
+import ErrorModal from "@/components/common/ErrorModal";
+import { Star } from "lucide-react";
+import toast from "react-hot-toast";
+
+function MyAppointmentsContent() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedPrescriptionApptId, setSelectedPrescriptionApptId] = useState<string | null>(null);
+  const [reviewTargetAppt, setReviewTargetAppt] = useState<{ id: string; doctorName: string; specialtyName: string } | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [showCancelError, setShowCancelError] = useState(false);
+  
+  // Tab State
+  const [activeTab, setActiveTab] = useState<AppointmentStatus | "ALL">("ALL");
+
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await appointmentService.getMyAppointments();
+      
+      // Sort appointments by date desc
+      const sorted = data.appointments.sort(
+        (a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()
+      );
+      setAppointments(sorted);
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "Không thể tải danh sách cuộc hẹn của bạn.";
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+
+  const handleCancelAppointment = async (reason: string) => {
+    if (!cancelTargetId) return;
+    try {
+      setCancelingId(cancelTargetId);
+      await appointmentService.cancelAppointment(cancelTargetId, reason);
+      toast.success("Huỷ lịch hẹn thành công!");
+      fetchAppointments();
+      setCancelTargetId(null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || "Đã xảy ra lỗi khi huỷ lịch hẹn");
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  // Filter based on selected Tab
+  useEffect(() => {
+    if (activeTab === "ALL") {
+      setFilteredAppointments(appointments);
+    } else if (activeTab === "CANCELLED") {
+      setFilteredAppointments(appointments.filter((app) => app.status === "CANCELLED" || app.status === "EXPIRED"));
+    } else {
+      setFilteredAppointments(appointments.filter((app) => app.status === activeTab));
+    }
+  }, [activeTab, appointments]);
+
+  // Map status names in Vietnamese
+  const getStatusLabel = (status: AppointmentStatus) => {
+    const labels = {
+      PENDING_PAYMENT: "Chờ thanh toán",
+      PENDING: "Chờ duyệt",
+      CONFIRMED: "Đã xác nhận",
+      COMPLETED: "Đã khám xong",
+      CANCELLED: "Đã hủy",
+      EXPIRED: "Quá hạn",
+    };
+    return labels[status] || status;
+  };
+
+  // Map status color classes
+  const getStatusStyles = (status: AppointmentStatus) => {
+    const styles = {
+      PENDING_PAYMENT: "bg-amber-50 text-amber-800 border-amber-100",
+      PENDING: "bg-indigo-50 text-indigo-800 border-indigo-100",
+      CONFIRMED: "bg-blue-50 text-blue-850 border-blue-150",
+      COMPLETED: "bg-emerald-50 text-emerald-800 border-emerald-100",
+      CANCELLED: "bg-red-50 text-red-800 border-red-100",
+      EXPIRED: "bg-slate-100 text-slate-600 border-slate-200",
+    };
+    return styles[status] || "bg-slate-50 text-slate-700 border-slate-100";
+  };
+
+  const tabs: { label: string; value: AppointmentStatus | "ALL" }[] = [
+    { label: "Tất cả", value: "ALL" },
+    { label: "Chờ thanh toán", value: "PENDING_PAYMENT" },
+    { label: "Chờ duyệt", value: "PENDING" },
+    { label: "Đã xác nhận", value: "CONFIRMED" },
+    { label: "Đã khám xong", value: "COMPLETED" },
+    { label: "Đã hủy/Quá hạn", value: "CANCELLED" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Filters/Tabs Bar */}
+      <div className="borde
+
+
+=== frontend/src/app/messages/page.tsx ===
+"use client";
+
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import api from "@/services/api";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import Alert from "@/components/common/Alert";
+import {
+  Send,
+  User,
+  MessageCircle,
+  Clock,
+  Video,
+  Search,
+  ArrowLeft,
+  X,
+  CheckCheck,
+  ImageIcon,
+  Info,
+  Phone,
+} from "lucide-react";
+import { io, Socket } from "socket.io-client";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "react-hot-toast";
+
+interface Conversation {
+  id: string;
+  doctor?: { id: string; name: string; avatar: string; specialty: { name: string } };
+  user?: { id: string; fullName: string; avatar: string };
+  messages: Message[];
+  updatedAt: string;
+}
+
+interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  createdAt: string;
+  isRead: boolean;
+}
+
+function AvatarFallback({ name, size = 40, className = "" }: { name?: string; size?: number; className?: string }) {
+  const initials = name
+    ? name.split(" ").slice(-2).map((w) => w[0]).join("").toUpperCase()
+    : "?";
+  return (
+    <div
+      className={`rounded-full bg-gradient-to-br from-teal-400 to-teal-700 flex items-center justify-center text-white font-bold shrink-0 ${className}`}
+      style={{ width: size, height: size, fontSize: size * 0.36 }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function Avatar({ src, name, size = 40, className = "" }: { src?: string; name?: string; size?: number; className?: string }) {
+  const [error, setError] = useState(false);
+  if (!src || error) return <AvatarFallback name={name} size={size} className={className} />;
+  const resolvedSrc = src.startsWith("http") ? src : `${process.env.NEXT_PUBLIC_API_URL?.replace("/api", "")}${src}`;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={resolvedSrc}
+      alt={name || "Avatar"}
+      width={size}
+      height={size}
+      className={`rounded-full object-cover shrink-0 ${className}`}
+      style={{ width: size, height: size }}
+      onError={() => setError(true)}
+    />
+  );
+}
+
+function formatTime(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+  if (diffDays === 0) return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  if (diffDays === 1) return "Hôm qua";
+  if (diffDays < 7) return date.toLocaleDateString("vi-VN", { weekday: "short" });
+  return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+}
+
+// Video Call Incoming Modal
+function IncomingCallModal({
+  data,
+  onAccept,
+  onDecline,
+}: {
+  data: any;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const isFromDoctor = data.callerRole === "DOCTOR" || data.isDoctor !== false;
+  const callerName = data.callerName || data.doctorName;
+  const title = isFromDoctor ? `Bs. ${callerName}` : callerName;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="relative bg-[#1a2535] rounded-3xl p-8 flex flex-col items-center gap-5 shadow-2xl w-80 text-center animate-in zoom-in-95 duration-200">
+        {/* Animated ring */}
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-teal-500/20 animate-ping" style={{ margin: -8 }} />
+          <div className="absolute inset-0 rounded-full bg-teal-500/10 animate-ping" style={{ margin: -16, animationDelay: "0.3s" }} />
+          <AvatarFallback name={callerName} size={80} />
+        </div>
+        <div>
+          <p className="text-teal-400 text-xs font-semibold uppercase tracking-wider mb-1">Cuộc gọi video đến</p>
+          <h3 className="text-white text-xl font-bold">{title}</h3>
+          <p className="text-slate-400 text-sm mt-1">Đang mời bạn vào phòng tư vấn</p>
+        </div>
+        <div className="flex gap-4 w-full mt-2">
+          <button
+            onClick={onDecline}
+            className="flex-1 flex flex-col items-center gap-2 py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+          >
+            <Phone className="w-5 h-5 rotate-[135deg]" />
+            <span className="text-xs font-semibold">Từ chối</span>
+          </button>
+          <button
+            onClick={onAccept}
+            className="flex-1 flex flex-col items-center gap-2 py-3 rounded-2xl bg-teal-500 hover:bg-teal-600 text-white transition-colors"
+          >
+            <Video className="w-5 h-5" />
+            <span className="text-xs font-semibold">Chấp nhận</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Video Call Outgoing Modal
+function OutgoingCallModal({
+  conversation,
+  onCancel,
+  isDoctor
+}: {
+  conversation: any;
+  onCancel: () => void;
+  isDoctor: boolean;
+}) {
+  const target = isDoctor ? conversation.user : conv
+
