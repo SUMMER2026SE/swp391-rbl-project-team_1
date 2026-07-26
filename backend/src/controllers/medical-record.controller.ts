@@ -3,6 +3,18 @@ import { sendPrescriptionEmail } from '../utils/emailService';
 import prisma from '../prisma/client';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
+/**
+ * Helper: resolve the Doctor record for the currently authenticated user.
+ * Returns null if the user has no linked doctor profile.
+ */
+async function getDoctorForUser(userId: string) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { doctor: true }
+    });
+    return user?.doctor ?? null;
+}
+
 // =====================================================================
 // PATIENT-FACING: Get all my medical records
 // GET /api/medical-records/my
@@ -97,9 +109,15 @@ export const getMyRecordByAppointment = async (req: AuthenticatedRequest, res: R
 
 
 
-export const getRecordByAppointment = async (req: Request, res: Response): Promise<void> => {
+export const getRecordByAppointment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { appointmentId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
 
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId as string },
@@ -111,6 +129,13 @@ export const getRecordByAppointment = async (req: Request, res: Response): Promi
 
     if (!appointment) {
       res.status(404).json({ success: false, message: 'Appointment not found' });
+      return;
+    }
+
+    // Security: verify the logged-in doctor is assigned to this appointment
+    const doctor = await getDoctorForUser(userId);
+    if (!doctor || appointment.doctorId !== doctor.id) {
+      res.status(403).json({ success: false, message: 'Bạn không có quyền xem hồ sơ của lịch hẹn này' });
       return;
     }
 
@@ -139,9 +164,16 @@ export const getRecordByAppointment = async (req: Request, res: Response): Promi
   }
 };
 
-export const saveRecord = async (req: Request, res: Response): Promise<void> => {
+export const saveRecord = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { appointmentId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const { 
       height, weight, bloodPressure, heartRate, temperature, spo2, 
       symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis, 
@@ -156,6 +188,13 @@ export const saveRecord = async (req: Request, res: Response): Promise<void> => 
 
     if (!appointment) {
       res.status(404).json({ success: false, message: 'Appointment not found' });
+      return;
+    }
+
+    // Security: verify the logged-in doctor is assigned to this appointment
+    const doctor = await getDoctorForUser(userId);
+    if (!doctor || appointment.doctorId !== doctor.id) {
+      res.status(403).json({ success: false, message: 'Bạn không có quyền tạo/cập nhật hồ sơ cho lịch hẹn này' });
       return;
     }
 
