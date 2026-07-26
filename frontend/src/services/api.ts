@@ -42,9 +42,9 @@ api.interceptors.response.use(
       // Optional: redirect to login if necessary
     }
 
-    const customError = new Error(message);
-    (customError as any).status = status;
-    (customError as any).originalError = error;
+    const customError = new Error(message) as Error & { status?: number; originalError?: unknown };
+    customError.status = status;
+    customError.originalError = error;
 
     return Promise.reject(customError);
   }
