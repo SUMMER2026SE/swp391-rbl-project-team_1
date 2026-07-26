@@ -13,7 +13,7 @@ router.get("/doctors", listDoctors);
 router.get("/specialties", listSpecialties);
 router.get("/doctors/featured", getFeaturedDoctors);
 router.get("/doctors/:id", getDoctor);
-router.post("/doctors/:id/schedules", verifyToken, createSchedule);
+router.post("/doctors/:id/schedules", verifyToken, authorizeRoles(Role.DOCTOR), createSchedule);
 router.get("/doctors/:id/schedules", listSchedules);
 router.get("/clinics", listClinics);
 router.get("/clinics/:id", getClinic);
