@@ -11,7 +11,7 @@ interface CreateScheduleBody {
 }
 
 export async function createSchedule(
-    req: Request,
+    req: any,
     res: Response,
     next: NextFunction
 ): Promise<void> {
@@ -19,6 +19,16 @@ export async function createSchedule(
         const doctorId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
         if (!doctorId) {
             throw new ApiError("Doctor id is required", 400);
+        }
+
+        // Ownership check: the requesting DOCTOR must own this doctor profile
+        const requestingUserId: string = req.user?.userId;
+        const doctorProfile = await prisma.doctor.findUnique({ where: { userId: requestingUserId } });
+        if (!doctorProfile || doctorProfile.id !== doctorId) {
+            throw new ApiError(
+                "Bạn không có quyền tạo/cập nhật lịch trực cho bác sĩ này",
+                403
+            );
         }
 
         const body = req.body as CreateScheduleBody;
