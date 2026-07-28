@@ -312,8 +312,13 @@ export const getDoctorAppointments = async (req: AuthenticatedRequest, res: Resp
         const doctor = await getDoctor(req.user!.userId);
         if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
 
+        const { status } = req.query;
+
         const appointments = await prisma.appointment.findMany({
-            where: { doctorId: doctor.id },
+            where: { 
+                doctorId: doctor.id,
+                ...(status ? { status: status as AppointmentStatus } : {})
+            },
             include: { 
                 user: { select: { id: true, fullName: true, email: true, gender: true, dateOfBirth: true, avatar: true } },
                 payment: true,

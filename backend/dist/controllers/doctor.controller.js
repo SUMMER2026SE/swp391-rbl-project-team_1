@@ -13,8 +13,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const doctor_service_1 = require("../services/doctor.service");
 const apiError_1 = require("../utils/apiError");
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 const DOCTORS_DIR = path_1.default.join(process.cwd(), "public", "doctors");
 /**
  * GET /api/doctors
@@ -91,7 +90,7 @@ async function updateDoctorAvatar(req, res, next) {
         }
         const imageUrl = avatarUrl || avatarPath;
         // Update database
-        const updatedDoctor = await prisma.doctor.update({
+        const updatedDoctor = await client_1.default.doctor.update({
             where: { id: doctorId },
             data: { avatar: imageUrl },
         });
@@ -136,7 +135,7 @@ async function batchUpdateAvatars(req, res, next) {
             }
             const doctorId = `doctor_${doctorIdMatch[1]}`;
             try {
-                const doctor = await prisma.doctor.findUnique({
+                const doctor = await client_1.default.doctor.findUnique({
                     where: { id: doctorId },
                 });
                 if (!doctor) {
@@ -147,7 +146,7 @@ async function batchUpdateAvatars(req, res, next) {
                     });
                     continue;
                 }
-                await prisma.doctor.update({
+                await client_1.default.doctor.update({
                     where: { id: doctorId },
                     data: { avatar: imagePath },
                 });
@@ -186,7 +185,7 @@ async function getFeaturedDoctors(req, res, next) {
         const today = new Date();
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         // Fetch approved doctors with reviews and appointments this month
-        const doctors = await prisma.doctor.findMany({
+        const doctors = await client_1.default.doctor.findMany({
             where: { status: 'APPROVED' },
             include: {
                 specialty: { select: { name: true, slug: true } },

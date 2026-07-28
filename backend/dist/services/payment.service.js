@@ -57,8 +57,8 @@ async function createVNPayUrl(params) {
     if (appointment.status !== "PENDING_PAYMENT") {
         throw new apiError_1.ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
     }
-    // Default to 150,000 VND if doctor price is not set
-    const amount = appointment.doctor?.price || 150000;
+    // Default to appointment.amount, then doctor price, fallback to 150,000 VND
+    const amount = appointment.amount || appointment.doctor?.price || 150000;
     const tmnCode = process.env.VNP_TMNCODE;
     const secretKey = process.env.VNP_HASHSECRET;
     let vnpUrl = process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
@@ -194,6 +194,39 @@ async function processPaymentSuccess(appointmentId, transactionId) {
             data: { status: client_1.AppointmentStatus.CONFIRMED },
         });
     }, { isolationLevel: "Serializable" });
+    // Send confirmation email after transaction succeeds
+    try {
+        const fullAppt = await client_2.default.appointment.findUnique({
+            where: { id: appointmentId },
+            include: {
+                user: true,
+                doctor: { include: { specialty: true, clinic: true } },
+                medicalPackage: true,
+                payment: true,
+            }
+        });
+        if (fullAppt?.user?.email) {
+            const patientInfo = fullAppt.patientInfo;
+            (0, emailService_1.sendBookingConfirmationEmail)(fullAppt.user.email, {
+                patientName: patientInfo?.fullName || fullAppt.user.fullName || fullAppt.user.email || "Bệnh nhân",
+                doctorName: fullAppt.doctor?.name || "Hệ thống",
+                specialtyName: fullAppt.doctor?.specialty?.name || "",
+                clinicName: fullAppt.doctor?.clinic?.name || fullAppt.doctor?.hospital || "Bệnh viện",
+                appointmentDate: fullAppt.appointmentDate,
+                amount: fullAppt.amount,
+                paymentMethod: "VNPay",
+                transactionCode: transactionId,
+                paymentAt: fullAppt.payment?.payDate || undefined,
+                appointmentId: fullAppt.id,
+                bookingCode: fullAppt.bookingCode,
+                packageName: fullAppt.medicalPackage?.name || null,
+                status: "CONFIRMED",
+            }).catch(console.error);
+        }
+    }
+    catch (e) {
+        console.error("[VNPay] Failed to send confirmation email:", e);
+    }
 }
 /**
  * Handle failed payment transaction (idempotent, Serializable isolation)
@@ -233,12 +266,12 @@ async function processPaymentFailed(appointmentId, transactionId) {
 async function processMockPayment(appointmentId) {
     const appointment = await client_2.default.appointment.findUnique({
         where: { id: appointmentId },
-        include: { doctor: true },
+        include: { doctor: { include: { specialty: true, clinic: true } }, user: true, medicalPackage: true },
     });
     if (!appointment) {
         throw new apiError_1.ApiError("Lịch hẹn không tồn tại", 404);
     }
-    const amount = appointment.doctor?.price || 150000;
+    const amount = appointment.amount || appointment.doctor?.price || 150000;
     const mockTxnNo = `MOCK_TXN_${Date.now()}`;
     await client_2.default.$transaction([
         client_2.default.payment.upsert({
@@ -268,6 +301,25 @@ async function processMockPayment(appointmentId) {
             },
         }),
     ]);
+    // Send confirmation email after mock payment
+    if (appointment.user?.email) {
+        const patientInfo = appointment.patientInfo;
+        (0, emailService_1.sendBookingConfirmationEmail)(appointment.user.email, {
+            patientName: patientInfo?.fullName || appointment.user.fullName || appointment.user.email || "Bệnh nhân",
+            doctorName: appointment.doctor?.name || "Hệ thống",
+            specialtyName: appointment.doctor?.specialty?.name || "",
+            clinicName: appointment.doctor?.clinic?.name || appointment.doctor?.hospital || "Bệnh viện",
+            appointmentDate: appointment.appointmentDate,
+            amount,
+            paymentMethod: "Mock",
+            transactionCode: mockTxnNo,
+            paymentAt: new Date(),
+            appointmentId: appointment.id,
+            bookingCode: appointment.bookingCode,
+            packageName: appointment.medicalPackage?.name || null,
+            status: "CONFIRMED",
+        }).catch(console.error);
+    }
     return {
         success: true,
         appointmentId,
@@ -289,9 +341,9 @@ async function createPayOSPaymentLink(appointmentId, voucherCode, discountAmount
         throw new apiError_1.ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
     }
     // Generate a numeric order code < 9007199254740991
-    const orderCode = Number(String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 1000)));
-    // Use doctor price or appointment amount as base
-    const baseAmount = appointment.doctor?.price || appointment.amount || 5000;
+    const orderCode = (Date.now() % 1000000000) * 1000 + Math.floor(Math.random() * 1000);
+    // Use appointment amount or doctor price as base
+    const baseAmount = appointment.amount || appointment.doctor?.price || 5000;
     // Apply voucher discount if provided
     const amount = discountAmount ? Math.max(baseAmount - discountAmount, 1000) : baseAmount;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);

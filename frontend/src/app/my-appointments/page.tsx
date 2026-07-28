@@ -179,7 +179,7 @@ function MyAppointmentsContent() {
 
             const diffMs = appointmentDate.getTime() - new Date().getTime();
             const diffHours = diffMs / (1000 * 60 * 60);
-            const canCancel = diffHours > 0;
+            const canCancel = diffHours > 24;
 
             return (
               <div

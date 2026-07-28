@@ -176,71 +176,81 @@ const saveRecord = async (req, res) => {
             res.status(403).json({ success: false, message: 'Bạn không có quyền tạo/cập nhật hồ sơ cho lịch hẹn này' });
             return;
         }
-        // Upsert record
-        const record = await client_1.default.medicalRecord.upsert({
-            where: { appointmentId: appointmentId },
-            update: {
-                height, weight, bloodPressure, heartRate, temperature, spo2,
-                symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
-                icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
-            },
-            create: {
-                appointmentId: appointmentId,
-                doctorId: appointment.doctorId,
-                userId: appointment.userId,
-                height, weight, bloodPressure, heartRate, temperature, spo2,
-                symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
-                icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
+        if (!appointment.doctorId) {
+            res.status(400).json({ success: false, message: 'Lịch hẹn không có bác sĩ đảm nhận' });
+            return;
+        }
+        // Atomic transaction for upserting medical record and recreating lab orders / prescriptions
+        const record = await client_1.default.$transaction(async (tx) => {
+            // Upsert record
+            const rec = await tx.medicalRecord.upsert({
+                where: { appointmentId: appointmentId },
+                update: {
+                    height, weight, bloodPressure, heartRate, temperature, spo2,
+                    symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
+                    icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
+                },
+                create: {
+                    appointmentId: appointmentId,
+                    doctorId: appointment.doctorId,
+                    userId: appointment.userId,
+                    height, weight, bloodPressure, heartRate, temperature, spo2,
+                    symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
+                    icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
+                }
+            });
+            // Handle lab orders
+            if (labOrders && Array.isArray(labOrders)) {
+                await tx.labOrder.deleteMany({
+                    where: { medicalRecordId: rec.id }
+                });
+                if (labOrders.length > 0) {
+                    await tx.labOrder.createMany({
+                        data: labOrders.map((lo) => ({
+                            medicalRecordId: rec.id,
+                            testName: lo.testName,
+                            testType: lo.testType,
+                            notes: lo.notes,
+                            status: lo.status || 'PENDING'
+                        }))
+                    });
+                }
             }
+            // Handle prescriptions
+            if (prescriptions && Array.isArray(prescriptions)) {
+                await tx.prescription.deleteMany({
+                    where: { medicalRecordId: rec.id }
+                });
+                if (prescriptions.length > 0) {
+                    await tx.prescription.createMany({
+                        data: prescriptions.map((p) => ({
+                            medicalRecordId: rec.id,
+                            medicineId: p.medicineId,
+                            dosage: p.dosage,
+                            frequency: p.frequency,
+                            durationDays: p.durationDays,
+                            instructions: p.instructions,
+                            quantity: p.quantity
+                        }))
+                    });
+                }
+            }
+            // If status is COMPLETED, update appointment status
+            if (status === 'COMPLETED') {
+                await tx.appointment.update({
+                    where: { id: appointmentId },
+                    data: { status: 'COMPLETED' }
+                });
+            }
+            return rec;
         });
-        // Handle lab orders
-        if (labOrders && Array.isArray(labOrders)) {
-            await client_1.default.labOrder.deleteMany({
-                where: { medicalRecordId: record.id }
-            });
-            if (labOrders.length > 0) {
-                await client_1.default.labOrder.createMany({
-                    data: labOrders.map((lo) => ({
-                        medicalRecordId: record.id,
-                        testName: lo.testName,
-                        testType: lo.testType,
-                        notes: lo.notes,
-                        status: lo.status || 'PENDING'
-                    }))
-                });
-            }
-        }
-        // Handle prescriptions
-        if (prescriptions && Array.isArray(prescriptions)) {
-            await client_1.default.prescription.deleteMany({
-                where: { medicalRecordId: record.id }
-            });
-            if (prescriptions.length > 0) {
-                await client_1.default.prescription.createMany({
-                    data: prescriptions.map((p) => ({
-                        medicalRecordId: record.id,
-                        medicineId: p.medicineId,
-                        dosage: p.dosage,
-                        frequency: p.frequency,
-                        durationDays: p.durationDays,
-                        instructions: p.instructions,
-                        quantity: p.quantity
-                    }))
-                });
-            }
-        }
-        // If status is COMPLETED, update appointment status
+        // Send email outside the transaction to prevent blocking
         if (status === 'COMPLETED') {
-            await client_1.default.appointment.update({
-                where: { id: appointmentId },
-                data: { status: 'COMPLETED' }
-            });
-            // Send email
             if (appointment.user && appointment.user.email) {
-                const doctor = await client_1.default.doctor.findUnique({ where: { id: appointment.doctorId } });
+                const doctorRecord = await client_1.default.doctor.findUnique({ where: { id: appointment.doctorId } });
                 await (0, emailService_1.sendPrescriptionEmail)(appointment.user.email, {
                     patientName: appointment.patientInfo?.fullName || appointment.user.fullName || appointment.user.email,
-                    doctorName: doctor?.name || "Bác sĩ",
+                    doctorName: doctorRecord?.name || "Bác sĩ",
                     appointmentDate: appointment.appointmentDate
                 }, req.body.pdfBase64 // Optional PDF from frontend
                 );

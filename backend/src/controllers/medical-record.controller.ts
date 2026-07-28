@@ -198,77 +198,89 @@ export const saveRecord = async (req: AuthenticatedRequest, res: Response): Prom
       return;
     }
 
-    // Upsert record
-    const record = await prisma.medicalRecord.upsert({
-      where: { appointmentId: appointmentId as string },
-      update: {
-        height, weight, bloodPressure, heartRate, temperature, spo2,
-        symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
-        icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
-      },
-      create: {
-        appointmentId: appointmentId as string,
-        doctorId: appointment.doctorId!,
-        userId: appointment.userId,
-        height, weight, bloodPressure, heartRate, temperature, spo2,
-        symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
-        icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
+    if (!appointment.doctorId) {
+      res.status(400).json({ success: false, message: 'Lịch hẹn không có bác sĩ đảm nhận' });
+      return;
+    }
+
+    // Atomic transaction for upserting medical record and recreating lab orders / prescriptions
+    const record = await prisma.$transaction(async (tx) => {
+      // Upsert record
+      const rec = await tx.medicalRecord.upsert({
+        where: { appointmentId: appointmentId as string },
+        update: {
+          height, weight, bloodPressure, heartRate, temperature, spo2,
+          symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
+          icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
+        },
+        create: {
+          appointmentId: appointmentId as string,
+          doctorId: appointment.doctorId as string,
+          userId: appointment.userId,
+          height, weight, bloodPressure, heartRate, temperature, spo2,
+          symptoms, physicalExam, preliminaryDiagnosis, finalDiagnosis,
+          icd10Code, treatmentPlan, doctorNotes, followUpDate, severity, status
+        }
+      });
+
+      // Handle lab orders
+      if (labOrders && Array.isArray(labOrders)) {
+        await tx.labOrder.deleteMany({
+          where: { medicalRecordId: rec.id }
+        });
+        if (labOrders.length > 0) {
+          await tx.labOrder.createMany({
+            data: labOrders.map((lo: any) => ({
+              medicalRecordId: rec.id,
+              testName: lo.testName,
+              testType: lo.testType,
+              notes: lo.notes,
+              status: lo.status || 'PENDING'
+            }))
+          });
+        }
       }
+
+      // Handle prescriptions
+      if (prescriptions && Array.isArray(prescriptions)) {
+        await tx.prescription.deleteMany({
+          where: { medicalRecordId: rec.id }
+        });
+        if (prescriptions.length > 0) {
+          await tx.prescription.createMany({
+            data: prescriptions.map((p: any) => ({
+              medicalRecordId: rec.id,
+              medicineId: p.medicineId,
+              dosage: p.dosage,
+              frequency: p.frequency,
+              durationDays: p.durationDays,
+              instructions: p.instructions,
+              quantity: p.quantity
+            }))
+          });
+        }
+      }
+
+      // If status is COMPLETED, update appointment status
+      if (status === 'COMPLETED') {
+        await tx.appointment.update({
+          where: { id: appointmentId as string },
+          data: { status: 'COMPLETED' }
+        });
+      }
+
+      return rec;
     });
 
-    // Handle lab orders
-    if (labOrders && Array.isArray(labOrders)) {
-      await prisma.labOrder.deleteMany({
-        where: { medicalRecordId: record.id }
-      });
-      if (labOrders.length > 0) {
-        await prisma.labOrder.createMany({
-          data: labOrders.map((lo: any) => ({
-            medicalRecordId: record.id,
-            testName: lo.testName,
-            testType: lo.testType,
-            notes: lo.notes,
-            status: lo.status || 'PENDING'
-          }))
-        });
-      }
-    }
-
-    // Handle prescriptions
-    if (prescriptions && Array.isArray(prescriptions)) {
-      await prisma.prescription.deleteMany({
-        where: { medicalRecordId: record.id }
-      });
-      if (prescriptions.length > 0) {
-        await prisma.prescription.createMany({
-          data: prescriptions.map((p: any) => ({
-            medicalRecordId: record.id,
-            medicineId: p.medicineId,
-            dosage: p.dosage,
-            frequency: p.frequency,
-            durationDays: p.durationDays,
-            instructions: p.instructions,
-            quantity: p.quantity
-          }))
-        });
-      }
-    }
-
-    // If status is COMPLETED, update appointment status
+    // Send email outside the transaction to prevent blocking
     if (status === 'COMPLETED') {
-      await prisma.appointment.update({
-        where: { id: appointmentId as string },
-        data: { status: 'COMPLETED' }
-      });
-      
-      // Send email
       if ((appointment as any).user && (appointment as any).user.email) {
-        const doctor = await prisma.doctor.findUnique({ where: { id: appointment.doctorId! }});
+        const doctorRecord = await prisma.doctor.findUnique({ where: { id: appointment.doctorId }});
         await sendPrescriptionEmail(
           (appointment as any).user.email,
           {
             patientName: (appointment.patientInfo as any)?.fullName || (appointment as any).user.fullName || (appointment as any).user.email,
-            doctorName: doctor?.name || "Bác sĩ",
+            doctorName: doctorRecord?.name || "Bác sĩ",
             appointmentDate: appointment.appointmentDate
           },
           req.body.pdfBase64 // Optional PDF from frontend

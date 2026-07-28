@@ -184,12 +184,14 @@ export async function sendBookingConfirmationEmail(
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">MedBooking</h1>
-            <p style="color: #ccfbf1; margin: 5px 0 0 0; font-size: 14px;">Xác Nhận Yêu Cầu Đặt Lịch Hẹn</p>
+            <p style="color: #ccfbf1; margin: 5px 0 0 0; font-size: 14px;">${details.status === "CONFIRMED" ? "Xác Nhận Đặt Lịch Hẹn Thành Công" : "Xác Nhận Yêu Cầu Đặt Lịch Hẹn"}</p>
           </div>
           <div style="background: #ffffff; padding: 30px;">
             <p style="color: #334155; font-size: 16px; font-weight: bold; margin-top: 0;">Xin chào ${details.patientName},</p>
             <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-              Yêu cầu đặt lịch khám bệnh của bạn đã được ghi nhận trên hệ thống MedBooking và đang chờ bác sĩ xác nhận. Dưới đây là thông tin chi tiết:
+              ${details.status === "CONFIRMED"
+                ? "Lịch khám bệnh của bạn đã được thanh toán và <strong>xác nhận thành công</strong>. Dưới đây là thông tin chi tiết:"
+                : "Yêu cầu đặt lịch khám bệnh của bạn đã được ghi nhận trên hệ thống MedBooking và đang chờ bác sĩ xác nhận. Dưới đây là thông tin chi tiết:"}
             </p>
             
             <div style="background: #f8fafc; border-left: 4px solid #14b8a6; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
@@ -223,7 +225,10 @@ export async function sendBookingConfirmationEmail(
                 <tr>
                   <td style="padding: 6px 0; font-weight: bold; vertical-align: top;">Trạng thái:</td>
                   <td style="padding: 6px 0;">
-                    <span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">Chờ xác nhận</span>
+                    ${details.status === "CONFIRMED"
+                        ? `<span style="background: #dbeafe; color: #2563eb; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">Đã xác nhận</span>`
+                        : `<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">Chờ xác nhận</span>`
+                    }
                   </td>
                 </tr>
               </table>
@@ -266,7 +271,9 @@ export async function sendBookingConfirmationEmail(
             </div>
 
             <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-              Hệ thống sẽ gửi email thông báo ngay sau khi bác sĩ phê duyệt yêu cầu này. Cảm ơn bạn đã tin tưởng dịch vụ MedBooking.
+              ${details.status === "CONFIRMED"
+                ? "Vui lòng có mặt tại địa điểm khám trước giờ hẹn 10-15 phút để làm thủ tục. Cảm ơn bạn đã tin tưởng dịch vụ MedBooking."
+                : "Hệ thống sẽ gửi email thông báo ngay sau khi bác sĩ phê duyệt yêu cầu này. Cảm ơn bạn đã tin tưởng dịch vụ MedBooking."}
             </p>
           </div>
           <div style="background: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9; color: #94a3b8; font-size: 12px;">

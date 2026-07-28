@@ -61,8 +61,8 @@ export async function createVNPayUrl(params: VNPayUrlParams): Promise<string> {
         throw new ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
     }
 
-    // Default to 150,000 VND if doctor price is not set
-    const amount = appointment.doctor?.price || 150000;
+    // Default to appointment.amount, then doctor price, fallback to 150,000 VND
+    const amount = appointment.amount || appointment.doctor?.price || 150000;
 
     const tmnCode = process.env.VNP_TMNCODE;
     const secretKey = process.env.VNP_HASHSECRET;
@@ -228,6 +228,39 @@ export async function processPaymentSuccess(appointmentId: string, transactionId
             data: { status: AppointmentStatus.CONFIRMED },
         });
     }, { isolationLevel: "Serializable" });
+
+    // Send confirmation email after transaction succeeds
+    try {
+        const fullAppt = await prisma.appointment.findUnique({
+            where: { id: appointmentId },
+            include: {
+                user: true,
+                doctor: { include: { specialty: true, clinic: true } },
+                medicalPackage: true,
+                payment: true,
+            }
+        });
+        if (fullAppt?.user?.email) {
+            const patientInfo = (fullAppt.patientInfo as any);
+            sendBookingConfirmationEmail(fullAppt.user.email, {
+                patientName: patientInfo?.fullName || fullAppt.user.fullName || fullAppt.user.email || "Bệnh nhân",
+                doctorName: fullAppt.doctor?.name || "Hệ thống",
+                specialtyName: (fullAppt.doctor as any)?.specialty?.name || "",
+                clinicName: (fullAppt.doctor as any)?.clinic?.name || fullAppt.doctor?.hospital || "Bệnh viện",
+                appointmentDate: fullAppt.appointmentDate,
+                amount: fullAppt.amount,
+                paymentMethod: "VNPay",
+                transactionCode: transactionId,
+                paymentAt: fullAppt.payment?.payDate || undefined,
+                appointmentId: fullAppt.id,
+                bookingCode: fullAppt.bookingCode,
+                packageName: fullAppt.medicalPackage?.name || null,
+                status: "CONFIRMED",
+            }).catch(console.error);
+        }
+    } catch (e) {
+        console.error("[VNPay] Failed to send confirmation email:", e);
+    }
 }
 
 /**
@@ -276,14 +309,14 @@ export async function processPaymentFailed(appointmentId: string, transactionId:
 export async function processMockPayment(appointmentId: string) {
     const appointment = await prisma.appointment.findUnique({
         where: { id: appointmentId },
-        include: { doctor: true },
+        include: { doctor: { include: { specialty: true, clinic: true } }, user: true, medicalPackage: true },
     });
 
     if (!appointment) {
         throw new ApiError("Lịch hẹn không tồn tại", 404);
     }
 
-    const amount = appointment.doctor?.price || 150000;
+    const amount = appointment.amount || appointment.doctor?.price || 150000;
     const mockTxnNo = `MOCK_TXN_${Date.now()}`;
 
     await prisma.$transaction([
@@ -315,6 +348,26 @@ export async function processMockPayment(appointmentId: string) {
         }),
     ]);
 
+    // Send confirmation email after mock payment
+    if (appointment.user?.email) {
+        const patientInfo = (appointment.patientInfo as any);
+        sendBookingConfirmationEmail(appointment.user.email, {
+            patientName: patientInfo?.fullName || appointment.user.fullName || appointment.user.email || "Bệnh nhân",
+            doctorName: appointment.doctor?.name || "Hệ thống",
+            specialtyName: (appointment.doctor as any)?.specialty?.name || "",
+            clinicName: (appointment.doctor as any)?.clinic?.name || appointment.doctor?.hospital || "Bệnh viện",
+            appointmentDate: appointment.appointmentDate,
+            amount,
+            paymentMethod: "Mock",
+            transactionCode: mockTxnNo,
+            paymentAt: new Date(),
+            appointmentId: appointment.id,
+            bookingCode: appointment.bookingCode,
+            packageName: appointment.medicalPackage?.name || null,
+            status: "CONFIRMED",
+        }).catch(console.error);
+    }
+
     return {
         success: true,
         appointmentId,
@@ -340,9 +393,9 @@ export async function createPayOSPaymentLink(appointmentId: string, voucherCode?
     }
 
     // Generate a numeric order code < 9007199254740991
-    const orderCode = Number(String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 1000)));
-    // Use doctor price or appointment amount as base
-    const baseAmount = appointment.doctor?.price || appointment.amount || 5000;
+    const orderCode = (Date.now() % 1_000_000_000) * 1000 + Math.floor(Math.random() * 1000);
+    // Use appointment amount or doctor price as base
+    const baseAmount = appointment.amount || appointment.doctor?.price || 5000;
     // Apply voucher discount if provided
     const amount = discountAmount ? Math.max(baseAmount - discountAmount, 1000) : baseAmount;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);

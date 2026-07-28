@@ -5,9 +5,7 @@ import path from "path";
 import { getAllDoctors, getDoctorById, getAllSpecialties } from "../services/doctor.service";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import { ApiError } from "../utils/apiError";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../prisma/client";
 const DOCTORS_DIR = path.join(process.cwd(), "public", "doctors");
 
 /**
