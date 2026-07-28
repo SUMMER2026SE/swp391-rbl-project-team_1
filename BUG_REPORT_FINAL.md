@@ -29,6 +29,7 @@
 | BUG-NEW-03 | `doctor.controller.ts` tạo Prisma Client mới (connection pool issue) | `doctor.controller.ts` | ✅ Đã sửa |
 | BUG-NEW-04 | Non-atomic Delete+Create trong `saveRecord` (data loss risk) | `medical-record.controller.ts` | ✅ Đã sửa |
 | BUG-NEW-05 | Toán tử `!` không an toàn với `appointment.doctorId` | `medical-record.controller.ts` | ✅ Đã sửa |
+| BUG-012 | VNPay IPN — kiểm tra amount dùng fallback không tin cậy (security risk) | `payment.controller.ts` | ✅ Đã sửa |
 | BUG-FRONTEND-01 | Nút "Hủy Lịch" hiển thị sai điều kiện (UX bug) | `my-appointments/page.tsx` | ✅ Đã sửa |
 
 ---
@@ -41,6 +42,7 @@
 
 ---
 
+<<<<<<< HEAD
 #### BUG-012: VNPay IPN — Kiểm Tra Amount Với Fallback Không Tin Cậy
 **File:** `backend/src/controllers/payment.controller.ts`  
 **Mô tả:** Trong VNPay IPN handler, `vnp_Amount` được so sánh với `appointment.amount * 100`. Nếu `appointment.amount` là `null`, hàm dùng fallback `|| 150000` hoặc `|| 5000` (tùy nơi), dẫn đến số tiền kiểm tra sai. Kẻ xấu có thể gửi IPN với số tiền thấp hơn thực tế và vẫn pass validation.
@@ -52,6 +54,15 @@ if (Number(vnpParams["vnp_Amount"]) !== expectedAmount) { ... }
 ```
 
 **Fix:** Luôn lấy `amount` từ bản ghi **payment trong DB**, không dùng fallback khi validate.
+=======
+#### BUG-014: Race Condition Tạo User Từ OTP
+**File:** `backend/src/services/auth.service.ts`  
+**Mô tả:** Luồng đăng ký OTP: `verifyOtp` kiểm tra xem user tồn tại → không có → tạo user mới. Nếu 2 request OTP từ cùng email đến cùng lúc, cả 2 đều pass kiểm tra "user chưa tồn tại" và cùng cố gắng tạo 2 user trùng email.  
+**Hậu quả:** Lỗi 500 không kiểm soát thay vì trả về thông báo lỗi thân thiện.  
+**Fix:** Wrap trong `try/catch` để handle `Prisma P2002` (unique violation) và trả về lỗi 409 phù hợp.
+
+---
+>>>>>>> feature/duc-dev
 
 ---
 
@@ -123,8 +134,13 @@ Hai cơ chế này không phối hợp với nhau, có thể cùng xử lý 1 l�
 
 | Mức độ | Số lỗi | Danh sách lỗi |
 |--------|--------|---------------|
+<<<<<<< HEAD
 | ✅ Đã sửa | **19** | BUG-001, 002, 004, 005, 009, 014, 016, 018, 019, 020, 022, 023, 028, 029, NEW-01, NEW-03, NEW-04, NEW-05, FRONTEND-01 |
 | 🔴 Critical (Chưa sửa) | **1** | BUG-012 |
+=======
+| ✅ Đã sửa | **19** | BUG-001, 002, 004, 005, 009, 012, 016, 018, 019, 020, 022, 023, 028, 029, NEW-01, NEW-03, NEW-04, NEW-05, FRONTEND-01 |
+| 🔴 Critical (Chưa sửa) | **1** | BUG-014 |
+>>>>>>> feature/duc-dev
 | 🟠 Medium (Chưa sửa) | **4** | BUG-017, BUG-021, BUG-026, BUG-027 |
 | 🟡 Low/Quality (Chưa sửa) | **1** | BUG-NEW-02 |
 
@@ -134,12 +150,21 @@ Hai cơ chế này không phối hợp với nhau, có thể cùng xử lý 1 l�
 
 ## 🔧 ƯU TIÊN SỬA (Lỗi còn lại)
 
+<<<<<<< HEAD
 1. **[NGAY]** BUG-012 — VNPay IPN amount validation có thể bị bypass (security risk)
 2. **[SỚM]** BUG-017 — Re-validate voucher khi checkout
 3. **[BÌNH THƯỜNG]** BUG-021 — Filter lịch PENDING_PAYMENT cho doctor/admin
 4. **[BÌNH THƯỜNG]** BUG-026 — Gửi notification khi tự động hủy lịch
 5. **[BÌNH THƯỜNG]** BUG-027 — Phối hợp 2 cơ chế xử lý hết hạn
 6. **[KHI CÓ THỜI GIAN]** BUG-NEW-02 — Dọn dẹp dead code
+=======
+1. **[NGAY]** BUG-014 — Race condition tạo user từ OTP gây lỗi 500
+2. **[SỚM]** BUG-017 — Re-validate voucher khi checkout
+4. **[BÌNH THƯỜNG]** BUG-021 — Filter lịch PENDING_PAYMENT cho doctor/admin
+5. **[BÌNH THƯỜNG]** BUG-026 — Gửi notification khi tự động hủy lịch
+6. **[BÌNH THƯỜNG]** BUG-027 — Phối hợp 2 cơ chế xử lý hết hạn
+7. **[KHI CÓ THỜI GIAN]** BUG-NEW-02 — Dọn dẹp dead code
+>>>>>>> feature/duc-dev
 
 ---
 
@@ -210,6 +235,27 @@ if (!appointment.doctorId) {
 }
 // ...
 doctorId: appointment.doctorId // Đã kiểm tra null ở trên
+```
+
+### BUG-012 (VNPay IPN amount validation)
+```typescript
+// Trước: Dùng fallback 150000 khi payment record không tồn tại
+const expectedAmount = appointment.payment?.amount || 150000;
+if (amount !== expectedAmount) { ... }
+
+// Sau: Require payment record phải tồn tại, không dùng fallback
+if (!appointment.payment) {
+    res.status(200).json({ RspCode: "04", Message: "Invalid amount" });
+    return;
+}
+const expectedAmount = appointment.payment.amount; // amount là Int, không nullable
+if (amount !== expectedAmount) { ... }
+
+// Đồng thời đơn giản hóa check step 3 (payment đã được confirm tồn tại):
+if (appointment.payment.status !== PaymentStatus.PENDING) {
+    res.status(200).json({ RspCode: "02", Message: "Order already confirmed" });
+    return;
+}
 ```
 
 ### BUG-FRONTEND-01 (nút hủy lịch)

@@ -155,15 +155,20 @@ export async function vnpayIpnHandler(
             return;
         }
 
-        // 2. Check amount validity (optional but recommended)
-        const expectedAmount = appointment.payment?.amount || 150000;
+        // 2. Check amount validity - require payment record to exist (no magic fallback)
+        if (!appointment.payment) {
+            res.status(200).json({ RspCode: "04", Message: "Invalid amount" });
+            return;
+        }
+
+        const expectedAmount = appointment.payment.amount;
         if (amount !== expectedAmount) {
             res.status(200).json({ RspCode: "04", Message: "Invalid amount" });
             return;
         }
 
         // 3. Check if transaction was already processed
-        if (appointment.payment && appointment.payment.status !== PaymentStatus.PENDING) {
+        if (appointment.payment.status !== PaymentStatus.PENDING) {
             res.status(200).json({ RspCode: "02", Message: "Order already confirmed" });
             return;
         }
