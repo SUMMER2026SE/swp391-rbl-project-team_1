@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_middleware_1 = require("../middleware/auth.middleware");
+const authorization_middleware_1 = require("../middleware/authorization.middleware");
 const voucher_controller_1 = require("../controllers/voucher.controller");
 const router = (0, express_1.Router)();
 // Patient-facing routes (require auth)
@@ -12,11 +13,11 @@ router.post("/save", auth_middleware_1.verifyToken, voucher_controller_1.saveVou
 router.get("/saved", auth_middleware_1.verifyToken, voucher_controller_1.getSavedVouchers);
 // Public route
 router.get("/public", voucher_controller_1.getPublicVouchers);
-// Admin routes
-router.get("/admin", auth_middleware_1.verifyToken, voucher_controller_1.adminListVouchers);
-router.get("/admin/chart-data", auth_middleware_1.verifyToken, voucher_controller_1.adminGetVoucherChartData);
-router.post("/admin", auth_middleware_1.verifyToken, voucher_controller_1.adminCreateVoucher);
-router.put("/admin/:id", auth_middleware_1.verifyToken, voucher_controller_1.adminUpdateVoucher);
-router.delete("/admin/:id", auth_middleware_1.verifyToken, voucher_controller_1.adminDeleteVoucher);
-router.get("/admin/:id/usages", auth_middleware_1.verifyToken, voucher_controller_1.adminGetVoucherUsages);
+// Admin routes — require ADMIN role
+router.get("/admin", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, voucher_controller_1.adminListVouchers);
+router.get("/admin/chart-data", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, voucher_controller_1.adminGetVoucherChartData);
+router.post("/admin", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, voucher_controller_1.adminCreateVoucher);
+router.put("/admin/:id", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, voucher_controller_1.adminUpdateVoucher);
+router.delete("/admin/:id", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, voucher_controller_1.adminDeleteVoucher);
+router.get("/admin/:id/usages", auth_middleware_1.verifyToken, authorization_middleware_1.verifyAdmin, voucher_controller_1.adminGetVoucherUsages);
 exports.default = router;

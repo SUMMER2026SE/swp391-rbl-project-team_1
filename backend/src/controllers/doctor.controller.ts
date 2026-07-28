@@ -2,8 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 
-import { getAllDoctors, getDoctorById, getDoctorByUserId, getAllSpecialties } from "../services/doctor.service";
-import { getDoctorAppointments } from "../services/appointment.service";
+import { getAllDoctors, getDoctorById, getAllSpecialties } from "../services/doctor.service";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import { ApiError } from "../utils/apiError";
 import { PrismaClient } from "@prisma/client";
@@ -72,42 +71,6 @@ export async function getDoctor(
 
         const doctor = await getDoctorById(id);
         res.json({ message: "Doctor details fetched successfully", doctor });
-    } catch (error) {
-        next(error);
-    }
-}
-
-/**
- * GET /api/doctor/appointments
- * Protected (DOCTOR role): Get all appointments for the authenticated doctor.
- *
- * Flow: JWT userId → User.doctorId → Doctor.id → appointments
- */
-export async function getDoctorAppointmentsController(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-): Promise<void> {
-    try {
-        if (!req.user?.userId) {
-            throw new ApiError("User not authenticated", 401);
-        }
-
-        // Resolve Doctor record from User account via User.doctorId link
-        const doctor = await getDoctorByUserId(req.user.userId);
-
-        const appointments = await getDoctorAppointments(doctor.id);
-
-        res.json({
-            message: "Doctor appointments retrieved successfully",
-            doctor: {
-                id: doctor.id,
-                name: doctor.name,
-                specialty: doctor.specialty?.name || "",
-            },
-            count: appointments.length,
-            data: appointments,
-        });
     } catch (error) {
         next(error);
     }

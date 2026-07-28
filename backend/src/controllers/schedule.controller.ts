@@ -22,9 +22,13 @@ export async function createSchedule(
         }
 
         // Ownership check: the requesting DOCTOR must own this doctor profile
+        // User.doctorId links a user account to their Doctor profile (the FK is on User, not Doctor)
         const requestingUserId: string = req.user?.userId;
-        const doctorProfile = await prisma.doctor.findUnique({ where: { userId: requestingUserId } });
-        if (!doctorProfile || doctorProfile.id !== doctorId) {
+        const userRecord = await prisma.user.findUnique({
+            where: { id: requestingUserId },
+            select: { doctorId: true },
+        });
+        if (!userRecord?.doctorId || userRecord.doctorId !== doctorId) {
             throw new ApiError(
                 "Bạn không có quyền tạo/cập nhật lịch trực cho bác sĩ này",
                 403

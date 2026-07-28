@@ -14,6 +14,16 @@ async function createSchedule(req, res, next) {
         if (!doctorId) {
             throw new apiError_1.ApiError("Doctor id is required", 400);
         }
+        // Ownership check: the requesting DOCTOR must own this doctor profile
+        // User.doctorId links a user account to their Doctor profile (the FK is on User, not Doctor)
+        const requestingUserId = req.user?.userId;
+        const userRecord = await client_1.default.user.findUnique({
+            where: { id: requestingUserId },
+            select: { doctorId: true },
+        });
+        if (!userRecord?.doctorId || userRecord.doctorId !== doctorId) {
+            throw new apiError_1.ApiError("Bạn không có quyền tạo/cập nhật lịch trực cho bác sĩ này", 403);
+        }
         const body = req.body;
         if (body.dayOfWeek === undefined || !body.startTime || !body.endTime) {
             throw new apiError_1.ApiError("dayOfWeek, startTime and endTime are required", 400);

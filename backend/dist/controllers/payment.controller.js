@@ -76,15 +76,22 @@ async function vnpayReturnHandler(req, res, next) {
         const txnRef = vnpParams["vnp_TxnRef"];
         // Extract appointmentId from txnRef (formatted as {appointmentId}__{timestamp})
         const appointmentId = txnRef.split("__")[0];
-        if (responseCode === "00") {
-            // Success
-            await (0, payment_service_1.processPaymentSuccess)(appointmentId, transactionNo);
-            res.redirect(`${frontendRedirectUrl}?status=success&appointmentId=${appointmentId}&txnRef=${transactionNo}`);
+        try {
+            if (responseCode === "00") {
+                // Success
+                await (0, payment_service_1.processPaymentSuccess)(appointmentId, transactionNo);
+                res.redirect(`${frontendRedirectUrl}?status=success&appointmentId=${appointmentId}&txnRef=${transactionNo}`);
+            }
+            else {
+                // Failed/Cancelled
+                await (0, payment_service_1.processPaymentFailed)(appointmentId, transactionNo);
+                res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&responseCode=${responseCode}`);
+            }
         }
-        else {
-            // Failed/Cancelled
-            await (0, payment_service_1.processPaymentFailed)(appointmentId, transactionNo);
-            res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&responseCode=${responseCode}`);
+        catch (innerErr) {
+            console.error("[VNPay Return] Error processing transaction:", innerErr);
+            const errMsg = encodeURIComponent(innerErr?.message || "Lỗi xử lý giao dịch");
+            res.redirect(`${frontendRedirectUrl}?status=failed&appointmentId=${appointmentId}&message=${errMsg}`);
         }
     }
     catch (error) {
@@ -150,6 +157,9 @@ async function vnpayIpnHandler(req, res, next) {
  */
 async function mockPayHandler(req, res, next) {
     try {
+        if (process.env.NODE_ENV === "production") {
+            throw new apiError_1.ApiError("Tính năng thanh toán giả lập không được hỗ trợ trên môi trường production", 403);
+        }
         const userId = req.user?.userId;
         const { appointmentId } = req.body;
         if (!userId) {
@@ -166,6 +176,9 @@ async function mockPayHandler(req, res, next) {
         }
         if (appointment.userId !== userId && req.user?.role !== "ADMIN") {
             throw new apiError_1.ApiError("Bạn không có quyền thanh toán cho lịch hẹn này", 403);
+        }
+        if (appointment.status !== "PENDING_PAYMENT") {
+            throw new apiError_1.ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
         }
         const result = await (0, payment_service_1.processMockPayment)(appointmentId);
         res.status(200).json({
@@ -190,6 +203,16 @@ async function createPayOSPaymentUrlHandler(req, res, next) {
         }
         if (!appointmentId) {
             throw new apiError_1.ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
+        }
+        // Verify appointment ownership
+        const appointment = await client_1.default.appointment.findUnique({
+            where: { id: appointmentId },
+        });
+        if (!appointment) {
+            throw new apiError_1.ApiError("Lịch hẹn không tồn tại", 404);
+        }
+        if (appointment.userId !== userId && req.user?.role !== "ADMIN") {
+            throw new apiError_1.ApiError("Bạn không có quyền thanh toán cho lịch hẹn này", 403);
         }
         const result = await (0, payment_service_1.createPayOSPaymentLink)(appointmentId, voucherCode, discountAmount ? Number(discountAmount) : undefined);
         res.status(200).json({

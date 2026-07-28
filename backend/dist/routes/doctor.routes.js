@@ -12,7 +12,7 @@ router.get("/doctors", doctor_controller_1.listDoctors);
 router.get("/specialties", doctor_controller_1.listSpecialties);
 router.get("/doctors/featured", doctor_controller_1.getFeaturedDoctors);
 router.get("/doctors/:id", doctor_controller_1.getDoctor);
-router.post("/doctors/:id/schedules", auth_middleware_1.verifyToken, schedule_controller_1.createSchedule);
+router.post("/doctors/:id/schedules", auth_middleware_1.verifyToken, (0, authorization_middleware_1.authorizeRoles)(client_1.Role.DOCTOR), schedule_controller_1.createSchedule);
 router.get("/doctors/:id/schedules", schedule_controller_1.listSchedules);
 router.get("/clinics", clinic_controller_1.listClinics);
 router.get("/clinics/:id", clinic_controller_1.getClinic);

@@ -54,12 +54,18 @@ async function createVNPayUrl(params) {
     if (!appointment) {
         throw new apiError_1.ApiError("Lịch hẹn không tồn tại", 404);
     }
+    if (appointment.status !== "PENDING_PAYMENT") {
+        throw new apiError_1.ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
+    }
     // Default to 150,000 VND if doctor price is not set
     const amount = appointment.doctor?.price || 150000;
-    const tmnCode = process.env.VNP_TMNCODE || "2QXUIBJZ";
-    const secretKey = process.env.VNP_HASHSECRET || "GETPNO2UY8Z239634TDUO2B86E88U11Y";
+    const tmnCode = process.env.VNP_TMNCODE;
+    const secretKey = process.env.VNP_HASHSECRET;
     let vnpUrl = process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    const returnUrl = process.env.VNP_RETURNURL || "http://localhost:5000/api/payment/vnpay-return";
+    const returnUrl = process.env.VNP_RETURNURL;
+    if (!tmnCode || !secretKey || !returnUrl) {
+        throw new apiError_1.ApiError("Cấu hình VNPay bị thiếu. Vui lòng cấu hình VNP_TMNCODE, VNP_HASHSECRET và VNP_RETURNURL trong biến môi trường.", 500);
+    }
     const date = new Date();
     const createDate = getFormattedDate(date);
     // Append timestamp to txnRef to avoid duplicate transaction code errors in sandbox
@@ -136,7 +142,10 @@ function verifyVNPaySignature(vnpParams) {
     delete cleanParams["vnp_SecureHash"];
     delete cleanParams["vnp_SecureHashType"];
     const sortedParams = sortObject(cleanParams);
-    const secretKey = process.env.VNP_HASHSECRET || "GETPNO2UY8Z239634TDUO2B86E88U11Y";
+    const secretKey = process.env.VNP_HASHSECRET;
+    if (!secretKey) {
+        throw new Error("VNP_HASHSECRET environment variable is required");
+    }
     // Build signData query string
     const signData = Object.keys(sortedParams)
         .map((key) => {
@@ -153,46 +162,70 @@ function verifyVNPaySignature(vnpParams) {
     return secureHash === signed;
 }
 /**
- * Handle successful payment transaction
+ * Handle successful payment transaction (idempotent, Serializable isolation)
  */
 async function processPaymentSuccess(appointmentId, transactionId) {
-    // Start database transaction to make sure both models are updated atomically
-    await client_2.default.$transaction([
-        client_2.default.payment.update({
+    await client_2.default.$transaction(async (tx) => {
+        const appt = await tx.appointment.findUnique({
+            where: { id: appointmentId },
+            include: { payment: true },
+        });
+        if (!appt) {
+            throw new apiError_1.ApiError("Lịch hẹn không tồn tại", 404);
+        }
+        // Idempotency: already PAID & CONFIRMED → nothing to do
+        if (appt.payment?.status === client_1.PaymentStatus.PAID && appt.status === client_1.AppointmentStatus.CONFIRMED) {
+            return;
+        }
+        // Guard: only confirm if appointment is still waiting for payment
+        if (appt.status !== "PENDING_PAYMENT") {
+            throw new apiError_1.ApiError(`Không thể xác nhận thanh toán cho lịch hẹn ở trạng thái ${appt.status}`, 400);
+        }
+        await tx.payment.update({
             where: { appointmentId },
             data: {
                 status: client_1.PaymentStatus.PAID,
                 transactionId,
                 payDate: new Date(),
             },
-        }),
-        client_2.default.appointment.update({
+        });
+        await tx.appointment.update({
             where: { id: appointmentId },
-            data: {
-                status: client_1.AppointmentStatus.CONFIRMED,
-            },
-        }),
-    ]);
+            data: { status: client_1.AppointmentStatus.CONFIRMED },
+        });
+    }, { isolationLevel: "Serializable" });
 }
 /**
- * Handle failed payment transaction
+ * Handle failed payment transaction (idempotent, Serializable isolation)
  */
 async function processPaymentFailed(appointmentId, transactionId) {
-    // Update payment and reset appointment back to PENDING_PAYMENT so user can retry
-    await client_2.default.$transaction([
-        client_2.default.payment.update({
+    await client_2.default.$transaction(async (tx) => {
+        const appt = await tx.appointment.findUnique({
+            where: { id: appointmentId },
+            include: { payment: true },
+        });
+        if (!appt) {
+            throw new apiError_1.ApiError("Lịch hẹn không tồn tại", 404);
+        }
+        // If payment is already PAID or appointment already CONFIRMED, do NOT revert
+        if (appt.payment?.status === client_1.PaymentStatus.PAID ||
+            appt.status === client_1.AppointmentStatus.CONFIRMED) {
+            return;
+        }
+        // If appointment is already CANCELLED or EXPIRED, do not reset
+        if (appt.status !== "PENDING_PAYMENT") {
+            return;
+        }
+        await tx.payment.update({
             where: { appointmentId },
-            data: {
-                status: client_1.PaymentStatus.FAILED,
-                transactionId,
-            },
-        }),
+            data: { status: client_1.PaymentStatus.FAILED, transactionId },
+        });
         // Reset appointment so user can retry payment
-        client_2.default.appointment.update({
+        await tx.appointment.update({
             where: { id: appointmentId },
             data: { status: "PENDING_PAYMENT" },
-        }),
-    ]);
+        });
+    }, { isolationLevel: "Serializable" });
 }
 /**
  * Direct Mock Payment service (for test/local development)
@@ -565,7 +598,7 @@ async function cancelExpiredPayOSPayments() {
             }),
             client_2.default.appointment.update({
                 where: { id: p.appointmentId },
-                data: { status: client_1.AppointmentStatus.CANCELLED, cancellationReason: "Quá hạn thanh toán PayOS" }
+                data: { status: client_1.AppointmentStatus.EXPIRED, cancellationReason: "Quá hạn thanh toán PayOS" }
             })
         ]);
         // Socket.io Notify User

@@ -27,8 +27,8 @@ async function saveFileLocally(appointmentId, fileName, fileBuffer) {
     const filePath = path_1.default.join(uploadDir, baseName);
     fs_1.default.writeFileSync(filePath, fileBuffer);
     // Return relative URL served by Express static middleware
-    const port = process.env.PORT || 5000;
-    return `http://localhost:${port}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    return `${backendUrl}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
 }
 function generateTransactionCode() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -40,30 +40,29 @@ function generateTransactionCode() {
 }
 async function createAppointment(params) {
     const { userId, patientInfo, patientProfileType = 'SELF', doctorId, packageId, appointmentDate, notes } = params;
-    if (doctorId) {
-        const doctor = await client_1.default.doctor.findUnique({ where: { id: doctorId } });
-        if (!doctor)
-            throw new apiError_1.ApiError("Doctor not found", 404);
-        const doctorUser = await client_1.default.user.findUnique({ where: { doctorId } });
-        if (doctorUser?.id === userId) {
-            throw new apiError_1.ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
+    return await client_1.default.$transaction(async (tx) => {
+        if (doctorId) {
+            const doctor = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (!doctor)
+                throw new apiError_1.ApiError("Doctor not found", 404);
+            const doctorUser = await tx.user.findUnique({ where: { doctorId } });
+            if (doctorUser?.id === userId) {
+                throw new apiError_1.ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
+            }
+            const count = await tx.appointment.count({
+                where: {
+                    doctorId,
+                    appointmentDate,
+                    status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
+                },
+            });
+            if (count >= 20) {
+                throw new apiError_1.ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
+            }
         }
-        const count = await client_1.default.appointment.count({
-            where: {
-                doctorId,
-                appointmentDate,
-                status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
-            },
-        });
-        if (count >= 20) {
-            throw new apiError_1.ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
+        else if (!packageId) {
+            throw new apiError_1.ApiError("Doctor ID or Package ID is required", 400);
         }
-    }
-    else if (!packageId) {
-        throw new apiError_1.ApiError("Doctor ID or Package ID is required", 400);
-    }
-    // Transaction to (optionally) update user profile and create appointment
-    return client_1.default.$transaction(async (tx) => {
         // 1. Only update user profile fields if booking for SELF
         if (patientProfileType === 'SELF') {
             const updateData = {};
@@ -98,16 +97,25 @@ async function createAppointment(params) {
                 });
             }
         }
-        // 2. Create appointment
+        // 2. Create appointment - generate unique codes with max retry limit
+        const MAX_CODE_RETRIES = 10;
         let transactionCode = generateTransactionCode();
         let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        let txnRetries = 0;
         while (codeConflict) {
+            if (++txnRetries > MAX_CODE_RETRIES) {
+                throw new apiError_1.ApiError("Không thể tạo mã giao dịch duy nhất. Vui lòng thử lại.", 500);
+            }
             transactionCode = generateTransactionCode();
             codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
         }
         let bookingCode = (0, generateBookingCode_1.generateBookingCode)();
         let bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        let bookingRetries = 0;
         while (bookingCodeConflict) {
+            if (++bookingRetries > MAX_CODE_RETRIES) {
+                throw new apiError_1.ApiError("Không thể tạo mã đặt lịch duy nhất. Vui lòng thử lại.", 500);
+            }
             bookingCode = (0, generateBookingCode_1.generateBookingCode)();
             bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
         }
@@ -143,6 +151,8 @@ async function createAppointment(params) {
             },
         });
         return createdAppointment;
+    }, {
+        isolationLevel: "Serializable"
     });
 }
 async function uploadPaymentProof(appointmentId, fileBuffer, mimetype) {

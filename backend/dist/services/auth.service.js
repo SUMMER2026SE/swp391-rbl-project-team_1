@@ -73,10 +73,11 @@ async function verifyOtp(email, otp) {
     if (new Date() > otpRecord.expiresAt) {
         throw new apiError_1.ApiError("OTP has expired", 400);
     }
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete registration
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await client_2.default.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
     return { isValid: true };
 }
@@ -145,6 +146,9 @@ async function authenticateUser(email, password) {
     const passwordMatches = await bcrypt_1.default.compare(password, user.password);
     if (!passwordMatches) {
         throw new apiError_1.ApiError("Invalid credentials", 401);
+    }
+    if (user.isLocked) {
+        throw new apiError_1.ApiError("This account is locked. Please contact the administrator.", 403);
     }
     const payload = {
         userId: user.id,
@@ -234,10 +238,11 @@ async function verifyResetOtp(email, otp) {
     if (new Date() > otpRecord.expiresAt) {
         throw new apiError_1.ApiError("OTP has expired", 400);
     }
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete password reset
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await client_2.default.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
     return { isValid: true };
 }
@@ -309,6 +314,9 @@ async function googleLogin(idToken) {
             });
         }
         else {
+            if (user.isLocked) {
+                throw new apiError_1.ApiError("This account is locked. Please contact the administrator.", 403);
+            }
             // Update profile fields if they are missing
             const dataToUpdate = {};
             if (!user.fullName && payload.name)

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Role } from "@prisma/client";
 
-import { getDoctor, listDoctors, getDoctorAppointmentsController, updateDoctorAvatar, batchUpdateAvatars, listSpecialties, getFeaturedDoctors } from "../controllers/doctor.controller";
+import { getDoctor, listDoctors, updateDoctorAvatar, batchUpdateAvatars, listSpecialties, getFeaturedDoctors } from "../controllers/doctor.controller";
 import { createSchedule, listSchedules } from "../controllers/schedule.controller";
 import { listClinics, getClinic } from "../controllers/clinic.controller";
 import { verifyToken } from "../middleware/auth.middleware";

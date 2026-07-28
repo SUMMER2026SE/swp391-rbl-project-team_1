@@ -174,6 +174,7 @@ async function getPublicPrescriptionHandler(req, res, next) {
                 medicalRecord: {
                     select: {
                         finalDiagnosis: true,
+                        preliminaryDiagnosis: true,
                         doctorNotes: true,
                         prescriptions: {
                             select: {
@@ -181,6 +182,7 @@ async function getPublicPrescriptionHandler(req, res, next) {
                                 dosage: true,
                                 frequency: true,
                                 durationDays: true,
+                                instructions: true,
                                 medicine: {
                                     select: {
                                         name: true,
