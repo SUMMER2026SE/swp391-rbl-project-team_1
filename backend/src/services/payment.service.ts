@@ -5,6 +5,7 @@ import { ApiError } from "../utils/apiError";
 import { getIO } from "../utils/socket";
 import { createNotification } from "./notificationService";
 import { sendBookingConfirmationEmail } from "../utils/emailService";
+import { validateVoucher } from "./voucher.service";
 const PayOS = require("@payos/node");
 
 const payos = new PayOS(
@@ -396,8 +397,25 @@ export async function createPayOSPaymentLink(appointmentId: string, voucherCode?
     const orderCode = (Date.now() % 1_000_000_000) * 1000 + Math.floor(Math.random() * 1000);
     // Use appointment amount or doctor price as base
     const baseAmount = appointment.amount || appointment.doctor?.price || 5000;
+
+    let finalDiscountAmount = discountAmount || 0;
+    if (voucherCode) {
+        const validation = await validateVoucher({
+            code: voucherCode,
+            userId: appointment.userId,
+            depositAmount: baseAmount,
+            specialtyId: appointment.doctor?.specialtyId || undefined,
+            packageId: appointment.packageId || undefined,
+        });
+
+        if (!validation.valid) {
+            throw new ApiError(validation.message || "Voucher không hợp lệ hoặc đã hết hạn", 400);
+        }
+        finalDiscountAmount = validation.discountAmount || 0;
+    }
+
     // Apply voucher discount if provided
-    const amount = discountAmount ? Math.max(baseAmount - discountAmount, 1000) : baseAmount;
+    const amount = finalDiscountAmount ? Math.max(baseAmount - finalDiscountAmount, 1000) : baseAmount;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);
     
     // Set expired time = now + 5 minutes
@@ -419,12 +437,12 @@ export async function createPayOSPaymentLink(appointmentId: string, voucherCode?
     const paymentLink = await payos.createPaymentLink(requestData);
 
     // Save voucher info to appointment if applicable
-    if (voucherCode && discountAmount) {
+    if (voucherCode) {
         await prisma.appointment.update({
             where: { id: appointmentId },
             data: {
                 voucherCode: voucherCode.toUpperCase(),
-                discountAmount: discountAmount,
+                discountAmount: finalDiscountAmount,
                 amount: amount,
             }
         });
