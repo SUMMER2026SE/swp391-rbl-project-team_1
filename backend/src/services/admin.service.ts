@@ -51,6 +51,11 @@ export async function getAllUsers(): Promise<AdminUserDto[]> {
  */
 export async function getAllAppointments(): Promise<AppointmentWithRelations[]> {
     return prisma.appointment.findMany({
+        where: {
+            status: {
+                not: "PENDING_PAYMENT",
+            },
+        },
         include: {
             user: {
                 select: {

@@ -317,7 +317,7 @@ export const getDoctorAppointments = async (req: AuthenticatedRequest, res: Resp
         const appointments = await prisma.appointment.findMany({
             where: { 
                 doctorId: doctor.id,
-                ...(status ? { status: status as AppointmentStatus } : {})
+                ...(status ? { status: status as AppointmentStatus } : { status: { not: "PENDING_PAYMENT" as any } })
             },
             include: { 
                 user: { select: { id: true, fullName: true, email: true, gender: true, dateOfBirth: true, avatar: true } },

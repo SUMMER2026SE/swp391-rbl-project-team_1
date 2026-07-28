@@ -4,9 +4,10 @@ import path from "path";
 
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
-import { sendBookingConfirmationEmail } from "../utils/emailService";
+import { sendBookingConfirmationEmail, sendCancellationEmail } from "../utils/emailService";
 import { generateBookingCode } from "../utils/generateBookingCode";
 import { supabase } from "../config/supabase";
+import { createNotification } from "./notificationService";
 
 async function saveFileLocally(appointmentId: string, fileName: string, fileBuffer: Buffer): Promise<string> {
     const uploadDir = path.join(__dirname, "../../public/payment-proofs", `appointment-${appointmentId}`);
@@ -291,22 +292,58 @@ export async function autoCancelExpiredAppointments(): Promise<void> {
                 lt: timeLimit,
             },
         },
+        include: {
+            user: true,
+        },
     });
 
     if (expired.length > 0) {
-        console.log(`[Scheduler] Found ${expired.length} expired pending-payment appointments. Marking as EXPIRED.`);
-        await prisma.appointment.updateMany({
-            where: {
-                status: "PENDING_PAYMENT",
-                createdAt: {
-                    lt: timeLimit,
-                },
-            },
-            data: {
-                status: "EXPIRED",
-                cancellationReason: "Hủy tự động do quá hạn 5 phút không hoàn tất chuyển khoản.",
-            },
-        });
+        console.log(`[Scheduler] Found ${expired.length} expired pending-payment appointments. Processing cancellation safely.`);
+        for (const appt of expired) {
+            try {
+                await prisma.$transaction(async (tx) => {
+                    const current = await tx.appointment.findUnique({
+                        where: { id: appt.id },
+                        select: { status: true },
+                    });
+
+                    if (current && current.status === "PENDING_PAYMENT") {
+                        await tx.appointment.update({
+                            where: { id: appt.id },
+                            data: {
+                                status: "EXPIRED",
+                                cancellationReason: "Hủy tự động do quá hạn 5 phút không hoàn tất chuyển khoản.",
+                            },
+                        });
+
+                        // Send email notification
+                        if (appt.user?.email) {
+                            const patientInfo = appt.patientInfo as PatientInfo | null;
+                            const patientName = patientInfo?.fullName || appt.user?.fullName || "Bệnh nhân";
+
+                            sendCancellationEmail(appt.user.email, {
+                                patientName,
+                                bookingCode: appt.bookingCode,
+                                appointmentDate: appt.appointmentDate,
+                                isRefundable: false,
+                                amount: 0,
+                            }).catch((err) => console.error(`Error sending cancellation email for appointment ${appt.id}:`, err));
+
+                            // Send in-app notification
+                            createNotification({
+                                userId: appt.userId,
+                                type: "APPOINTMENT_CANCELLED_BY_PATIENT",
+                                title: "Lịch hẹn đã bị huỷ tự động ❌",
+                                message: `Lịch hẹn #${appt.bookingCode} đã bị huỷ tự động do quá 5 phút chưa hoàn tất thanh toán.`,
+                                data: { appointmentId: appt.id }
+                            }).catch((err) => console.error(`Error sending notification for appointment ${appt.id}:`, err));
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error(`[Scheduler] Error auto-cancelling appointment ${appt.id}:`, err);
+            }
+        }
     }
 }
 
