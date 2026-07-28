@@ -223,8 +223,18 @@ export default function ForgotPasswordPage() {
                 Gửi Mã Xác Nhận OTP
               </Button>
             </div>
-          </form>
-        )}
+          </form>)
+        }
+          {step === "otp" && (
+    <div className="text-center">
+    <p className="text-xs text-slate-400">
+      Nếu bạn không nhận được email, hãy kiểm tra thư mục Spam hoặc Thư rác.
+    </p>
+  </div>
+)}
+          
+        
+        
 
         {/* OTP step */}
         {step === "otp" && (
@@ -247,13 +257,13 @@ export default function ForgotPasswordPage() {
             <div className="flex items-center justify-between text-sm text-slate-500">
               <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                Hết hạn trong 5 phút
+                Hết hạn trong vòng 5 phút
               </span>
             </div>
 
             <div className="pt-2">
               <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>
-                Xác Nhận OTP
+                Xác Nhận mã OTP
               </Button>
             </div>
 
@@ -308,6 +318,8 @@ export default function ForgotPasswordPage() {
             </div>
           </form>
         )}
+         
+     
 
         <div className="text-center pt-2">
           <p className="text-sm text-slate-600">
@@ -317,6 +329,9 @@ export default function ForgotPasswordPage() {
             </Link>
           </p>
         </div>
+      </div>
+      <div className="text-center">
+     
       </div>
     </div>
   );

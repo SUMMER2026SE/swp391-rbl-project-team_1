@@ -398,6 +398,11 @@ export default function RegisterPage() {
                 {resendCountdown > 0 ? `Gửi lại trong ${resendCountdown}s` : "Gửi lại mã OTP"}
               </button>
             </div>
+            <div className="text-center">
+            <p className="text-xs text-slate-400">
+            Nếu bạn không nhận được mã OTP, hãy kiểm tra thư mục Spam hoặc Thư rác.
+            </p>
+</div>
           </form>
         )}
 
@@ -431,6 +436,7 @@ export default function RegisterPage() {
                 required
               />
             </div>
+          
 
             <div className="pt-2">
               <Button type="submit" variant="teal" className="w-full py-3 text-base rounded-xl" isLoading={loading}>

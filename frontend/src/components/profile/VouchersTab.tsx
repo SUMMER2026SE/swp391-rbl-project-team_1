@@ -176,19 +176,20 @@ export default function VouchersTab() {
   const [saveCode, setSaveCode] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { fetchVouchers(); }, []);
-
   const fetchVouchers = async () => {
     setLoading(true);
     try {
       const res = await voucherService.getSavedVouchers();
       setSavedVouchers(res.saved || []);
-    } catch (err: any) {
-      setError(err.message || "Lỗi tải voucher");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Lỗi tải voucher";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchVouchers(); }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,8 +201,9 @@ export default function VouchersTab() {
       setSaveCode("");
       fetchVouchers();
       // toast or alert
-    } catch (err: any) {
-      setError(err.message || "Lỗi khi lưu voucher");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Lỗi khi lưu voucher";
+      setError(msg);
     } finally {
       setSaving(false);
     }

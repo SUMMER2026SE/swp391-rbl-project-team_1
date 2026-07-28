@@ -1,4 +1,5 @@
 import api from "./api";
+import { Appointment } from "../types/appointment";
 
 export interface Review {
     id: string;
@@ -30,7 +31,7 @@ export const reviewService = {
         return response.data;
     },
 
-    getPendingReviews: async (): Promise<{ data: any[] }> => {
+    getPendingReviews: async (): Promise<{ data: Appointment[] }> => {
         const response = await api.get("/reviews/pending");
         return response.data;
     }
