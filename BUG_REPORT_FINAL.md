@@ -16,6 +16,7 @@
 | BUG-004 | `cancelAppointmentHandler` kiểm tra sai điều kiện 24h | `appointment.controller.ts` | ✅ Đã sửa |
 | BUG-005 | Hàm `cancelAppointment` service dùng sai syntax kiểm tra null | `appointment.service.ts` | ✅ Đã sửa |
 | BUG-009 | Admin không kiểm tra trùng lịch khi tạo schedule | `schedule.controller.ts` | ✅ Đã sửa |
+| BUG-014 | Race condition tạo user từ OTP — lỗi 500 thay vì 409 | `auth.service.ts` | ✅ Đã sửa |
 | BUG-016 | `orderCode` PayOS có thể bị trùng lặp (race condition) | `payment.service.ts` | ✅ Đã sửa |
 | BUG-018 | Mặc định `amount` không nhất quán (5000 vs 150000) | `appointment.service.ts` | ✅ Đã sửa |
 | BUG-019 | `uploadPaymentProof` không kiểm tra quyền sở hữu trong service | `appointment.service.ts` | ✅ Đã sửa (controller kiểm tra) |
@@ -37,14 +38,6 @@
 ---
 
 ### 🔴 MỨC ĐỘ NGHIÊM TRỌNG CAO
-
----
-
-#### BUG-014: Race Condition Tạo User Từ OTP
-**File:** `backend/src/services/auth.service.ts`  
-**Mô tả:** Luồng đăng ký OTP: `verifyOtp` kiểm tra xem user tồn tại → không có → tạo user mới. Nếu 2 request OTP từ cùng email đến cùng lúc, cả 2 đều pass kiểm tra "user chưa tồn tại" và cùng cố gắng tạo 2 user trùng email.  
-**Hậu quả:** Lỗi 500 không kiểm soát thay vì trả về thông báo lỗi thân thiện.  
-**Fix:** Wrap trong `try/catch` để handle `Prisma P2002` (unique violation) và trả về lỗi 409 phù hợp.
 
 ---
 
@@ -130,24 +123,23 @@ Hai cơ chế này không phối hợp với nhau, có thể cùng xử lý 1 l�
 
 | Mức độ | Số lỗi | Danh sách lỗi |
 |--------|--------|---------------|
-| ✅ Đã sửa | **18** | BUG-001, 002, 004, 005, 009, 016, 018, 019, 020, 022, 023, 028, 029, NEW-01, NEW-03, NEW-04, NEW-05, FRONTEND-01 |
-| 🔴 Critical (Chưa sửa) | **2** | BUG-014, BUG-012 |
+| ✅ Đã sửa | **19** | BUG-001, 002, 004, 005, 009, 014, 016, 018, 019, 020, 022, 023, 028, 029, NEW-01, NEW-03, NEW-04, NEW-05, FRONTEND-01 |
+| 🔴 Critical (Chưa sửa) | **1** | BUG-012 |
 | 🟠 Medium (Chưa sửa) | **4** | BUG-017, BUG-021, BUG-026, BUG-027 |
 | 🟡 Low/Quality (Chưa sửa) | **1** | BUG-NEW-02 |
 
-**Tổng: 25 lỗi tìm thấy — 18 đã sửa — 7 còn tồn tại**
+**Tổng: 25 lỗi tìm thấy — 19 đã sửa — 6 còn tồn tại**
 
 ---
 
 ## 🔧 ƯU TIÊN SỬA (Lỗi còn lại)
 
 1. **[NGAY]** BUG-012 — VNPay IPN amount validation có thể bị bypass (security risk)
-2. **[NGAY]** BUG-014 — Race condition tạo user từ OTP gây lỗi 500
-3. **[SỚM]** BUG-017 — Re-validate voucher khi checkout
-4. **[BÌNH THƯỜNG]** BUG-021 — Filter lịch PENDING_PAYMENT cho doctor/admin
-5. **[BÌNH THƯỜNG]** BUG-026 — Gửi notification khi tự động hủy lịch
-6. **[BÌNH THƯỜNG]** BUG-027 — Phối hợp 2 cơ chế xử lý hết hạn
-7. **[KHI CÓ THỜI GIAN]** BUG-NEW-02 — Dọn dẹp dead code
+2. **[SỚM]** BUG-017 — Re-validate voucher khi checkout
+3. **[BÌNH THƯỜNG]** BUG-021 — Filter lịch PENDING_PAYMENT cho doctor/admin
+4. **[BÌNH THƯỜNG]** BUG-026 — Gửi notification khi tự động hủy lịch
+5. **[BÌNH THƯỜNG]** BUG-027 — Phối hợp 2 cơ chế xử lý hết hạn
+6. **[KHI CÓ THỜI GIAN]** BUG-NEW-02 — Dọn dẹp dead code
 
 ---
 
@@ -174,7 +166,7 @@ where: { doctorId }
 // Sau: Chỉ trả về lịch hẹn có ý nghĩa với bác sĩ
 where: {
   doctorId,
-  status: { in: ["PENDING", "CONFIRMED", "COMPLETED", "PENDING_PAYMENT"] }
+  ...(status ? { status: status as AppointmentStatus } : {})
 }
 ```
 
@@ -227,3 +219,34 @@ const canCancel = diffHours > 0;  // Sai: hiển thị nút với mọi lịch t
 
 // Sau:
 const canCancel = diffHours > 24; // Đúng: chỉ hiển thị khi còn hơn 24h
+```
+
+### BUG-014 (race condition tạo user từ OTP + Google Login)
+```typescript
+// Trước: Không có xử lý khi 2 request đồng thời cùng tạo user
+const user = await prisma.user.create({ data: { email, ... } });
+// → Nếu race condition: Prisma P2002 → 500 Internal Server Error
+
+// Sau trong registerUser: Bắt lỗi P2002 và trả về 409 thân thiện
+let user: RegisterResult;
+try {
+    user = await prisma.user.create({ data: { email, ... } });
+} catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new ApiError("Email already registered", 409);
+    }
+    throw err;
+}
+
+// Sau trong googleLogin: race condition → fetch lại user đã tồn tại thay vì lỗi 500
+try {
+    user = await prisma.user.create({ data: { email, ... } });
+} catch (createErr) {
+    if (createErr instanceof Prisma.PrismaClientKnownRequestError && createErr.code === "P2002") {
+        const raceUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+        if (!raceUser) throw new ApiError("Failed to create or retrieve user account", 500);
+        user = raceUser; // Graceful fallback: dùng user đã được tạo bởi request kia
+    } else {
+        throw createErr;
+    }
+}
