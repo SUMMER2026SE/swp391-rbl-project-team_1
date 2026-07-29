@@ -57,17 +57,17 @@ export function useNotifications() {
             });
         };
 
-        const handlePaymentConfirmed = (data: any) => {
+        const handlePaymentConfirmed = () => {
             fetchNotifications(); // Refresh notifications when payment confirmed
         };
 
-        const handleNewAppointment = (data: any) => {
+        const handleNewAppointment = () => {
             fetchNotifications();
         };
         
-        const handlePaymentUpdated = (data: any) => {
+        const handlePaymentUpdated = () => {
             fetchNotifications();
-        }
+        };
 
         socket.on("new_notification", handleNewNotification);
         socket.on("payment_confirmed", handlePaymentConfirmed);
