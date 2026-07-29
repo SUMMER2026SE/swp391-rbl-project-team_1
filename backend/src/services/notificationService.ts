@@ -10,6 +10,13 @@ interface CreateNotificationParams {
     data?: any;
 }
 
+/**
+ * Creates a notification in the database, manages the user's notification capacity
+ * (capping at 50 notifications by deleting the oldest), and pushes it in real-time via Socket.io.
+ * 
+ * @param params - The user ID, notification type, title, message, and optional payload data
+ * @returns The created Notification database record
+ */
 export const createNotification = async ({ userId, type, title, message, data }: CreateNotificationParams) => {
     try {
         // Create new notification
