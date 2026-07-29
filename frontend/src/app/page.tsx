@@ -172,6 +172,9 @@ export default function HomePage() {
             <p className="text-slate-500 text-sm sm:text-base leading-relaxed">
               Chúng tôi cung cấp dịch vụ đặt lịch hẹn đa dạng các chuyên khoa, đảm bảo chuẩn đoán chính xác và điều trị hiệu quả cho bạn và gia đình.
             </p>
+             <p className="text-sm text-teal-600 font-medium">
+         Lựa chọn chuyên khoa phù hợp để nhanh chóng tìm được bác sĩ theo đúng nhu cầu khám chữa bệnh.
+         </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -220,18 +223,42 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Booking Steps Section */}
-      <section className="py-20 bg-slate-50 border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
-            <h2 className="text-xs uppercase font-extrabold tracking-widest text-teal-600">Quy Trình Khám Bệnh</h2>
-            <p className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">Lịch Khám Tiện Lợi Với 3 Bước</p>
-            <p className="text-slate-500 text-sm">Quy trình đặt lịch được thiết kế tối giản giúp tiết kiệm tối đa thời gian của người bệnh.</p>
-          </div>
+     {/* Booking Steps Section */}
+<section className="py-20 bg-slate-50 border-y border-slate-100">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
+  <h2 className="text-xs uppercase font-extrabold tracking-widest text-teal-600">
+    Quy Trình Khám Bệnh
+  </h2>
 
-          <BookingSteps />
-        </div>
-      </section>
+  <p className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
+    Lịch Khám Tiện Lợi Với 3 Bước
+  </p>
+
+  <p className="text-slate-500 text-sm">
+    Quy trình đặt lịch được thiết kế tối giản giúp tiết kiệm tối đa thời gian của người bệnh.
+  </p>
+
+  <p className="text-sm font-medium text-teal-600">
+    Hoàn tất đặt lịch chỉ trong khoảng 2–3 phút.
+  </p>
+
+  <p className="text-xs text-slate-400">
+    Mọi thông tin lịch hẹn sẽ được xác nhận ngay sau khi bạn đặt lịch thành công.
+  </p>
+</div>
+    <BookingSteps />
+
+    <div className="mt-10 rounded-2xl border border-teal-100 bg-teal-50 p-5 text-center">
+      <p className="text-sm font-medium text-teal-700">
+        💡 Bạn sẽ nhận được thông báo xác nhận ngay sau khi đặt lịch thành công.
+      </p>
+      <p className="mt-2 text-xs text-slate-500">
+        Nếu cần thay đổi lịch hẹn, bạn có thể thực hiện trong mục quản lý lịch khám của mình.
+      </p>
+    </div>
+  </div>
+</section>
 
       {/* Call to Action Section */}
       <section className="py-16 bg-white">
