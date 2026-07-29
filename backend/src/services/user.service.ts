@@ -116,7 +116,24 @@ export async function deleteUser(id: string): Promise<void> {
 }
 
 /**
- * Updates a user's profile details.
+ * Updates a user's profile details and auto-generates the composite address string
+ * if any address components (street, ward, district, province) are provided.
+ * 
+ * @param id - The unique identifier of the User
+ * @param data - The profile fields to update
+ * @param data.fullName - The full name of the user
+ * @param data.gender - Gender description
+ * @param data.province - Province/City of residence
+ * @param data.district - District of residence
+ * @param data.ward - Ward/Commune of residence
+ * @param data.street - Street name and number
+ * @param data.dateOfBirth - Date of birth object
+ * @param data.bloodType - Blood type (e.g. A+, B-, O+)
+ * @param data.allergies - Information on patient allergies
+ * @param data.chronicDiseases - List of chronic diseases if any
+ * @param data.personalHistory - User's medical history highlights
+ * @param data.familyHistory - Family medical history highlights
+ * @returns The updated safe user information (without password)
  */
 export async function updateUserProfile(
     id: string,
