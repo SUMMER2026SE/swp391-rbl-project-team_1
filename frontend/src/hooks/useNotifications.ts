@@ -41,14 +41,23 @@ export function useNotifications() {
     useEffect(() => {
         if (!user || !token) return;
 
+        // Join the general user notification room
         socket.emit("join_user_room", { userId: user.id });
+        
+        // Admin-specific notification room subscription
         if (user.role === "ADMIN") {
             socket.emit("join_admin_room");
         }
+        
+        // Doctor-specific notification room subscription
         if (user.role === "DOCTOR") {
             socket.emit("join_doctor_room", { doctorId: user.id });
         }
 
+        /**
+         * Appends new real-time notification to the local state list (capped at 50)
+         * and displays a visual alert (toast) to the user.
+         */
         const handleNewNotification = (notification: NotificationData) => {
             setNotifications(prev => [notification, ...prev].slice(0, 50));
             setUnreadCount(prev => prev + 1);
