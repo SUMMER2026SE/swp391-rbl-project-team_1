@@ -1,6 +1,17 @@
 import prisma from "../prisma/client";
 import { ComplaintType } from "@prisma/client";
 
+/**
+ * Creates a new user complaint/feedback regarding the system or a specific appointment.
+ * 
+ * @param userId - ID of the user filing the complaint
+ * @param message - The detailed feedback/complaint message
+ * @param type - Type of complaint ('SYSTEM' or 'SERVICE', defaults to 'SYSTEM')
+ * @param subject - Optional subject/title of the complaint
+ * @param images - Optional list of attachments/images URLs
+ * @param appointmentId - Optional appointment ID (required if type is 'SERVICE')
+ * @returns The created Complaint record
+ */
 export async function createUserComplaint(
     userId: string,
     message: string,
