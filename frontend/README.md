@@ -34,3 +34,10 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Real-time Integration (Socket.io)
+
+This project integrates real-time communications:
+- **Notifications**: Dynamic client-side notification push upon appointments, actions or updates.
+- **Payment & Booking Updates**: Automated page updates when database and payment changes trigger socket events.
+- **Rooms Subscription**: Users, doctors, and admins join specific rooms for localized events.
