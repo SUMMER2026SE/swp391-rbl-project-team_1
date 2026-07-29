@@ -39,9 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profileResponse = await authService.getProfile();
             setUser(profileResponse.user);
             localStorage.setItem("user", JSON.stringify(profileResponse.user));
-          } catch (profileError) {
-            console.error("Token verification failed:", profileError);
-            // Token is invalid/expired
+          } catch {
+            // Token invalid/expired or backend unreachable - clear auth silently
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             setToken(null);
@@ -57,8 +56,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     }
-
     loadStoredAuth();
+
+    const handleForceLogout = () => {
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener("auth:logout", handleForceLogout);
+    return () => {
+      window.removeEventListener("auth:logout", handleForceLogout);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

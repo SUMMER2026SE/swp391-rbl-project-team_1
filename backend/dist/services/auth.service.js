@@ -14,7 +14,7 @@ exports.resetPassword = resetPassword;
 exports.googleLogin = googleLogin;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const axios_1 = __importDefault(require("axios"));
+const google_auth_library_1 = require("google-auth-library");
 const client_1 = require("@prisma/client");
 const client_2 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
@@ -23,6 +23,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     throw new Error("JWT_SECRET environment variable is required");
 }
+const googleClient = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 /**
  * Step 1: Send OTP to email
  */
@@ -72,10 +73,11 @@ async function verifyOtp(email, otp) {
     if (new Date() > otpRecord.expiresAt) {
         throw new apiError_1.ApiError("OTP has expired", 400);
     }
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete registration
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await client_2.default.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
     return { isValid: true };
 }
@@ -145,6 +147,9 @@ async function authenticateUser(email, password) {
     if (!passwordMatches) {
         throw new apiError_1.ApiError("Invalid credentials", 401);
     }
+    if (user.isLocked) {
+        throw new apiError_1.ApiError("This account is locked. Please contact the administrator.", 403);
+    }
     const payload = {
         userId: user.id,
         role: user.role,
@@ -167,7 +172,17 @@ async function findUserById(id) {
             avatar: true,
             gender: true,
             address: true,
+            province: true,
+            district: true,
+            ward: true,
+            street: true,
             dateOfBirth: true,
+            bloodType: true,
+            allergies: true,
+            chronicDiseases: true,
+            personalHistory: true,
+            familyHistory: true,
+            isLocked: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -223,10 +238,11 @@ async function verifyResetOtp(email, otp) {
     if (new Date() > otpRecord.expiresAt) {
         throw new apiError_1.ApiError("OTP has expired", 400);
     }
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete password reset
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await client_2.default.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
     return { isValid: true };
 }
@@ -271,10 +287,13 @@ async function resetPassword(email, otp, newPassword) {
  */
 async function googleLogin(idToken) {
     try {
-        // Verify token with Google API
-        const response = await axios_1.default.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-        const payload = response.data;
-        if (!payload.email) {
+        // Verify token with Google Auth Library
+        const ticket = await googleClient.verifyIdToken({
+            idToken: idToken,
+            audience: process.env.GOOGLE_CLIENT_ID?.trim(),
+        });
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) {
             throw new apiError_1.ApiError("Google login failed: Email not provided in token", 400);
         }
         const normalizedEmail = payload.email.toLowerCase();
@@ -295,6 +314,9 @@ async function googleLogin(idToken) {
             });
         }
         else {
+            if (user.isLocked) {
+                throw new apiError_1.ApiError("This account is locked. Please contact the administrator.", 403);
+            }
             // Update profile fields if they are missing
             const dataToUpdate = {};
             if (!user.fullName && payload.name)
@@ -324,6 +346,9 @@ async function googleLogin(idToken) {
             throw error;
         }
         console.error("Google authentication error:", error);
-        throw new apiError_1.ApiError("Invalid Google ID Token or network error", 401);
+        // Extract the exact error message from google-auth-library
+        const exactError = error instanceof Error ? error.message : "Unknown error";
+        const errorMessage = `Google Auth Failed: ${exactError}`;
+        throw new apiError_1.ApiError(errorMessage, 401);
     }
 }

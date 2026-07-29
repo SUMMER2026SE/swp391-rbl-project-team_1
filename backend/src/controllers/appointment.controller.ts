@@ -1,14 +1,19 @@
 import { NextFunction, Response, Request } from "express";
 
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
-import { createAppointment, getAppointmentsByUser, getAppointmentById } from "../services/appointment.service";
+import { createAppointment, getAppointmentsByUser, getAppointmentById, uploadPaymentProof } from "../services/appointment.service";
+import { sendBookingStatusUpdateEmail, sendCancellationEmail } from "../utils/emailService";
 import { ApiError } from "../utils/apiError";
 import prisma from "../prisma/client";
+import { createNotification } from "../services/notificationService";
 
 interface CreateAppointmentRequestBody {
-    doctorId: string;
+    doctorId?: string;
     appointmentDate: string;
     notes?: string;
+    packageId?: string;
+    patientInfo: any;
+    patientProfileType?: 'SELF' | 'OTHER';
 }
 
 /**
@@ -27,10 +32,16 @@ export async function createAppointmentHandler(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate, notes } = req.body as CreateAppointmentRequestBody;
+        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType } = req.body as any;
 
-        if (!doctorId || !appointmentDate) {
-            throw new ApiError("Doctor ID and appointment date are required", 400);
+        if (!patientInfo || !patientInfo.fullName) {
+            throw new ApiError("Vui lòng điền đầy đủ thông tin người khám", 400);
+        }
+        if (!doctorId && !packageId) {
+            throw new ApiError("Doctor ID or Package ID is required", 400);
+        }
+        if (!appointmentDate) {
+            throw new ApiError("Appointment date is required", 400);
         }
 
         const date = new Date(appointmentDate);
@@ -39,15 +50,21 @@ export async function createAppointmentHandler(
             throw new ApiError("Invalid appointment date format", 400);
         }
 
-        if (date < new Date()) {
-            throw new ApiError("Appointment date must be in the future", 400);
+        const nowPlus2Hours = new Date();
+        nowPlus2Hours.setHours(nowPlus2Hours.getHours() + 2);
+
+        if (date < nowPlus2Hours) {
+            throw new ApiError("Appointment date must be at least 2 hours from now", 400);
         }
 
         const appointment = await createAppointment({
             userId,
+            patientInfo: patientInfo,
+            patientProfileType: patientProfileType === 'OTHER' ? 'OTHER' : 'SELF',
             doctorId,
             appointmentDate: date,
             notes,
+            packageId,
         });
 
         res.status(201).json({
@@ -135,10 +152,20 @@ export async function getAppointmentByIdHandler(
             throw new ApiError("You are not authorized to view this appointment", 403);
         }
 
-        res.json({
+        const responseData: any = {
             message: "Appointment fetched successfully",
             appointment,
-        });
+        };
+
+        if (appointment.status === "PENDING_PAYMENT") {
+            responseData.bankDetails = {
+                bankName: "BIDV",
+                bankAccount: "5624715454",
+                bankOwner: "NGUYEN DAC DUNG",
+            };
+        }
+
+        res.json(responseData);
     } catch (error) {
         next(error);
     }
@@ -186,15 +213,21 @@ export async function getPublicPrescriptionHandler(
                 },
                 medicalRecord: {
                     select: {
-                        diagnosis: true,
-                        notes: true,
+                        finalDiagnosis: true,
+                        preliminaryDiagnosis: true,
+                        doctorNotes: true,
                         prescriptions: {
                             select: {
                                 id: true,
-                                medicationName: true,
                                 dosage: true,
                                 frequency: true,
-                                duration: true,
+                                durationDays: true,
+                                instructions: true,
+                                medicine: {
+                                    select: {
+                                        name: true,
+                                    },
+                                },
                             },
                         },
                         createdAt: true,
@@ -211,10 +244,187 @@ export async function getPublicPrescriptionHandler(
             throw new ApiError("No completed prescription found for this appointment", 404);
         }
 
+        const formattedPrescription = {
+            ...appointment,
+            medicalRecord: {
+                diagnosis: appointment.medicalRecord.finalDiagnosis || "Không có chẩn đoán",
+                notes: appointment.medicalRecord.doctorNotes,
+                createdAt: appointment.medicalRecord.createdAt,
+                prescriptions: appointment.medicalRecord.prescriptions.map((p: any) => ({
+                    id: p.id,
+                    medicationName: p.medicine?.name || "Không rõ tên thuốc",
+                    dosage: p.dosage,
+                    frequency: p.frequency,
+                    duration: `${p.durationDays} ngày`,
+                })),
+            },
+        };
+
         res.json({
             message: "Prescription verified successfully",
             verified: true,
-            prescription: appointment,
+            prescription: formattedPrescription,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/appointments/:id/pay-proof
+ * Bệnh nhân upload ảnh biên lai. Cập nhật status thành PENDING.
+ */
+export async function uploadPaymentProofHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        const id = req.params.id as string;
+
+        if (!userId) {
+            throw new ApiError("Yêu cầu đăng nhập", 401);
+        }
+
+        if (!id) {
+            throw new ApiError("Mã lịch hẹn (appointmentId) là bắt buộc", 400);
+        }
+
+        if (!req.file) {
+            throw new ApiError("Vui lòng tải lên ảnh biên lai thanh toán", 400);
+        }
+
+        // Check ownership
+        const appointment = await prisma.appointment.findUnique({
+            where: { id },
+        });
+
+        if (!appointment) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        if (appointment.userId !== userId) {
+            throw new ApiError("Bạn không có quyền cập nhật lịch hẹn này", 403);
+        }
+
+        const updated = await uploadPaymentProof(
+            id,
+            req.file.buffer,
+            req.file.mimetype
+        );
+
+        res.status(200).json({
+            message: "Đã nhận biên lai thanh toán. Vui lòng chờ xác nhận.",
+            appointment: updated,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /api/appointments/:id/cancel
+ * Protected (USER role): Cancels an appointment if it's > 24h before appointmentDate.
+ */
+export async function cancelAppointmentHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.user?.userId;
+        const id = req.params.id as string;
+        const { reason } = req.body;
+
+        if (!userId) {
+            throw new ApiError("Authentication required", 401);
+        }
+
+        if (!id) {
+            throw new ApiError("Appointment ID is required", 400);
+        }
+
+        const appointment = await prisma.appointment.findUnique({
+            where: { id },
+            include: { payment: true }
+        });
+
+        if (!appointment) {
+            throw new ApiError("Appointment not found", 404);
+        }
+
+        if (appointment.userId !== userId) {
+            throw new ApiError("You are not authorized to cancel this appointment", 403);
+        }
+
+        if (appointment.status === "CANCELLED" || appointment.status === "EXPIRED" || appointment.status === "COMPLETED") {
+            throw new ApiError(`Cannot cancel an appointment with status ${appointment.status}`, 400);
+        }
+
+        const now = new Date();
+        const appointmentDate = new Date(appointment.appointmentDate);
+        
+        // Calculate diff in hours
+        const diffMs = appointmentDate.getTime() - now.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        const isRefundable = diffHours >= 24;
+
+        // Handle refund if payment was already PAID
+        let finalReason = reason || "Người bệnh yêu cầu huỷ";
+        
+        if (appointment.payment && appointment.payment.status === "PAID" && isRefundable) {
+            // Update Payment status to REFUNDED
+            await prisma.payment.update({
+                where: { id: appointment.payment.id },
+                data: { status: "REFUNDED" }
+            });
+            finalReason += " (Hệ thống đang xử lý hoàn tiền về tài khoản ngân hàng gốc)";
+        } else if (appointment.payment && appointment.payment.status === "PENDING") {
+            // If it was just pending, cancel the payment record as well
+            await prisma.payment.update({
+                where: { id: appointment.payment.id },
+                data: { status: "FAILED" } // Or CANCELLED if enum existed
+            });
+        } else if (!isRefundable) {
+            finalReason += " (Hủy trong vòng 24h, không hoàn cọc)";
+        }
+
+        const updatedAppointment = await prisma.appointment.update({
+            where: { id },
+            data: {
+                status: "CANCELLED",
+                cancellationReason: finalReason,
+                depositForfeited: !isRefundable
+            },
+            include: { user: true }
+        });
+
+        if (updatedAppointment.user?.email) {
+            sendCancellationEmail(updatedAppointment.user.email, {
+                patientName: updatedAppointment.user.fullName || updatedAppointment.user.email,
+                bookingCode: updatedAppointment.bookingCode,
+                appointmentDate: updatedAppointment.appointmentDate,
+                isRefundable: isRefundable,
+                amount: updatedAppointment.amount
+            }).catch(console.error);
+        }
+
+        // Create in-app notification for the user
+        createNotification({
+            userId,
+            type: "APPOINTMENT_CANCELLED_BY_PATIENT",
+            title: "Lịch hẹn đã bị huỷ ❌",
+            message: isRefundable
+                ? `Lịch hẹn #${updatedAppointment.bookingCode} đã huỷ thành công. Tiền đặt cọc sẽ được hoàn trả trong vòng 3-5 ngày làm việc.`
+                : `Lịch hẹn #${updatedAppointment.bookingCode} đã huỷ thành công. Lưu ý: huỷ trong vòng 24h trước giờ khám nên không hoàn cọc.`,
+            data: { appointmentId: updatedAppointment.id }
+        }).catch(console.error);
+
+        res.json({
+            message: "Huỷ lịch hẹn thành công",
+            appointment: updatedAppointment
         });
     } catch (error) {
         next(error);

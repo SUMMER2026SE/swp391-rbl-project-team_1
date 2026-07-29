@@ -3,6 +3,7 @@ import { verifyToken } from "../middleware/auth.middleware";
 import { verifyDoctor } from "../middleware/authorization.middleware";
 import {
     getDashboardStats,
+    getDashboardCharts,
     getDoctorProfile,
     updateDoctorProfile,
     getDoctorSchedules,
@@ -11,11 +12,16 @@ import {
     deleteDoctorSchedule,
     getDoctorAppointments,
     updateAppointmentStatus,
+    updateBulkAppointmentStatus,
     getDoctorPatients,
     getPatientMedicalRecords,
     createMedicalRecord,
     createPrescription,
-    getAvailableSpecialtiesAndClinics
+    getAvailableSpecialtiesAndClinics,
+    getDoctorStatistics,
+    getDoctorReviews,
+    getPatientDetail,
+    getPatientRecords
 } from "../controllers/doctor-dashboard.controller";
 import { doctorCertificateController } from "../controllers/doctor-certificate.controller";
 import multer from "multer";
@@ -28,6 +34,9 @@ router.use(verifyToken, verifyDoctor);
 
 // Dashboard
 router.get("/dashboard/stats", getDashboardStats);
+router.get("/dashboard/charts", getDashboardCharts);
+router.get("/statistics", getDoctorStatistics);
+router.get("/reviews", getDoctorReviews);
 
 // Profile & Metadata
 router.get("/profile", getDoctorProfile);
@@ -42,11 +51,13 @@ router.delete("/schedules/:id", deleteDoctorSchedule);
 
 // Appointments
 router.get("/appointments", getDoctorAppointments);
+router.put("/appointments/bulk-status", updateBulkAppointmentStatus);
 router.put("/appointments/:id/status", updateAppointmentStatus);
 
 // Patients & Medical Records
 router.get("/patients", getDoctorPatients);
-router.get("/patients/:userId/records", getPatientMedicalRecords);
+router.get("/patients/:userId", getPatientDetail);
+router.get("/patients/:userId/records", getPatientRecords);
 router.post("/medical-records", createMedicalRecord);
 router.post("/prescriptions", createPrescription);
 

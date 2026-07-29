@@ -1,5 +1,18 @@
 import api from "./api";
 import { ListDoctorsResponse, DoctorDetailsResponse, SchedulesResponse } from "../types/doctor";
+import { Review } from "./review.service";
+
+export interface DoctorReviewsResponse {
+  message: string;
+  data: {
+    reviews: Review[];
+    stats: {
+      averageRating: number;
+      totalReviews: number;
+      distribution: Record<number, number>;
+    };
+  };
+}
 
 export const doctorService = {
   async listDoctors(specialty?: string, clinicId?: string): Promise<ListDoctorsResponse> {
@@ -22,8 +35,8 @@ export const doctorService = {
     return response.data;
   },
 
-  async getReviews(id: string): Promise<any> {
-    const response = await api.get(`/doctors/${id}/reviews`);
+  async getReviews(id: string): Promise<DoctorReviewsResponse> {
+    const response = await api.get<DoctorReviewsResponse>(`/doctors/${id}/reviews`);
     return response.data;
   },
 };

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Role } from "@prisma/client";
 
-import { getDoctor, listDoctors, getDoctorAppointmentsController, updateDoctorAvatar, batchUpdateAvatars, listSpecialties } from "../controllers/doctor.controller";
+import { getDoctor, listDoctors, updateDoctorAvatar, batchUpdateAvatars, listSpecialties, getFeaturedDoctors } from "../controllers/doctor.controller";
 import { createSchedule, listSchedules } from "../controllers/schedule.controller";
 import { listClinics, getClinic } from "../controllers/clinic.controller";
 import { verifyToken } from "../middleware/auth.middleware";
@@ -11,8 +11,9 @@ const router = Router();
 
 router.get("/doctors", listDoctors);
 router.get("/specialties", listSpecialties);
+router.get("/doctors/featured", getFeaturedDoctors);
 router.get("/doctors/:id", getDoctor);
-router.post("/doctors/:id/schedules", verifyToken, createSchedule);
+router.post("/doctors/:id/schedules", verifyToken, authorizeRoles(Role.DOCTOR), createSchedule);
 router.get("/doctors/:id/schedules", listSchedules);
 router.get("/clinics", listClinics);
 router.get("/clinics/:id", getClinic);

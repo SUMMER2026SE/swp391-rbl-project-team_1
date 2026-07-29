@@ -31,7 +31,8 @@ async function resolveComplaintHandler(req, res, next) {
         if (!id) {
             throw new apiError_1.ApiError("Complaint ID is required", 400);
         }
-        const complaint = await (0, admin_complaints_service_1.resolveComplaint)(id);
+        const { adminResponse } = req.body;
+        const complaint = await (0, admin_complaints_service_1.resolveComplaint)(id, adminResponse);
         res.json({
             message: "Complaint resolved successfully",
             data: complaint,

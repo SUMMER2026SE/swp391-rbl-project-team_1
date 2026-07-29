@@ -8,6 +8,9 @@ import {
     deleteUser,
     linkDoctorToUser as linkDoctorToUserService,
     updateAppointmentStatus,
+    getPendingPayments,
+    getAllPayments,
+    lockUser,
 } from "../services/admin.service";
 import { updateUserRole } from "../services/user.service";
 import { ApiError } from "../utils/apiError";
@@ -121,6 +124,36 @@ export async function removeUser(
 }
 
 /**
+ * PATCH /api/admin/users/:id/lock
+ * Locks/unlocks a user. ADMIN only.
+ */
+export async function lockUserHandler(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const id = req.params.id as string;
+        const { isLocked } = req.body as { isLocked?: boolean };
+
+        if (!id) {
+            throw new ApiError("User ID is required", 400);
+        }
+
+        if (isLocked === undefined) {
+            throw new ApiError("isLocked boolean is required", 400);
+        }
+
+        await lockUser(id, isLocked);
+        res.json({
+            message: `User ${isLocked ? "locked" : "unlocked"} successfully`,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
  * POST /api/admin/users/:userId/link-doctor/:doctorId
  * Links a User account (with DOCTOR role) to a Doctor record.
  * ADMIN only. Required for DOCTOR-role users to access /doctor/appointments.
@@ -177,6 +210,48 @@ export async function updateAppointmentStatusHandler(
         res.json({
             message: "Appointment status updated successfully",
             data: appointment,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/admin/appointments/pending-approval
+ * Returns all appointments with status PENDING and a paymentProof upload. ADMIN only.
+ */
+export async function getPendingPaymentsHandler(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const appointments = await getPendingPayments();
+        res.json({
+            message: "Pending approval payments retrieved successfully",
+            count: appointments.length,
+            data: appointments,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/admin/payments
+ * Returns all payment records (all statuses), sorted by newest.
+ */
+export async function getAllPaymentsHandler(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const payments = await getAllPayments();
+        res.json({
+            message: "All payments retrieved successfully",
+            count: payments.length,
+            data: payments,
         });
     } catch (error) {
         next(error);

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Standard Backend Base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000/api";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -31,21 +31,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Standard error response from backend
-    const message = error.response?.data?.message || "Đã xảy ra lỗi hệ thống!";
+    const message = error.response?.data?.message || error.message || "Đã xảy ra lỗi hệ thống!";
     const status = error.response?.status;
 
     if (status === 401 && typeof window !== "undefined") {
       // Clear storage on unauthorized token
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      window.dispatchEvent(new Event("auth:logout"));
       // Optional: redirect to login if necessary
     }
 
-    return Promise.reject({
-      message,
-      status,
-      originalError: error,
-    });
+    const customError = new Error(message) as Error & { status?: number; originalError?: unknown };
+    customError.status = status;
+    customError.originalError = error;
+
+    return Promise.reject(customError);
   }
 );
 

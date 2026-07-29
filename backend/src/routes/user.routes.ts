@@ -58,6 +58,10 @@ router.put(
                 fullName, 
                 gender, 
                 address, 
+                province,
+                district,
+                ward,
+                street,
                 dateOfBirth,
                 bloodType,
                 allergies,
@@ -68,6 +72,10 @@ router.put(
                 fullName?: string | null;
                 gender?: string | null;
                 address?: string | null;
+                province?: string | null;
+                district?: string | null;
+                ward?: string | null;
+                street?: string | null;
                 dateOfBirth?: string | null;
                 bloodType?: string | null;
                 allergies?: string | null;
@@ -81,7 +89,10 @@ router.put(
             const updatedUser = await updateUserProfile(userId, {
                 fullName,
                 gender,
-                address,
+                province,
+                district,
+                ward,
+                street,
                 dateOfBirth: parsedDob,
                 bloodType,
                 allergies,

@@ -25,26 +25,31 @@ interface BookingContextType {
 export const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export function BookingProvider({ children }: { children: ReactNode }) {
+  // Sync state from localStorage on mount (lazy init to avoid cascading renders)
   const [selectedClinic, setSelectedClinicState] = useState<Clinic | null>(null);
   const [selectedDoctor, setSelectedDoctorState] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDateState] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlotState] = useState<TimeSlot | null>(null);
 
-  // Sync state from localStorage on mount
+  // Synchronize from localStorage on mount (client-side only) to prevent hydration mismatches
   useEffect(() => {
     try {
-      const storedClinic = localStorage.getItem("booking_clinic");
-      const storedDoctor = localStorage.getItem("booking_doctor");
-      const storedDate = localStorage.getItem("booking_date");
-      const storedSlot = localStorage.getItem("booking_slot");
+      const clinicStr = localStorage.getItem("booking_clinic");
+      if (clinicStr) setSelectedClinicState(JSON.parse(clinicStr));
+    } catch {}
 
-      if (storedClinic) setSelectedClinicState(JSON.parse(storedClinic));
-      if (storedDoctor) setSelectedDoctorState(JSON.parse(storedDoctor));
-      if (storedDate) setSelectedDateState(storedDate);
-      if (storedSlot) setSelectedSlotState(JSON.parse(storedSlot));
-    } catch (e) {
-      console.error("Failed to load booking state from localStorage", e);
-    }
+    try {
+      const doctorStr = localStorage.getItem("booking_doctor");
+      if (doctorStr) setSelectedDoctorState(JSON.parse(doctorStr));
+    } catch {}
+
+    const dateStr = localStorage.getItem("booking_date");
+    if (dateStr) setSelectedDateState(dateStr);
+
+    try {
+      const slotStr = localStorage.getItem("booking_slot");
+      if (slotStr) setSelectedSlotState(JSON.parse(slotStr));
+    } catch {}
   }, []);
 
   const setSelectedClinic = (clinic: Clinic | null) => {

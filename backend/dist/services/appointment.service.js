@@ -4,42 +4,299 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAppointment = createAppointment;
+exports.uploadPaymentProof = uploadPaymentProof;
+exports.autoCancelExpiredAppointments = autoCancelExpiredAppointments;
 exports.getAppointmentsByUser = getAppointmentsByUser;
 exports.getAllAppointments = getAllAppointments;
 exports.getAppointmentById = getAppointmentById;
 exports.getDoctorAppointments = getDoctorAppointments;
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const client_1 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
+const emailService_1 = require("../utils/emailService");
+const generateBookingCode_1 = require("../utils/generateBookingCode");
+const supabase_1 = require("../config/supabase");
+async function saveFileLocally(appointmentId, fileName, fileBuffer) {
+    const uploadDir = path_1.default.join(__dirname, "../../public/payment-proofs", `appointment-${appointmentId}`);
+    // Ensure directory exists
+    if (!fs_1.default.existsSync(uploadDir)) {
+        fs_1.default.mkdirSync(uploadDir, { recursive: true });
+    }
+    const baseName = path_1.default.basename(fileName);
+    const filePath = path_1.default.join(uploadDir, baseName);
+    fs_1.default.writeFileSync(filePath, fileBuffer);
+    // Return relative URL served by Express static middleware
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    return `${backendUrl}/public/payment-proofs/appointment-${appointmentId}/${baseName}`;
+}
+function generateTransactionCode() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "MB-";
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
 async function createAppointment(params) {
-    const doctor = await client_1.default.doctor.findUnique({ where: { id: params.doctorId } });
-    if (!doctor) {
-        throw new apiError_1.ApiError("Doctor not found", 404);
-    }
-    // prevent duplicate booking for the same doctor at the exact same datetime
-    const existing = await client_1.default.appointment.findFirst({
-        where: {
-            doctorId: params.doctorId,
-            appointmentDate: params.appointmentDate,
-        },
+    const { userId, patientInfo, patientProfileType = 'SELF', doctorId, packageId, appointmentDate, notes } = params;
+    return await client_1.default.$transaction(async (tx) => {
+        if (doctorId) {
+            const doctor = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (!doctor)
+                throw new apiError_1.ApiError("Doctor not found", 404);
+            const doctorUser = await tx.user.findUnique({ where: { doctorId } });
+            if (doctorUser?.id === userId) {
+                throw new apiError_1.ApiError("Bạn không thể tự đặt lịch khám với chính mình.", 400);
+            }
+            const count = await tx.appointment.count({
+                where: {
+                    doctorId,
+                    appointmentDate,
+                    status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
+                },
+            });
+            if (count >= 20) {
+                throw new apiError_1.ApiError("Khung giờ này đã hết chỗ (20/20). Vui lòng chọn thời gian khác.", 409);
+            }
+        }
+        else if (!packageId) {
+            throw new apiError_1.ApiError("Doctor ID or Package ID is required", 400);
+        }
+        // 1. Only update user profile fields if booking for SELF
+        if (patientProfileType === 'SELF') {
+            const updateData = {};
+            if (patientInfo.fullName)
+                updateData.fullName = patientInfo.fullName;
+            if (patientInfo.gender)
+                updateData.gender = patientInfo.gender;
+            if (patientInfo.dateOfBirth)
+                updateData.dateOfBirth = new Date(patientInfo.dateOfBirth);
+            if (patientInfo.bloodType)
+                updateData.bloodType = patientInfo.bloodType;
+            if (patientInfo.allergies)
+                updateData.allergies = patientInfo.allergies;
+            if (patientInfo.chronicDiseases)
+                updateData.chronicDiseases = patientInfo.chronicDiseases;
+            if (patientInfo.personalHistory)
+                updateData.personalHistory = patientInfo.personalHistory;
+            if (patientInfo.familyHistory)
+                updateData.familyHistory = patientInfo.familyHistory;
+            if (patientInfo.province)
+                updateData.province = patientInfo.province;
+            if (patientInfo.district)
+                updateData.district = patientInfo.district;
+            if (patientInfo.ward)
+                updateData.ward = patientInfo.ward;
+            if (patientInfo.street)
+                updateData.street = patientInfo.street;
+            if (Object.keys(updateData).length > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: updateData,
+                });
+            }
+        }
+        // 2. Create appointment - generate unique codes with max retry limit
+        const MAX_CODE_RETRIES = 10;
+        let transactionCode = generateTransactionCode();
+        let codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        let txnRetries = 0;
+        while (codeConflict) {
+            if (++txnRetries > MAX_CODE_RETRIES) {
+                throw new apiError_1.ApiError("Không thể tạo mã giao dịch duy nhất. Vui lòng thử lại.", 500);
+            }
+            transactionCode = generateTransactionCode();
+            codeConflict = await tx.appointment.findFirst({ where: { transactionCode } });
+        }
+        let bookingCode = (0, generateBookingCode_1.generateBookingCode)();
+        let bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        let bookingRetries = 0;
+        while (bookingCodeConflict) {
+            if (++bookingRetries > MAX_CODE_RETRIES) {
+                throw new apiError_1.ApiError("Không thể tạo mã đặt lịch duy nhất. Vui lòng thử lại.", 500);
+            }
+            bookingCode = (0, generateBookingCode_1.generateBookingCode)();
+            bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
+        }
+        let amount = 5000;
+        if (doctorId) {
+            const doc = await tx.doctor.findUnique({ where: { id: doctorId } });
+            if (doc?.price)
+                amount = doc.price;
+        }
+        else if (packageId) {
+            const pkg = await tx.medicalPackage.findUnique({ where: { id: packageId } });
+            if (pkg)
+                amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+        const createdAppointment = await tx.appointment.create({
+            data: {
+                userId,
+                patientProfileType: patientProfileType,
+                patientInfo: patientInfo, // Store snapshot
+                doctorId,
+                packageId,
+                appointmentDate,
+                status: "PENDING_PAYMENT",
+                notes,
+                amount,
+                transactionCode,
+                bookingCode,
+            },
+            include: {
+                doctor: { include: { userAccount: true } },
+                medicalPackage: true,
+                user: true,
+            },
+        });
+        return createdAppointment;
+    }, {
+        isolationLevel: "Serializable"
     });
-    if (existing) {
-        throw new apiError_1.ApiError("Selected slot already booked", 409);
+}
+async function uploadPaymentProof(appointmentId, fileBuffer, mimetype) {
+    const appointment = await client_1.default.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { user: true, doctor: true, medicalPackage: true }
+    });
+    if (!appointment) {
+        throw new apiError_1.ApiError("Lịch hẹn không tồn tại", 404);
     }
-    return client_1.default.appointment.create({
+    if (appointment.status !== "PENDING_PAYMENT") {
+        throw new apiError_1.ApiError("Lịch hẹn này không ở trạng thái cần thanh toán", 400);
+    }
+    // Upload to Supabase bucket 'payment-proofs' or fallback to local
+    const extension = mimetype.split("/")[1] || "jpg";
+    const fileName = `appointment-${appointmentId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
+    let publicUrl = "";
+    const isSupabaseConfigured = process.env.SUPABASE_ANON_KEY &&
+        !process.env.SUPABASE_ANON_KEY.includes("YOUR_") &&
+        process.env.SUPABASE_URL &&
+        !process.env.SUPABASE_URL.includes("YOUR_");
+    if (isSupabaseConfigured) {
+        try {
+            const { data, error } = await supabase_1.supabase.storage
+                .from("payment-proofs")
+                .upload(fileName, fileBuffer, {
+                contentType: mimetype,
+                upsert: false,
+            });
+            if (error) {
+                console.error("Supabase Payment Proof upload error, falling back to local storage:", error);
+                publicUrl = await saveFileLocally(appointmentId, fileName, fileBuffer);
+            }
+            else {
+                const { data: publicUrlData } = supabase_1.supabase.storage
+                    .from("payment-proofs")
+                    .getPublicUrl(fileName);
+                publicUrl = publicUrlData.publicUrl;
+            }
+        }
+        catch (uploadErr) {
+            console.error("Supabase upload exception, falling back to local storage:", uploadErr);
+            publicUrl = await saveFileLocally(appointmentId, fileName, fileBuffer);
+        }
+    }
+    else {
+        console.log("ℹ️ Supabase not configured with real credentials. Storing payment proof locally.");
+        publicUrl = await saveFileLocally(appointmentId, fileName, fileBuffer);
+    }
+    const updated = await client_1.default.appointment.update({
+        where: { id: appointmentId },
         data: {
-            userId: params.userId,
-            doctorId: params.doctorId,
-            appointmentDate: params.appointmentDate,
+            paymentProof: publicUrl,
+            paymentAt: new Date(),
             status: "PENDING",
-            notes: params.notes,
+        },
+        include: {
+            user: true,
+            doctor: {
+                include: {
+                    specialty: true,
+                    clinic: true,
+                },
+            },
+            medicalPackage: true,
         },
     });
+    // Send confirmation email asynchronously
+    if (updated.user?.email) {
+        const patientInfo = updated.patientInfo;
+        const patientName = patientInfo?.fullName || updated.user?.fullName || "Bệnh nhân";
+        (0, emailService_1.sendBookingConfirmationEmail)(updated.user.email, {
+            patientName: patientName,
+            doctorName: updated.doctor?.name || "Hệ thống",
+            specialtyName: updated.doctor?.specialty?.name || "",
+            clinicName: updated.doctor?.clinic?.name || updated.doctor?.hospital || updated.medicalPackage?.hospital || "Bệnh viện",
+            appointmentDate: updated.appointmentDate,
+            notes: updated.notes,
+            status: "PENDING",
+            amount: updated.amount,
+            transactionCode: updated.transactionCode || undefined,
+            paymentAt: updated.paymentAt,
+            appointmentId: updated.id,
+            bookingCode: updated.bookingCode || "N/A",
+            paymentMethod: "Chuyển khoản ngân hàng",
+            packageName: updated.medicalPackage?.name
+        }).catch((err) => console.error("Error sending confirmation email:", err));
+    }
+    return updated;
+}
+async function autoCancelExpiredAppointments() {
+    const timeLimit = new Date(Date.now() - 5 * 60 * 1000); // 5 mins ago
+    // Find all expired appointments
+    const expired = await client_1.default.appointment.findMany({
+        where: {
+            status: "PENDING_PAYMENT",
+            createdAt: {
+                lt: timeLimit,
+            },
+        },
+    });
+    if (expired.length > 0) {
+        console.log(`[Scheduler] Found ${expired.length} expired pending-payment appointments. Marking as EXPIRED.`);
+        await client_1.default.appointment.updateMany({
+            where: {
+                status: "PENDING_PAYMENT",
+                createdAt: {
+                    lt: timeLimit,
+                },
+            },
+            data: {
+                status: "EXPIRED",
+                cancellationReason: "Hủy tự động do quá hạn 5 phút không hoàn tất chuyển khoản.",
+            },
+        });
+    }
 }
 async function getAppointmentsByUser(userId) {
     return client_1.default.appointment.findMany({
         where: { userId },
         include: {
-            doctor: true,
+            doctor: {
+                include: {
+                    specialty: true,
+                }
+            },
+            medicalPackage: true,
+            payment: true,
+            review: true,
+            medicalRecord: {
+                include: {
+                    prescriptions: true,
+                },
+            },
+            user: {
+                select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    gender: true,
+                    dateOfBirth: true,
+                    avatar: true,
+                },
+            },
         },
         orderBy: {
             appointmentDate: "desc",
@@ -57,6 +314,7 @@ async function getAllAppointments() {
                 },
             },
             doctor: true,
+            medicalPackage: true,
         },
         orderBy: {
             appointmentDate: "desc",
@@ -72,9 +330,30 @@ async function getAppointmentById(id) {
                     id: true,
                     email: true,
                     role: true,
+                    fullName: true,
+                    avatar: true,
+                    gender: true,
+                    dateOfBirth: true,
+                    bloodType: true,
+                    allergies: true,
+                    chronicDiseases: true,
+                    personalHistory: true,
+                    familyHistory: true,
                 },
             },
-            doctor: true,
+            doctor: {
+                include: {
+                    specialty: true,
+                }
+            },
+            medicalPackage: true,
+            payment: true,
+            review: true,
+            medicalRecord: {
+                include: {
+                    prescriptions: true,
+                },
+            },
         },
     });
 }
@@ -87,9 +366,18 @@ async function getDoctorAppointments(doctorId) {
                     id: true,
                     email: true,
                     role: true,
+                    fullName: true,
+                    gender: true,
+                    dateOfBirth: true,
+                    avatar: true,
                 },
             },
             doctor: true,
+            medicalRecord: {
+                include: {
+                    prescriptions: true,
+                },
+            },
         },
         orderBy: {
             appointmentDate: "asc",

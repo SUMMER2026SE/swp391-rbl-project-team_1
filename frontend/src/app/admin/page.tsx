@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { adminService } from "@/services/admin.service";
 import { AdminUser, AdminAppointment } from "@/types/admin";
+import { AppointmentStatus } from "@/types/appointment";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Alert from "@/components/common/Alert";
 import { Users, UserCog, CalendarRange, Clock, CheckCircle2, TrendingUp } from "lucide-react";
@@ -48,10 +49,12 @@ export default function AdminDashboardPage() {
   const totalDoctors = users.filter((u) => u.role === "DOCTOR").length;
   const totalAdmins = users.filter((u) => u.role === "ADMIN").length;
   const totalAppointments = appointments.length;
+  const pendingPaymentAppointments = appointments.filter((a) => a.status === "PENDING_PAYMENT").length;
   const pendingAppointments = appointments.filter((a) => a.status === "PENDING").length;
   const confirmedAppointments = appointments.filter((a) => a.status === "CONFIRMED").length;
   const completedAppointments = appointments.filter((a) => a.status === "COMPLETED").length;
   const cancelledAppointments = appointments.filter((a) => a.status === "CANCELLED").length;
+  const expiredAppointments = appointments.filter((a) => a.status === "EXPIRED").length;
 
   const statsCards = [
     {
@@ -145,14 +148,28 @@ export default function AdminDashboardPage() {
             <h3 className="font-bold text-white text-base">Phân tích Lịch hẹn</h3>
           </div>
 
-          <div className="space-y-5">
-            {/* Pending Bar */}
-            <div className="space-y-2">
+          <div className="space-y-4">
+            {/* Pending Payment Bar */}
+            <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-semibold">
-                <span className="text-slate-400">Chờ xác nhận (PENDING)</span>
+                <span className="text-slate-400">Chờ thanh toán (PENDING_PAYMENT)</span>
+                <span className="text-purple-400 font-bold">{pendingPaymentAppointments} ({getPercentage(pendingPaymentAppointments)}%)</span>
+              </div>
+              <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                <div
+                  style={{ width: `${getPercentage(pendingPaymentAppointments)}%` }}
+                  className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                />
+              </div>
+            </div>
+
+            {/* Pending Bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-400">Chờ duyệt thanh toán (PENDING)</span>
                 <span className="text-amber-400 font-bold">{pendingAppointments} ({getPercentage(pendingAppointments)}%)</span>
               </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden">
                 <div
                   style={{ width: `${getPercentage(pendingAppointments)}%` }}
                   className="h-full bg-amber-500 rounded-full transition-all duration-500"
@@ -161,12 +178,12 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Confirmed Bar */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-semibold">
                 <span className="text-slate-400">Đã xác nhận (CONFIRMED)</span>
                 <span className="text-blue-400 font-bold">{confirmedAppointments} ({getPercentage(confirmedAppointments)}%)</span>
               </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden">
                 <div
                   style={{ width: `${getPercentage(confirmedAppointments)}%` }}
                   className="h-full bg-blue-500 rounded-full transition-all duration-500"
@@ -175,12 +192,12 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Completed Bar */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-semibold">
                 <span className="text-slate-400">Đã hoàn thành (COMPLETED)</span>
                 <span className="text-emerald-400 font-bold">{completedAppointments} ({getPercentage(completedAppointments)}%)</span>
               </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden">
                 <div
                   style={{ width: `${getPercentage(completedAppointments)}%` }}
                   className="h-full bg-emerald-500 rounded-full transition-all duration-500"
@@ -189,15 +206,29 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Cancelled Bar */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-semibold">
                 <span className="text-slate-400">Đã hủy (CANCELLED)</span>
                 <span className="text-red-400 font-bold">{cancelledAppointments} ({getPercentage(cancelledAppointments)}%)</span>
               </div>
-              <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden">
                 <div
                   style={{ width: `${getPercentage(cancelledAppointments)}%` }}
                   className="h-full bg-red-500 rounded-full transition-all duration-500"
+                />
+              </div>
+            </div>
+
+            {/* Expired Bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-400">Hết hạn thanh toán (EXPIRED)</span>
+                <span className="text-slate-400 font-bold">{expiredAppointments} ({getPercentage(expiredAppointments)}%)</span>
+              </div>
+              <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                <div
+                  style={{ width: `${getPercentage(expiredAppointments)}%` }}
+                  className="h-full bg-slate-500 rounded-full transition-all duration-500"
                 />
               </div>
             </div>
@@ -228,11 +259,13 @@ export default function AdminDashboardPage() {
                 </thead>
                 <tbody className="text-xs divide-y divide-slate-900">
                   {recentAppointments.map((app) => {
-                    const statusColors = {
+                    const statusColors: Record<AppointmentStatus, string> = {
+                      PENDING_PAYMENT: "text-purple-400 bg-purple-500/10 border-purple-500/20",
                       PENDING: "text-amber-400 bg-amber-500/10 border-amber-500/20",
                       CONFIRMED: "text-blue-400 bg-blue-500/10 border-blue-500/20",
                       COMPLETED: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
                       CANCELLED: "text-red-400 bg-red-500/10 border-red-500/20",
+                      EXPIRED: "text-slate-400 bg-slate-500/10 border-slate-500/20",
                     };
 
                     const appDate = new Date(app.appointmentDate);

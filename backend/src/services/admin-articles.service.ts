@@ -7,6 +7,8 @@ interface CreateArticleInput {
     content: string;
     thumbnail?: string;
     published?: boolean;
+    type?: string;
+    authorId?: string;
 }
 
 interface UpdateArticleInput {
@@ -14,6 +16,7 @@ interface UpdateArticleInput {
     content?: string;
     thumbnail?: string;
     published?: boolean;
+    type?: string;
 }
 
 /**
@@ -21,6 +24,11 @@ interface UpdateArticleInput {
  */
 export async function getAllArticles(): Promise<Article[]> {
     return prisma.article.findMany({
+        include: {
+            author: {
+                select: { id: true, fullName: true, email: true }
+            }
+        },
         orderBy: { createdAt: "desc" },
     });
 }
@@ -35,6 +43,8 @@ export async function createArticle(input: CreateArticleInput): Promise<Article>
             content: input.content,
             thumbnail: input.thumbnail,
             published: input.published ?? false,
+            type: input.type ?? "news",
+            authorId: input.authorId,
         },
     });
 }
@@ -59,6 +69,7 @@ export async function updateArticle(
             ...(input.content !== undefined && { content: input.content }),
             ...(input.thumbnail !== undefined && { thumbnail: input.thumbnail }),
             ...(input.published !== undefined && { published: input.published }),
+            ...(input.type !== undefined && { type: input.type }),
         },
     });
 }

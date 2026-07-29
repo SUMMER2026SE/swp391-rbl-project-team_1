@@ -72,7 +72,22 @@ export default function PrescriptionModal({ appointmentId, onClose }: Prescripti
 
   const { medicalRecord } = appointment;
   const prescriptions = medicalRecord.prescriptions || [];
-  const patient = appointment.user || { fullName: "Chưa rõ", gender: "Chưa rõ", dateOfBirth: "", address: "" };
+  
+  // Use patientInfo snapshot (always SELF now, so just read from patientInfo or user fallback)
+  const patientInfoSnapshot = (appointment.patientInfo as any) || {};
+  const patientName = patientInfoSnapshot.fullName || appointment.user?.fullName || "Chưa rõ";
+    
+  const patient = {
+    fullName: patientName,
+    gender: patientInfoSnapshot.gender || appointment.user?.gender || "Chưa rõ",
+    dateOfBirth: patientInfoSnapshot.dateOfBirth || appointment.user?.dateOfBirth || "",
+    address: [
+      patientInfoSnapshot.street,
+      patientInfoSnapshot.ward,
+      patientInfoSnapshot.district,
+      patientInfoSnapshot.province
+    ].filter(Boolean).join(", ") || appointment.user?.address || ""
+  };
 
   const patientDob = patient.dateOfBirth
     ? new Date(patient.dateOfBirth).toLocaleDateString("vi-VN", {

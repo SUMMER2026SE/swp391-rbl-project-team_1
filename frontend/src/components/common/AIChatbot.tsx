@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Send, Bot, Stethoscope, Sparkles, Activity, AlertCircle, Heart } from "lucide-react";
 import { chatService, ChatMessage } from "../../services/chat.service";
+import { usePathname } from "next/navigation";
 
 export default function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function AIChatbot() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   // Quick suggestion symptom templates
   const suggestions = [
@@ -36,6 +38,10 @@ export default function AIChatbot() {
       setTimeout(scrollToBottom, 100);
     }
   }, [isOpen, messages, isLoading]);
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/doctor/") || pathname === "/doctor") {
+    return null;
+  }
 
   const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;

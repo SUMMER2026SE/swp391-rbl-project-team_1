@@ -1,14 +1,28 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createSchedule = createSchedule;
 exports.listSchedules = listSchedules;
 const schedule_service_1 = require("../services/schedule.service");
 const apiError_1 = require("../utils/apiError");
+const client_1 = __importDefault(require("../prisma/client"));
 async function createSchedule(req, res, next) {
     try {
         const doctorId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
         if (!doctorId) {
             throw new apiError_1.ApiError("Doctor id is required", 400);
+        }
+        // Ownership check: the requesting DOCTOR must own this doctor profile
+        // User.doctorId links a user account to their Doctor profile (the FK is on User, not Doctor)
+        const requestingUserId = req.user?.userId;
+        const userRecord = await client_1.default.user.findUnique({
+            where: { id: requestingUserId },
+            select: { doctorId: true },
+        });
+        if (!userRecord?.doctorId || userRecord.doctorId !== doctorId) {
+            throw new apiError_1.ApiError("Bạn không có quyền tạo/cập nhật lịch trực cho bác sĩ này", 403);
         }
         const body = req.body;
         if (body.dayOfWeek === undefined || !body.startTime || !body.endTime) {
@@ -34,7 +48,33 @@ async function listSchedules(req, res, next) {
             throw new apiError_1.ApiError("Doctor id is required", 400);
         }
         const schedules = await (0, schedule_service_1.getSchedulesByDoctor)(doctorId);
-        res.json({ message: "Schedules fetched", schedules });
+        // Fetch active appointments (not cancelled) starting from 24 hours ago
+        const startThreshold = new Date();
+        startThreshold.setHours(startThreshold.getHours() - 24);
+        const activeAppointments = await client_1.default.appointment.findMany({
+            where: {
+                doctorId,
+                appointmentDate: {
+                    gte: startThreshold,
+                },
+                status: {
+                    in: ["PENDING", "CONFIRMED", "COMPLETED"]
+                }
+            },
+            select: {
+                appointmentDate: true
+            }
+        });
+        const bookedCounts = {};
+        activeAppointments.forEach(app => {
+            const iso = app.appointmentDate.toISOString();
+            bookedCounts[iso] = (bookedCounts[iso] || 0) + 1;
+        });
+        res.json({
+            message: "Schedules fetched",
+            schedules,
+            bookedCounts
+        });
     }
     catch (error) {
         next(error);

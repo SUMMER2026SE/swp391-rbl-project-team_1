@@ -53,6 +53,7 @@ export function verifyToken(
 
         req.user = {
             userId,
+            id: userId, // for backward compatibility with controllers expecting user.id
             role: role as AuthTokenPayload["role"],
             iat: payload.iat,
             exp: payload.exp,

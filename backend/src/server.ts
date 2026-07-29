@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+dotenv.config();
+
 import path from "path";
 import { createServer } from "http";
 import { initSocket } from "./utils/socket";
@@ -14,18 +16,37 @@ import chatRoutes from "./routes/chat.routes";
 import doctorDashboardRoutes from "./routes/doctor-dashboard.routes";
 import articleRoutes from "./routes/article.routes";
 import reviewRoutes from "./routes/review.routes";
+import paymentRoutes from "./routes/payment.routes";
+import packageRoutes from "./routes/package.routes";
+import messageRoutes from "./routes/message.routes";
+import medicineRoutes from "./routes/medicine.routes";
+import medicalRecordRoutes from "./routes/medical-record.routes";
+import videoCallRoutes from "./routes/video-call.routes";
+import notificationRoutes from "./routes/notification.routes";
+import voucherRoutes from "./routes/voucher.routes";
+import bookingProfileRoutes from "./routes/booking-profile.routes";
+import complaintRoutes from "./routes/complaint.routes";
 import { initReminderScheduler } from "./utils/emailService";
+import { startReminderJob } from "./jobs/reminderJob";
 import { verifyToken } from "./middleware/auth.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { getProfile } from "./controllers/auth.controller";
+import { autoCancelExpiredAppointments } from "./services/appointment.service";
 
-dotenv.config();
+
+
+// Patch BigInt to be serialized as string in JSON responses
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
 
 const app = express();
 
 // Production CORS Configuration
 const corsOrigin = process.env.CORS_ORIGIN;
-const allowedOrigins = corsOrigin && corsOrigin !== "*" ? corsOrigin.split(",") : ["http://localhost:3000"];
+const allowedOrigins = corsOrigin && corsOrigin !== "*"
+  ? corsOrigin.split(",")
+  : ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"];
 
 app.use(
   cors({
@@ -35,7 +56,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use("/public", express.static(path.join(__dirname, "../public")));
 
 app.use("/api/users", userRoutes);
@@ -46,8 +67,20 @@ app.use("/api", adminRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", articleRoutes);
 app.use("/api", reviewRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/api/payments", paymentRoutes); // /api/payments/status/:orderCode (public polling)
+app.use("/api", packageRoutes);
+app.use("/api/messages", messageRoutes);
 app.use("/api/doctor", doctorDashboardRoutes);
+app.use("/api/medicines", medicineRoutes);
+app.use("/api/medical-records", medicalRecordRoutes);
+app.use("/api/video-calls", videoCallRoutes);
 app.get("/api/profile", verifyToken, getProfile);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/vouchers", voucherRoutes);
+app.use("/api/booking-profiles", bookingProfileRoutes);
+app.use("/api/complaints", complaintRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("Healthcare Booking API Running...");
@@ -63,4 +96,18 @@ initSocket(httpServer, allowedOrigins);
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   initReminderScheduler();
+  startReminderJob();
+
+  // Run expired payment check immediately on startup
+  console.log("[Scheduler] Initializing auto-cancellation scheduler for expired payments...");
+  autoCancelExpiredAppointments().catch((err) =>
+    console.error("[Scheduler] Expired payments cleanup failed on startup:", err)
+  );
+
+  // Run expired payment check every 1 minute (60000 ms)
+  setInterval(() => {
+    autoCancelExpiredAppointments().catch((err) =>
+      console.error("[Scheduler] Scheduled expired payments cleanup failed:", err)
+    );
+  }, 1 * 60 * 1000);
 });

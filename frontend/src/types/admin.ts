@@ -8,6 +8,7 @@ export interface AdminUser {
   email: string;
   role: UserRole;
   doctorId: string | null;
+  isLocked: boolean;
   createdAt: string;
 }
 
@@ -173,6 +174,8 @@ export interface AdminArticle {
   content: string;
   thumbnail: string | null;
   published: boolean;
+  type: string;
+  author: { id: string; fullName: string | null; email: string } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -188,6 +191,7 @@ export interface CreateArticlePayload {
   content: string;
   thumbnail?: string;
   published?: boolean;
+  type?: string;
 }
 
 export interface UpdateArticlePayload {
@@ -195,6 +199,7 @@ export interface UpdateArticlePayload {
   content?: string;
   thumbnail?: string;
   published?: boolean;
+  type?: string;
 }
 
 // ─── Complaints ──────────────────────────────────────────────────
@@ -203,13 +208,31 @@ export type ComplaintStatus = "PENDING" | "RESOLVED";
 
 export interface AdminComplaint {
   id: string;
+  type?: "SYSTEM" | "SERVICE";
+  subject?: string;
   message: string;
   status: ComplaintStatus;
   userId: string;
+  createdAt: string;
+  adminResponse?: string;
   user: {
     email: string;
+    fullName: string | null;
   };
-  createdAt: string;
+  appointment: {
+    id: string;
+    appointmentDate: string;
+    status: string;
+    doctor: {
+      name: string;
+      specialty: {
+        name: string;
+      } | null;
+    } | null;
+    medicalPackage: {
+      name: string;
+    } | null;
+  } | null;
 }
 
 export interface AdminComplaintsResponse {
@@ -230,8 +253,14 @@ export interface AppointmentsBySpecialty {
   count: number;
 }
 
-export interface AppointmentsByMonth {
-  month: string;
+export interface TimeSeriesData {
+  period: string;
+  count?: number;
+  revenue?: number;
+}
+
+export interface CancellationStat {
+  reason: string;
   count: number;
 }
 
@@ -239,9 +268,12 @@ export interface AdminStatistics {
   totalUsers: number;
   totalDoctors: number;
   totalAppointments: number;
-  appointmentsByStatus: AppointmentsByStatus[];
+  totalRevenue: number;
+  appointmentsByStatus: Record<string, number>;
   appointmentsBySpecialty: AppointmentsBySpecialty[];
-  appointmentsByMonth: AppointmentsByMonth[];
+  appointmentsOverTime: TimeSeriesData[];
+  revenueOverTime: TimeSeriesData[];
+  cancellationStats: CancellationStat[];
 }
 
 export interface AdminStatisticsResponse {

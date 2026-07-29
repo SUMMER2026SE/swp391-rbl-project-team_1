@@ -136,8 +136,14 @@ export default function VideoCallPage() {
                     setConnectionStatus("connected");
                     toast.success(`${name} (${role === "DOCTOR" ? "Bác sĩ" : "Bệnh nhân"}) đã tham gia phòng.`);
                     
+                    // Emit a ready signal so the newly joined user knows we are here
+                    socket.emit("signal", {
+                        appointmentId,
+                        signalData: { type: "ready" }
+                    });
+
                     // If current user is the doctor, initiate peer connection
-                    if (currentUser.role === "DOCTOR") {
+                    if (currentUser.role === "DOCTOR" && !peerConnectionRef.current) {
                         initiateCall(stream, socket);
                     }
                 });
@@ -145,6 +151,13 @@ export default function VideoCallPage() {
                 socket.on("signal", async ({ signalData }) => {
                     const pc = peerConnectionRef.current;
                     
+                    if (signalData.type === "ready") {
+                        if (currentUser.role === "DOCTOR" && !peerConnectionRef.current) {
+                            initiateCall(stream, socket);
+                        }
+                        return;
+                    }
+
                     if (signalData.sdp) {
                         if (signalData.sdp.type === "offer") {
                             // Patient receives Offer
@@ -201,8 +214,7 @@ export default function VideoCallPage() {
                     }
                 });
 
-                // If doctor joins and patient might already be in room
-                socket.emit("signal", { appointmentId, signalData: { hello: true } });
+                // We don't need the hello signal anymore since we handle it in user-connected
 
             } catch (socketErr) {
                 console.error("Socket error:", socketErr);

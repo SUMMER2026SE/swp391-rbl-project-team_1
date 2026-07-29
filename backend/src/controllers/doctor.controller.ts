@@ -2,13 +2,10 @@ import { NextFunction, Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 
-import { getAllDoctors, getDoctorById, getDoctorByUserId, getAllSpecialties } from "../services/doctor.service";
-import { getDoctorAppointments } from "../services/appointment.service";
+import { getAllDoctors, getDoctorById, getAllSpecialties } from "../services/doctor.service";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
 import { ApiError } from "../utils/apiError";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../prisma/client";
 const DOCTORS_DIR = path.join(process.cwd(), "public", "doctors");
 
 /**
@@ -72,42 +69,6 @@ export async function getDoctor(
 
         const doctor = await getDoctorById(id);
         res.json({ message: "Doctor details fetched successfully", doctor });
-    } catch (error) {
-        next(error);
-    }
-}
-
-/**
- * GET /api/doctor/appointments
- * Protected (DOCTOR role): Get all appointments for the authenticated doctor.
- *
- * Flow: JWT userId → User.doctorId → Doctor.id → appointments
- */
-export async function getDoctorAppointmentsController(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-): Promise<void> {
-    try {
-        if (!req.user?.userId) {
-            throw new ApiError("User not authenticated", 401);
-        }
-
-        // Resolve Doctor record from User account via User.doctorId link
-        const doctor = await getDoctorByUserId(req.user.userId);
-
-        const appointments = await getDoctorAppointments(doctor.id);
-
-        res.json({
-            message: "Doctor appointments retrieved successfully",
-            doctor: {
-                id: doctor.id,
-                name: doctor.name,
-                specialty: doctor.specialty?.name || "",
-            },
-            count: appointments.length,
-            data: appointments,
-        });
     } catch (error) {
         next(error);
     }
@@ -242,6 +203,88 @@ export async function batchUpdateAvatars(
             updatedCount,
             results,
         });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * GET /api/doctors/featured
+ * Public: Get featured doctors (rating >= 4.5, most appointments this month, approved status)
+ */
+export async function getFeaturedDoctors(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const today = new Date();
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        // Fetch approved doctors with reviews and appointments this month
+        const doctors = await prisma.doctor.findMany({
+            where: { status: 'APPROVED' },
+            include: {
+                specialty: { select: { name: true, slug: true } },
+                clinic: { select: { name: true } },
+                reviews: { select: { rating: true } },
+                appointments: {
+                    where: { appointmentDate: { gte: startOfMonth } },
+                    select: { id: true }
+                }
+            }
+        });
+
+        const mappedDoctors = doctors.map(doctor => {
+            const avgRating = doctor.reviews.length > 0
+                ? doctor.reviews.reduce((sum, r) => sum + r.rating, 0) / doctor.reviews.length
+                : 0;
+            return {
+                ...doctor,
+                avgRating: Number(avgRating.toFixed(1)),
+                reviewCount: doctor.reviews.length,
+                appointmentsThisMonthCount: doctor.appointments.length,
+            };
+        });
+
+        // Filter: avgRating >= 4.5, then sort by appointments count (descending)
+        const featured = mappedDoctors
+            .filter(d => d.avgRating >= 4.5)
+            .sort((a, b) => b.appointmentsThisMonthCount - a.appointmentsThisMonthCount)
+            .slice(0, 6)
+            .map(d => ({
+                id: d.id,
+                name: d.name,
+                avatar: d.avatar,
+                specialty: d.specialty,
+                clinic: d.clinic,
+                experience: d.experience,
+                price: d.price,
+                avgRating: d.avgRating,
+                reviewCount: d.reviewCount,
+            }));
+
+        // If not enough doctors have >= 4.5 rating, just return the ones with most appointments
+        if (featured.length < 6) {
+             const others = mappedDoctors
+                 .filter(d => d.avgRating < 4.5 && !featured.find(f => f.id === d.id))
+                 .sort((a, b) => b.appointmentsThisMonthCount - a.appointmentsThisMonthCount)
+                 .slice(0, 6 - featured.length)
+                 .map(d => ({
+                     id: d.id,
+                     name: d.name,
+                     avatar: d.avatar,
+                     specialty: d.specialty,
+                     clinic: d.clinic,
+                     experience: d.experience,
+                     price: d.price,
+                     avgRating: d.avgRating,
+                     reviewCount: d.reviewCount,
+                 }));
+             featured.push(...others);
+        }
+
+        res.json({ message: "Featured doctors fetched successfully", doctors: featured });
     } catch (error) {
         next(error);
     }

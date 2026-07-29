@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import axios from "axios";
-import { User, Role } from "@prisma/client";
+import { OAuth2Client } from "google-auth-library";
+import { User, Role, Prisma } from "@prisma/client";
 
 import prisma from "../prisma/client";
 import { ApiError } from "../utils/apiError";
@@ -13,8 +13,11 @@ if (!JWT_SECRET) {
     throw new Error("JWT_SECRET environment variable is required");
 }
 
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 export interface AuthTokenPayload {
     userId: string;
+    id?: string;
     role: Role;
     iat?: number;
     exp?: number;
@@ -95,10 +98,11 @@ export async function verifyOtp(email: string, otp: string): Promise<{ isValid: 
         throw new ApiError("OTP has expired", 400);
     }
 
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete registration
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
 
     return { isValid: true };
@@ -141,21 +145,33 @@ export async function registerUser(
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // 4. Create real User record
-    const user = await prisma.user.create({
-        data: {
-            email: normalizedEmail,
-            password: hashedPassword,
-            role: Role.USER,
-        },
-        select: {
-            id: true,
-            email: true,
-            role: true,
-            doctorId: true,
-            createdAt: true,
-            updatedAt: true,
-        },
-    });
+    // Wrap in try/catch to handle race condition where two simultaneous requests
+    // both pass the existingUser check above and both try to create the same user.
+    // Database unique constraint on email will throw Prisma P2002 for the second one.
+    let user: RegisterResult;
+    try {
+        user = await prisma.user.create({
+            data: {
+                email: normalizedEmail,
+                password: hashedPassword,
+                role: Role.USER,
+            },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                doctorId: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+    } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+            // Unique constraint violation — email was registered by a concurrent request
+            throw new ApiError("Email already registered", 409);
+        }
+        throw err;
+    }
 
     // 5. Delete OTP records for this email after registration is complete
     await prisma.oTP.deleteMany({
@@ -192,6 +208,10 @@ export async function authenticateUser(
         throw new ApiError("Invalid credentials", 401);
     }
 
+    if (user.isLocked) {
+        throw new ApiError("This account is locked. Please contact the administrator.", 403);
+    }
+
     const payload: AuthTokenPayload = {
         userId: user.id,
         role: user.role,
@@ -218,12 +238,17 @@ export async function findUserById(id: string): Promise<Omit<User, "password"> |
             avatar: true,
             gender: true,
             address: true,
+            province: true,
+            district: true,
+            ward: true,
+            street: true,
             dateOfBirth: true,
             bloodType: true,
             allergies: true,
             chronicDiseases: true,
             personalHistory: true,
             familyHistory: true,
+            isLocked: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -292,10 +317,11 @@ export async function verifyResetOtp(email: string, otp: string): Promise<{ isVa
         throw new ApiError("OTP has expired", 400);
     }
 
-    // Set OTP to verified
+    // Set OTP to verified and extend expiresAt by 10 minutes so user has time to complete password reset
+    const extendedExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.oTP.update({
         where: { id: otpRecord.id },
-        data: { verified: true },
+        data: { verified: true, expiresAt: extendedExpiresAt },
     });
 
     return { isValid: true };
@@ -354,18 +380,15 @@ export async function resetPassword(
  */
 export async function googleLogin(idToken: string): Promise<AuthResult> {
     try {
-        // Verify token with Google API
-        const response = await axios.get<{
-            email?: string;
-            email_verified?: string | boolean;
-            name?: string;
-            picture?: string;
-            aud?: string;
-        }>(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+        // Verify token with Google Auth Library
+        const ticket = await googleClient.verifyIdToken({
+            idToken: idToken,
+            audience: process.env.GOOGLE_CLIENT_ID?.trim(),
+        });
 
-        const payload = response.data;
+        const payload = ticket.getPayload();
 
-        if (!payload.email) {
+        if (!payload || !payload.email) {
             throw new ApiError("Google login failed: Email not provided in token", 400);
         }
 
@@ -378,16 +401,34 @@ export async function googleLogin(idToken: string): Promise<AuthResult> {
 
         if (!user) {
             // Register new user with Google details
-            user = await prisma.user.create({
-                data: {
-                    email: normalizedEmail,
-                    password: null, // Nullable password for Google login
-                    fullName: payload.name || null,
-                    avatar: payload.picture || null,
-                    role: Role.USER,
-                },
-            });
+            // Wrap in try/catch to handle race condition (two simultaneous Google logins
+            // for the same email — both see user is null, both try to create).
+            try {
+                user = await prisma.user.create({
+                    data: {
+                        email: normalizedEmail,
+                        password: null, // Nullable password for Google login
+                        fullName: payload.name || null,
+                        avatar: payload.picture || null,
+                        role: Role.USER,
+                    },
+                });
+            } catch (createErr) {
+                if (createErr instanceof Prisma.PrismaClientKnownRequestError && createErr.code === "P2002") {
+                    // Another concurrent request created the user first — fetch the existing record
+                    const raceUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+                    if (!raceUser) {
+                        throw new ApiError("Failed to create or retrieve user account", 500);
+                    }
+                    user = raceUser;
+                } else {
+                    throw createErr;
+                }
+            }
         } else {
+            if (user.isLocked) {
+                throw new ApiError("This account is locked. Please contact the administrator.", 403);
+            }
             // Update profile fields if they are missing
             const dataToUpdate: { fullName?: string; avatar?: string } = {};
             if (!user.fullName && payload.name) dataToUpdate.fullName = payload.name;
@@ -414,12 +455,16 @@ export async function googleLogin(idToken: string): Promise<AuthResult> {
         const { password: _password, ...safeUser } = user;
 
         return { token, user: safeUser };
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof ApiError) {
             throw error;
         }
         console.error("Google authentication error:", error);
-        throw new ApiError("Invalid Google ID Token or network error", 401);
+        
+        // Extract the exact error message from google-auth-library
+        const exactError = error instanceof Error ? error.message : "Unknown error";
+        const errorMessage = `Google Auth Failed: ${exactError}`;
+        throw new ApiError(errorMessage, 401);
     }
 }
 

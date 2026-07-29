@@ -6,6 +6,7 @@ import { BookingProvider } from "@/context/BookingContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AIChatbot from "@/components/common/AIChatbot";
+import TawkToWidget from "@/components/common/TawkToWidget";
 import { Toaster } from "react-hot-toast";
 
 const inter = Inter({
@@ -41,6 +42,7 @@ export default function RootLayout({
             </main>
             <Footer />
             <AIChatbot />
+            <TawkToWidget />
             <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
           </BookingProvider>
         </AuthProvider>

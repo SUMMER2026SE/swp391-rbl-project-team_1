@@ -1,0 +1,770 @@
+import crypto from "crypto";
+import { PaymentStatus, PaymentMethod, AppointmentStatus } from "@prisma/client";
+import prisma from "../prisma/client";
+import { ApiError } from "../utils/apiError";
+import { getIO } from "../utils/socket";
+import { createNotification } from "./notificationService";
+import { sendBookingConfirmationEmail } from "../utils/emailService";
+import { validateVoucher } from "./voucher.service";
+const PayOS = require("@payos/node");
+
+const payos = new PayOS(
+    process.env.PAYOS_CLIENT_ID || "",
+    process.env.PAYOS_API_KEY || "",
+    process.env.PAYOS_CHECKSUM_KEY || ""
+);
+
+// Helper to format Date to yyyyMMddHHmmss
+function getFormattedDate(date: Date): string {
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return (
+        date.getFullYear() +
+        pad(date.getMonth() + 1) +
+        pad(date.getDate()) +
+        pad(date.getHours()) +
+        pad(date.getMinutes()) +
+        pad(date.getSeconds())
+    );
+}
+
+// Helper to sort object keys alphabetically
+export function sortObject(obj: any): any {
+    const sorted: any = {};
+    const keys = Object.keys(obj).sort();
+    for (const key of keys) {
+        sorted[key] = obj[key];
+    }
+    return sorted;
+}
+
+export interface VNPayUrlParams {
+    appointmentId: string;
+    ipAddr: string;
+}
+
+/**
+ * Service to generate VNPay Payment URL
+ */
+export async function createVNPayUrl(params: VNPayUrlParams): Promise<string> {
+    const { appointmentId, ipAddr } = params;
+
+    // 1. Fetch Appointment and Doctor's Price
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { doctor: true, user: true },
+    });
+
+    if (!appointment) {
+        throw new ApiError("Lịch hẹn không tồn tại", 404);
+    }
+
+    if (appointment.status !== "PENDING_PAYMENT") {
+        throw new ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
+    }
+
+    // Default to appointment.amount, then doctor price, fallback to 150,000 VND
+    const amount = appointment.amount || appointment.doctor?.price || 150000;
+
+    const tmnCode = process.env.VNP_TMNCODE;
+    const secretKey = process.env.VNP_HASHSECRET;
+    let vnpUrl = process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    const returnUrl = process.env.VNP_RETURNURL;
+
+    if (!tmnCode || !secretKey || !returnUrl) {
+        throw new ApiError(
+            "Cấu hình VNPay bị thiếu. Vui lòng cấu hình VNP_TMNCODE, VNP_HASHSECRET và VNP_RETURNURL trong biến môi trường.",
+            500
+        );
+    }
+
+    const date = new Date();
+    const createDate = getFormattedDate(date);
+    
+    // Append timestamp to txnRef to avoid duplicate transaction code errors in sandbox
+    const txnRef = `${appointmentId}__${date.getTime()}`;
+
+    // 2. Prepare VNPay Parameters
+    const vnpParams: any = {
+        vnp_Version: "2.1.0",
+        vnp_Command: "pay",
+        vnp_TmnCode: tmnCode,
+        vnp_Locale: "vn",
+        vnp_CurrCode: "VND",
+        vnp_TxnRef: txnRef,
+        vnp_OrderInfo: `Thanh toan dat lich kham bac si ${appointment.doctor?.name || ""}`,
+        vnp_OrderType: "250000", // Medical services
+        vnp_Amount: amount * 100, // VNPay requires amount * 100
+        vnp_ReturnUrl: returnUrl,
+        vnp_IpAddr: ipAddr || "127.0.0.1",
+        vnp_CreateDate: createDate,
+    };
+
+    // Sort params
+    const sortedParams = sortObject(vnpParams);
+
+    // 3. Build signData query string
+    const signData = Object.keys(sortedParams)
+        .map((key) => {
+            const val = sortedParams[key];
+            if (val !== undefined && val !== null && val !== "") {
+                return `${encodeURIComponent(key)}=${encodeURIComponent(val.toString()).replace(/%20/g, "+")}`;
+            }
+            return "";
+        })
+        .filter(Boolean)
+        .join("&");
+
+    // 4. Generate HMAC SHA512 signature
+    const hmac = crypto.createHmac("sha512", secretKey);
+    const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
+
+    // 5. Append secure hash to query parameters
+    const queryParams = Object.keys(sortedParams)
+        .map((key) => {
+            const val = sortedParams[key];
+            if (val !== undefined && val !== null && val !== "") {
+                return `${encodeURIComponent(key)}=${encodeURIComponent(val.toString()).replace(/%20/g, "+")}`;
+            }
+            return "";
+        })
+        .filter(Boolean)
+        .join("&");
+
+    vnpUrl += `?${queryParams}&vnp_SecureHash=${signed}`;
+
+    // 6. Upsert Payment record as PENDING
+    await prisma.payment.upsert({
+        where: { appointmentId },
+        update: {
+            amount,
+            method: PaymentMethod.VNPAY,
+            status: PaymentStatus.PENDING,
+            paymentGateway: "VNPAY",
+        },
+        create: {
+            appointmentId,
+            amount,
+            method: PaymentMethod.VNPAY,
+            status: PaymentStatus.PENDING,
+            paymentGateway: "VNPAY",
+        },
+    });
+
+    return vnpUrl;
+}
+
+/**
+ * Verify signature from VNPay redirect/IPN
+ */
+export function verifyVNPaySignature(vnpParams: any): boolean {
+    const secureHash = vnpParams["vnp_SecureHash"];
+    
+    // Copy and clean params
+    const cleanParams = { ...vnpParams };
+    delete cleanParams["vnp_SecureHash"];
+    delete cleanParams["vnp_SecureHashType"];
+
+    const sortedParams = sortObject(cleanParams);
+    const secretKey = process.env.VNP_HASHSECRET;
+    if (!secretKey) {
+        throw new Error("VNP_HASHSECRET environment variable is required");
+    }
+
+    // Build signData query string
+    const signData = Object.keys(sortedParams)
+        .map((key) => {
+            const val = sortedParams[key];
+            if (val !== undefined && val !== null && val !== "") {
+                return `${encodeURIComponent(key)}=${encodeURIComponent(val.toString()).replace(/%20/g, "+")}`;
+            }
+            return "";
+        })
+        .filter(Boolean)
+        .join("&");
+
+    const hmac = crypto.createHmac("sha512", secretKey);
+    const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
+
+    return secureHash === signed;
+}
+
+/**
+ * Handle successful payment transaction (idempotent, Serializable isolation)
+ */
+export async function processPaymentSuccess(appointmentId: string, transactionId: string) {
+    await prisma.$transaction(async (tx) => {
+        const appt = await tx.appointment.findUnique({
+            where: { id: appointmentId },
+            include: { payment: true },
+        });
+
+        if (!appt) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        // Idempotency: already PAID & CONFIRMED → nothing to do
+        if (appt.payment?.status === PaymentStatus.PAID && appt.status === AppointmentStatus.CONFIRMED) {
+            return;
+        }
+
+        // Guard: only confirm if appointment is still waiting for payment
+        if (appt.status !== "PENDING_PAYMENT") {
+            throw new ApiError(
+                `Không thể xác nhận thanh toán cho lịch hẹn ở trạng thái ${appt.status}`,
+                400
+            );
+        }
+
+        await tx.payment.update({
+            where: { appointmentId },
+            data: {
+                status: PaymentStatus.PAID,
+                transactionId,
+                payDate: new Date(),
+            },
+        });
+
+        await tx.appointment.update({
+            where: { id: appointmentId },
+            data: { status: AppointmentStatus.CONFIRMED },
+        });
+    }, { isolationLevel: "Serializable" });
+
+    // Send confirmation email after transaction succeeds
+    try {
+        const fullAppt = await prisma.appointment.findUnique({
+            where: { id: appointmentId },
+            include: {
+                user: true,
+                doctor: { include: { specialty: true, clinic: true } },
+                medicalPackage: true,
+                payment: true,
+            }
+        });
+        if (fullAppt?.user?.email) {
+            const patientInfo = (fullAppt.patientInfo as any);
+            sendBookingConfirmationEmail(fullAppt.user.email, {
+                patientName: patientInfo?.fullName || fullAppt.user.fullName || fullAppt.user.email || "Bệnh nhân",
+                doctorName: fullAppt.doctor?.name || "Hệ thống",
+                specialtyName: (fullAppt.doctor as any)?.specialty?.name || "",
+                clinicName: (fullAppt.doctor as any)?.clinic?.name || fullAppt.doctor?.hospital || "Bệnh viện",
+                appointmentDate: fullAppt.appointmentDate,
+                amount: fullAppt.amount,
+                paymentMethod: "VNPay",
+                transactionCode: transactionId,
+                paymentAt: fullAppt.payment?.payDate || undefined,
+                appointmentId: fullAppt.id,
+                bookingCode: fullAppt.bookingCode,
+                packageName: fullAppt.medicalPackage?.name || null,
+                status: "CONFIRMED",
+            }).catch(console.error);
+        }
+    } catch (e) {
+        console.error("[VNPay] Failed to send confirmation email:", e);
+    }
+}
+
+/**
+ * Handle failed payment transaction (idempotent, Serializable isolation)
+ */
+export async function processPaymentFailed(appointmentId: string, transactionId: string) {
+    await prisma.$transaction(async (tx) => {
+        const appt = await tx.appointment.findUnique({
+            where: { id: appointmentId },
+            include: { payment: true },
+        });
+
+        if (!appt) {
+            throw new ApiError("Lịch hẹn không tồn tại", 404);
+        }
+
+        // If payment is already PAID or appointment already CONFIRMED, do NOT revert
+        if (
+            appt.payment?.status === PaymentStatus.PAID ||
+            appt.status === AppointmentStatus.CONFIRMED
+        ) {
+            return;
+        }
+
+        // If appointment is already CANCELLED or EXPIRED, do not reset
+        if (appt.status !== "PENDING_PAYMENT") {
+            return;
+        }
+
+        await tx.payment.update({
+            where: { appointmentId },
+            data: { status: PaymentStatus.FAILED, transactionId },
+        });
+
+        // Reset appointment so user can retry payment
+        await tx.appointment.update({
+            where: { id: appointmentId },
+            data: { status: "PENDING_PAYMENT" },
+        });
+    }, { isolationLevel: "Serializable" });
+}
+
+/**
+ * Direct Mock Payment service (for test/local development)
+ */
+export async function processMockPayment(appointmentId: string) {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { doctor: { include: { specialty: true, clinic: true } }, user: true, medicalPackage: true },
+    });
+
+    if (!appointment) {
+        throw new ApiError("Lịch hẹn không tồn tại", 404);
+    }
+
+    const amount = appointment.amount || appointment.doctor?.price || 150000;
+    const mockTxnNo = `MOCK_TXN_${Date.now()}`;
+
+    await prisma.$transaction([
+        prisma.payment.upsert({
+            where: { appointmentId },
+            update: {
+                amount,
+                status: PaymentStatus.PAID,
+                method: PaymentMethod.MOCK,
+                transactionId: mockTxnNo,
+                paymentGateway: "MOCK",
+                payDate: new Date(),
+            },
+            create: {
+                appointmentId,
+                amount,
+                status: PaymentStatus.PAID,
+                method: PaymentMethod.MOCK,
+                transactionId: mockTxnNo,
+                paymentGateway: "MOCK",
+                payDate: new Date(),
+            },
+        }),
+        prisma.appointment.update({
+            where: { id: appointmentId },
+            data: {
+                status: AppointmentStatus.CONFIRMED,
+            },
+        }),
+    ]);
+
+    // Send confirmation email after mock payment
+    if (appointment.user?.email) {
+        const patientInfo = (appointment.patientInfo as any);
+        sendBookingConfirmationEmail(appointment.user.email, {
+            patientName: patientInfo?.fullName || appointment.user.fullName || appointment.user.email || "Bệnh nhân",
+            doctorName: appointment.doctor?.name || "Hệ thống",
+            specialtyName: (appointment.doctor as any)?.specialty?.name || "",
+            clinicName: (appointment.doctor as any)?.clinic?.name || appointment.doctor?.hospital || "Bệnh viện",
+            appointmentDate: appointment.appointmentDate,
+            amount,
+            paymentMethod: "Mock",
+            transactionCode: mockTxnNo,
+            paymentAt: new Date(),
+            appointmentId: appointment.id,
+            bookingCode: appointment.bookingCode,
+            packageName: appointment.medicalPackage?.name || null,
+            status: "CONFIRMED",
+        }).catch(console.error);
+    }
+
+    return {
+        success: true,
+        appointmentId,
+        transactionId: mockTxnNo,
+    };
+}
+
+/**
+ * PayOS: Create Payment Link
+ */
+export async function createPayOSPaymentLink(appointmentId: string, voucherCode?: string, discountAmount?: number) {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { doctor: true },
+    });
+
+    if (!appointment) {
+        throw new ApiError("Lịch hẹn không tồn tại", 404);
+    }
+
+    if (appointment.status !== "PENDING_PAYMENT") {
+        throw new ApiError("Lịch hẹn không ở trạng thái chờ thanh toán", 400);
+    }
+
+    // Generate a numeric order code < 9007199254740991
+    const orderCode = (Date.now() % 1_000_000_000) * 1000 + Math.floor(Math.random() * 1000);
+    // Use appointment amount or doctor price as base
+    const baseAmount = appointment.amount || appointment.doctor?.price || 5000;
+
+    let finalDiscountAmount = discountAmount || 0;
+    if (voucherCode) {
+        const validation = await validateVoucher({
+            code: voucherCode,
+            userId: appointment.userId,
+            depositAmount: baseAmount,
+            specialtyId: appointment.doctor?.specialtyId || undefined,
+            packageId: appointment.packageId || undefined,
+        });
+
+        if (!validation.valid) {
+            throw new ApiError(validation.message || "Voucher không hợp lệ hoặc đã hết hạn", 400);
+        }
+        finalDiscountAmount = validation.discountAmount || 0;
+    }
+
+    // Apply voucher discount if provided
+    const amount = finalDiscountAmount ? Math.max(baseAmount - finalDiscountAmount, 1000) : baseAmount;
+    const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);
+    
+    // Set expired time = now + 5 minutes
+    const expiredAt = Math.floor(Date.now() / 1000) + 5 * 60;
+    const expiredAtDate = new Date(Date.now() + 5 * 60 * 1000);
+
+    const returnUrl = process.env.FRONTEND_PAYMENT_REDIRECT_URL || "http://localhost:3000/my-appointments";
+    const cancelUrl = process.env.FRONTEND_PAYMENT_REDIRECT_URL || "http://localhost:3000/my-appointments";
+
+    const requestData = {
+        orderCode,
+        amount,
+        description,
+        cancelUrl,
+        returnUrl,
+        expiredAt
+    };
+
+    const paymentLink = await payos.createPaymentLink(requestData);
+
+    // Save voucher info to appointment if applicable
+    if (voucherCode) {
+        await prisma.appointment.update({
+            where: { id: appointmentId },
+            data: {
+                voucherCode: voucherCode.toUpperCase(),
+                discountAmount: finalDiscountAmount,
+                amount: amount,
+            }
+        });
+    }
+
+    // Save to DB
+    await prisma.payment.upsert({
+        where: { appointmentId },
+        create: {
+            appointmentId,
+            amount,
+            status: PaymentStatus.PENDING,
+            method: PaymentMethod.PAYOS,
+            paymentGateway: "PAYOS",
+            orderCode: BigInt(orderCode),
+            expiredAt: expiredAtDate,
+        },
+        update: {
+            amount,
+            status: PaymentStatus.PENDING,
+            method: PaymentMethod.PAYOS,
+            paymentGateway: "PAYOS",
+            orderCode: BigInt(orderCode),
+            expiredAt: expiredAtDate,
+        }
+    });
+
+    return {
+        checkoutUrl: paymentLink.checkoutUrl,
+        qrCode: paymentLink.qrCode,
+        accountNumber: paymentLink.accountNumber,
+        accountName: paymentLink.accountName,
+        bin: paymentLink.bin,
+        amount: paymentLink.amount,
+        description: paymentLink.description,
+        orderCode: paymentLink.orderCode,
+        expiredAt: expiredAtDate.toISOString(),
+    };
+}
+
+/**
+ * PayOS: Get Payment Status for Polling
+ */
+export async function getPaymentStatusByOrderCode(orderCode: number) {
+    const payment = await prisma.payment.findFirst({
+        where: { orderCode: BigInt(orderCode) },
+        include: { appointment: true }
+    });
+
+    if (!payment) {
+        // Polling endpoint: return PENDING instead of throwing 404
+        // Payment record may not exist yet due to timing/race conditions
+        return {
+            status: "PENDING" as const,
+            appointmentId: null,
+        };
+    }
+
+    // Try to sync with PayOS if local status is still PENDING (useful for localhost without webhook)
+    if (payment.status === PaymentStatus.PENDING) {
+        try {
+            const payosInfo = await payos.getPaymentLinkInformation(orderCode);
+            if (payosInfo.status === "PAID" || payosInfo.status === "Success") {
+                await prisma.$transaction([
+                    prisma.payment.update({
+                        where: { id: payment.id, status: PaymentStatus.PENDING },
+                        data: {
+                            status: PaymentStatus.PAID,
+                            payDate: new Date(),
+                            transactionId: "PAYOS-SYNC-" + Date.now(),
+                        }
+                    }),
+                    prisma.appointment.update({
+                        where: { id: payment.appointmentId },
+                        data: {
+                            status: AppointmentStatus.CONFIRMED,
+                            paymentAt: new Date(),
+                        }
+                    })
+                ]);
+                payment.status = PaymentStatus.PAID;
+
+                // Send booking confirmation email after polling sync
+                const fullAppointment = await prisma.appointment.findUnique({
+                    where: { id: payment.appointmentId },
+                    include: {
+                        user: true,
+                        doctor: { include: { specialty: true, clinic: true } },
+                        medicalPackage: true,
+                    }
+                });
+                if (fullAppointment?.user?.email) {
+                    const patientInfo = fullAppointment.patientInfo as any;
+                    sendBookingConfirmationEmail(fullAppointment.user.email, {
+                        patientName: patientInfo?.fullName || fullAppointment.user.fullName || fullAppointment.user.email,
+                        doctorName: fullAppointment.doctor?.name || "Hệ thống",
+                        specialtyName: fullAppointment.doctor?.specialty?.name || "",
+                        clinicName: fullAppointment.doctor?.clinic?.name || fullAppointment.doctor?.hospital || "Bệnh viện",
+                        appointmentDate: fullAppointment.appointmentDate,
+                        amount: fullAppointment.amount,
+                        paymentMethod: "PAYOS",
+                        transactionCode: fullAppointment.transactionCode || undefined,
+                        appointmentId: fullAppointment.id,
+                        bookingCode: fullAppointment.bookingCode,
+                        packageName: fullAppointment.medicalPackage?.name || null,
+                        status: "CONFIRMED",
+                    }).catch(console.error);
+                }
+            }
+        } catch (e) {
+            console.error("PayOS status sync error:", e);
+        }
+    }
+
+    return {
+        status: payment.status,
+        appointmentId: payment.appointmentId,
+    };
+}
+
+/**
+ * PayOS: Process Webhook
+ */
+export async function processPayOSWebhook(body: any) {
+    const webhookData = payos.verifyPaymentWebhookData(body);
+    
+    const { orderCode, amount, code } = webhookData;
+
+    if (code !== "00") {
+        console.log(`[PayOS Webhook] Giao dịch ${orderCode} thất bại (code=${code}). Bỏ qua.`);
+        return { message: "Ignored: Payment failed" };
+    }
+
+    // Use prisma.$transaction to prevent race condition (idempotent)
+    const payment = await prisma.payment.findFirst({
+        where: { orderCode: BigInt(orderCode) },
+        include: { appointment: true }
+    });
+
+    if (!payment) {
+        return { message: "Ignored: Payment not found" };
+    }
+
+    if (payment.status !== PaymentStatus.PENDING) {
+        return { message: "Ignored: Payment already processed" };
+    }
+
+    // Atomic update
+    const [updatedPayment, updatedAppointment] = await prisma.$transaction([
+        prisma.payment.update({
+            where: { id: payment.id, status: PaymentStatus.PENDING },
+            data: {
+                status: PaymentStatus.PAID,
+                payDate: new Date(),
+                transactionId: String(webhookData.reference || `PAYOS-${Date.now()}`),
+            }
+        }),
+        prisma.appointment.update({
+            where: { id: payment.appointmentId },
+            data: {
+                status: AppointmentStatus.CONFIRMED,
+                paymentAt: new Date(),
+            },
+            include: { user: true, doctor: true }
+        })
+    ]);
+
+    // Notifications
+    try {
+        const userId = updatedAppointment.userId;
+        const doctorId = updatedAppointment.doctorId;
+
+        // Notify User
+        await createNotification({
+            userId: userId,
+            type: "APPOINTMENT_CONFIRMED",
+            title: "Xác nhận lịch hẹn",
+            message: "Lịch khám của bạn đã được xác nhận.",
+            data: { appointmentId: updatedAppointment.id, transactionCode: updatedAppointment.transactionCode }
+        });
+
+        // Notify Doctor
+        if (doctorId) {
+            const doctorUser = await prisma.user.findFirst({ where: { doctorId } });
+            if (doctorUser) {
+                await createNotification({
+                    userId: doctorUser.id,
+                    type: "NEW_APPOINTMENT",
+                    title: "Lịch hẹn mới",
+                    message: `Bạn có lịch hẹn mới đã thanh toán.`,
+                    data: { appointmentId: updatedAppointment.id }
+                });
+            }
+        }
+
+        // Notify Admin
+        const admins = await prisma.user.findMany({ where: { role: "ADMIN" } });
+        for (const admin of admins) {
+            await createNotification({
+                userId: admin.id,
+                type: "PAYMENT_RECEIVED",
+                title: "Thanh toán mới",
+                message: `Giao dịch mới từ lịch hẹn ${updatedAppointment.transactionCode}.`,
+                data: { appointmentId: updatedAppointment.id }
+            });
+        }
+    } catch (error) {
+        console.error("Notification error:", error);
+    }
+
+    // Apply voucher if one was used for this appointment
+    if (updatedAppointment.voucherCode && updatedAppointment.discountAmount) {
+        try {
+            const voucher = await prisma.voucher.findUnique({ where: { code: updatedAppointment.voucherCode } });
+            if (voucher) {
+                const existingUsage = await prisma.voucherUsage.findFirst({
+                    where: { voucherId: voucher.id, appointmentId: updatedAppointment.id }
+                });
+                if (!existingUsage) {
+                    const originalDeposit = updatedAppointment.amount + updatedAppointment.discountAmount;
+                    await prisma.$transaction([
+                        prisma.voucherUsage.create({
+                            data: {
+                                voucherId: voucher.id,
+                                userId: updatedAppointment.userId,
+                                appointmentId: updatedAppointment.id,
+                                originalDeposit: originalDeposit,
+                                discountAmount: updatedAppointment.discountAmount,
+                                finalDeposit: updatedAppointment.amount,
+                            }
+                        }),
+                        prisma.voucher.update({
+                            where: { id: voucher.id },
+                            data: { usedCount: { increment: 1 } }
+                        })
+                    ]);
+                    console.log(`[Voucher] Applied voucher ${voucher.code} for appointment ${updatedAppointment.id}`);
+                }
+            }
+        } catch (voucherError) {
+            console.error("[Voucher] Failed to record voucher usage:", voucherError);
+        }
+    }
+
+    // Send booking confirmation email — wrapped in .catch so it never crashes the webhook
+    if (updatedAppointment.user?.email) {
+        // Reload appointment with full relations for email
+        prisma.appointment.findUnique({
+            where: { id: updatedAppointment.id },
+            include: {
+                doctor: { include: { specialty: true, clinic: true } },
+                medicalPackage: true,
+            }
+        }).then((fullAppt) => {
+            if (!fullAppt) return;
+            const patientInfo = (fullAppt as any).patientInfo as any;
+            sendBookingConfirmationEmail(updatedAppointment.user!.email!, {
+                patientName: patientInfo?.fullName || updatedAppointment.user!.fullName || updatedAppointment.user!.email || "Bệnh nhân",
+                doctorName: fullAppt.doctor?.name || "Hệ thống",
+                specialtyName: (fullAppt.doctor as any)?.specialty?.name || "",
+                clinicName: (fullAppt.doctor as any)?.clinic?.name || (fullAppt.doctor as any)?.hospital || "Bệnh viện",
+                appointmentDate: updatedAppointment.appointmentDate,
+                amount: updatedPayment.amount,
+                paymentMethod: "PayOS",
+                transactionCode: updatedPayment.transactionId || undefined,
+                paymentAt: updatedPayment.payDate || undefined,
+                appointmentId: updatedAppointment.id,
+                bookingCode: updatedAppointment.bookingCode,
+                packageName: fullAppt.medicalPackage?.name || null,
+                status: "CONFIRMED",
+            });
+        }).catch(console.error);
+    }
+
+    return { message: "Webhook processed successfully" };
+}
+
+/**
+ * Cron Job: Cancel Expired PayOS Payments
+ */
+export async function cancelExpiredPayOSPayments() {
+    const now = new Date();
+    
+    const expiredPayments = await prisma.payment.findMany({
+        where: {
+            method: PaymentMethod.PAYOS,
+            status: PaymentStatus.PENDING,
+            expiredAt: { lt: now }
+        },
+        include: { appointment: true }
+    });
+
+    if (expiredPayments.length === 0) return 0;
+
+    for (const p of expiredPayments) {
+        await prisma.$transaction([
+            prisma.payment.update({
+                where: { id: p.id },
+                data: { status: PaymentStatus.EXPIRED }
+            }),
+            prisma.appointment.update({
+                where: { id: p.appointmentId },
+                data: { status: AppointmentStatus.EXPIRED, cancellationReason: "Quá hạn thanh toán PayOS" }
+            })
+        ]);
+
+        // Socket.io Notify User
+        try {
+            const io = getIO();
+            io.to(`user_${p.appointment.userId}`).emit("payment_expired", {
+                appointmentId: p.appointmentId,
+                message: "Link thanh toán đã hết hạn."
+            });
+            io.to("admin").emit("payment_updated", {
+                appointmentId: p.appointmentId,
+                status: "EXPIRED"
+            });
+        } catch (error) {
+            console.error("Socket emit expired error:", error);
+        }
+    }
+
+    console.log(`[Cron] Hủy ${expiredPayments.length} giao dịch PayOS quá hạn.`);
+    return expiredPayments.length;
+}

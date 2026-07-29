@@ -42,6 +42,11 @@ export const adminService = {
     return response.data;
   },
 
+  async lockUser(id: string, isLocked: boolean): Promise<{ message: string }> {
+    const response = await api.patch<{ message: string }>(`/admin/users/${id}/lock`, { isLocked });
+    return response.data;
+  },
+
   async linkDoctorToUser(userId: string, doctorId: string): Promise<{ message: string; data: AdminUser }> {
     const response = await api.post<{ message: string; data: AdminUser }>(
       `/admin/users/${userId}/link-doctor/${doctorId}`
@@ -169,14 +174,47 @@ export const adminService = {
     return response.data;
   },
 
-  async resolveComplaint(id: string): Promise<{ message: string; data: AdminComplaint }> {
-    const response = await api.put<{ message: string; data: AdminComplaint }>(`/admin/complaints/${id}/resolve`);
+  async resolveComplaint(id: string, adminResponse?: string): Promise<{ message: string; data: AdminComplaint }> {
+    const response = await api.put<{ message: string; data: AdminComplaint }>(`/admin/complaints/${id}/resolve`, { adminResponse });
     return response.data;
   },
 
   // ─── Statistics ────────────────────────────────────────────────
-  async getStatistics(): Promise<AdminStatisticsResponse> {
-    const response = await api.get<AdminStatisticsResponse>("/admin/statistics");
+  async getStatistics(period: 'week' | 'month' | 'year' = 'month'): Promise<AdminStatisticsResponse> {
+    const response = await api.get<AdminStatisticsResponse>(`/admin/statistics?period=${period}`);
+    return response.data;
+  },
+
+  async exportStatistics(): Promise<Blob> {
+    const response = await api.get<Blob>("/admin/statistics/export", { responseType: "blob" });
+    return response.data;
+  },
+
+  // ─── Audit Logs ────────────────────────────────────────────────
+  async getAuditLogs(params?: any): Promise<any> {
+    const response = await api.get("/admin/audit-logs", { params });
+    return response.data;
+  },
+
+  // ─── Notifications ─────────────────────────────────────────────
+  async getNotifications(unreadOnly = false): Promise<any> {
+    const response = await api.get("/admin/notifications", { params: { unread: unreadOnly } });
+    return response.data;
+  },
+
+  async markNotificationRead(id: string): Promise<any> {
+    const response = await api.put(`/admin/notifications/${id}/read`);
+    return response.data;
+  },
+
+  // ─── Certificate Verification ──────────────────────────────────
+  async getPendingCertificates(): Promise<any> {
+    const response = await api.get("/admin/certificates/pending");
+    return response.data;
+  },
+
+  async verifyCertificate(id: string, action: 'VERIFY' | 'REJECT', reason?: string): Promise<any> {
+    const response = await api.put(`/admin/certificates/${id}/verify`, { action, reason });
     return response.data;
   },
 };

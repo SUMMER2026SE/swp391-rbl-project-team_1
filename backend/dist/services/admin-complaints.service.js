@@ -22,6 +22,19 @@ async function getAllComplaints() {
                     role: true,
                 },
             },
+            appointment: {
+                select: {
+                    id: true,
+                    appointmentDate: true,
+                    status: true,
+                    doctor: {
+                        select: { name: true, specialty: { select: { name: true } } }
+                    },
+                    medicalPackage: {
+                        select: { name: true }
+                    },
+                },
+            },
         },
         orderBy: { createdAt: "desc" },
     });
@@ -29,7 +42,7 @@ async function getAllComplaints() {
 /**
  * Marks a complaint as resolved.
  */
-async function resolveComplaint(id) {
+async function resolveComplaint(id, adminResponse) {
     const complaint = await client_1.default.complaint.findUnique({ where: { id } });
     if (!complaint) {
         throw new apiError_1.ApiError("Complaint not found", 404);
@@ -39,7 +52,10 @@ async function resolveComplaint(id) {
     }
     return client_1.default.complaint.update({
         where: { id },
-        data: { status: client_2.ComplaintStatus.RESOLVED },
+        data: {
+            status: client_2.ComplaintStatus.RESOLVED,
+            ...(adminResponse !== undefined && { adminResponse })
+        },
         include: {
             user: {
                 select: {
@@ -47,6 +63,19 @@ async function resolveComplaint(id) {
                     email: true,
                     fullName: true,
                     role: true,
+                },
+            },
+            appointment: {
+                select: {
+                    id: true,
+                    appointmentDate: true,
+                    status: true,
+                    doctor: {
+                        select: { name: true, specialty: { select: { name: true } } }
+                    },
+                    medicalPackage: {
+                        select: { name: true }
+                    },
                 },
             },
         },

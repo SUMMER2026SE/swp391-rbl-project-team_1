@@ -1,8 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Calendar, Phone, Mail, MapPin, Heart } from "lucide-react";
+import LocationMap from "@/components/common/LocationMap";
 
 export default function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/doctor/") || pathname === "/doctor") {
+    return null;
+  }
 
   return (
     <footer className="bg-slate-900 text-slate-400 mt-auto border-t border-slate-800">
@@ -68,9 +77,12 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-2.5">
                 <MapPin className="h-4 w-4 text-teal-500 shrink-0 mt-0.5" />
-                <span>Trường Đại Học FPT Đà Nẵng</span>
+                <span>291 Nguyễn Văn Linh, Đà Nẵng</span>
               </li>
             </ul>
+            <div className="pt-3">
+              <LocationMap className="w-full h-32 rounded-xl" />
+            </div>
           </div>
         </div>
 

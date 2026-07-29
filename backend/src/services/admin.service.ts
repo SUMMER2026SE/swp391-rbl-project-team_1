@@ -2,6 +2,7 @@ import prisma from "../prisma/client";
 import { Role, AppointmentStatus } from "@prisma/client";
 import { ApiError } from "../utils/apiError";
 import { AdminUserDto } from "../types/user.types";
+import { sendBookingStatusUpdateEmail, sendBookingNotificationToDoctorEmail } from "../utils/emailService";
 
 export interface AppointmentWithRelations {
     id: string;
@@ -38,6 +39,7 @@ export async function getAllUsers(): Promise<AdminUserDto[]> {
             email: true,
             role: true,
             doctorId: true,
+            isLocked: true,
             createdAt: true,
         },
         orderBy: { createdAt: "desc" },
@@ -49,6 +51,11 @@ export async function getAllUsers(): Promise<AdminUserDto[]> {
  */
 export async function getAllAppointments(): Promise<AppointmentWithRelations[]> {
     return prisma.appointment.findMany({
+        where: {
+            status: {
+                not: "PENDING_PAYMENT",
+            },
+        },
         include: {
             user: {
                 select: {
@@ -87,6 +94,26 @@ export async function deleteUser(userId: string): Promise<void> {
     await prisma.appointment.deleteMany({ where: { userId } });
 
     await prisma.user.delete({ where: { id: userId } });
+}
+
+/**
+ * Locks or unlocks a user account.
+ */
+export async function lockUser(userId: string, isLocked: boolean): Promise<void> {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+        throw new ApiError("User not found", 404);
+    }
+
+    if (user.role === Role.ADMIN) {
+        throw new ApiError("Cannot lock admin users", 403);
+    }
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { isLocked },
+    });
 }
 
 export interface LinkDoctorResult {
@@ -157,7 +184,7 @@ export async function updateAppointmentStatus(
         throw new ApiError("Appointment not found", 404);
     }
 
-    return prisma.appointment.update({
+    const updated = await prisma.appointment.update({
         where: { id: appointmentId },
         data: { status, cancellationReason },
         include: {
@@ -166,6 +193,7 @@ export async function updateAppointmentStatus(
                     id: true,
                     email: true,
                     role: true,
+                    fullName: true,
                 },
             },
             doctor: {
@@ -173,8 +201,105 @@ export async function updateAppointmentStatus(
                     id: true,
                     name: true,
                     specialty: true,
+                    clinic: true,
+                    hospital: true,
+                    userAccount: {
+                        select: { email: true }
+                    }
                 },
             },
         },
-    }) as unknown as Promise<AppointmentWithRelations>;
+    });
+
+    if (updated.user?.email && updated.doctor && (status === "CONFIRMED" || status === "CANCELLED")) {
+        sendBookingStatusUpdateEmail(updated.user.email, {
+            patientName: updated.user.fullName || updated.user.email,
+            doctorName: updated.doctor.name,
+            specialtyName: updated.doctor.specialty.name,
+            clinicName: updated.doctor.clinic?.name || updated.doctor.hospital,
+            appointmentDate: updated.appointmentDate,
+            status,
+            cancellationReason,
+            notes: updated.notes,
+        }).catch((err) => console.error("Error sending status update email:", err));
+    }
+
+    if (updated.doctor?.userAccount?.email && status === "CONFIRMED") {
+        sendBookingNotificationToDoctorEmail(updated.doctor.userAccount.email, {
+            patientName: updated.user?.fullName || updated.user?.email || "Bệnh nhân",
+            doctorName: updated.doctor.name,
+            appointmentDate: updated.appointmentDate,
+            notes: updated.notes,
+            appointmentId: updated.id,
+        }).catch((err) => console.error("Error sending doctor notification email:", err));
+    }
+
+    return updated as unknown as AppointmentWithRelations;
+}
+
+/**
+ * Returns appointments that are pending approval (status PENDING and has paymentProof)
+ */
+export async function getPendingPayments() {
+    return prisma.appointment.findMany({
+        where: {
+            status: "PENDING",
+            paymentProof: {
+                not: null
+            }
+        },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    fullName: true,
+                    avatar: true,
+                },
+            },
+            doctor: {
+                select: {
+                    id: true,
+                    name: true,
+                    specialty: true,
+                    hospital: true,
+                },
+            },
+        },
+        orderBy: { paymentAt: "asc" },
+    });
+}
+
+/**
+ * Returns all appointments that have a payment record or a payment proof, sorted by newest.
+ */
+export async function getAllPayments() {
+    return prisma.appointment.findMany({
+        where: {
+            OR: [
+                { payment: { isNot: null } },
+                { paymentProof: { not: null } }
+            ]
+        },
+        include: {
+            payment: true,
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    fullName: true,
+                    avatar: true,
+                },
+            },
+            doctor: {
+                select: {
+                    id: true,
+                    name: true,
+                    specialty: true,
+                    hospital: true,
+                },
+            },
+        },
+        orderBy: { createdAt: "desc" },
+    });
 }

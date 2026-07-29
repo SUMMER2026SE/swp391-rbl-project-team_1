@@ -14,6 +14,11 @@ const apiError_1 = require("../utils/apiError");
  */
 async function getAllArticles() {
     return client_1.default.article.findMany({
+        include: {
+            author: {
+                select: { id: true, fullName: true, email: true }
+            }
+        },
         orderBy: { createdAt: "desc" },
     });
 }
@@ -27,6 +32,8 @@ async function createArticle(input) {
             content: input.content,
             thumbnail: input.thumbnail,
             published: input.published ?? false,
+            type: input.type ?? "news",
+            authorId: input.authorId,
         },
     });
 }
@@ -45,6 +52,7 @@ async function updateArticle(id, input) {
             ...(input.content !== undefined && { content: input.content }),
             ...(input.thumbnail !== undefined && { thumbnail: input.thumbnail }),
             ...(input.published !== undefined && { published: input.published }),
+            ...(input.type !== undefined && { type: input.type }),
         },
     });
 }

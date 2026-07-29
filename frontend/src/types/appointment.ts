@@ -1,7 +1,7 @@
 import { Doctor } from "./doctor";
 import { User } from "./auth";
 
-export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+export type AppointmentStatus = "PENDING_PAYMENT" | "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
 
 export interface Clinic {
   id: string;
@@ -47,11 +47,25 @@ export interface Review {
   };
 }
 
+export interface Payment {
+  id: string;
+  amount: number;
+  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "EXPIRED";
+  method: "VNPAY" | "MOCK" | "PAYOS";
+  transactionId?: string | null;
+  paymentGateway?: string | null;
+  payDate?: string | null;
+  orderCode?: string | null;
+  expiredAt?: string | null;
+  createdAt: string;
+}
+
 export interface Appointment {
   id: string;
   userId: string;
-  doctorId: string;
-  clinicId: string;
+  doctorId?: string;
+  clinicId?: string;
+  packageId?: string;
   appointmentDate: string; // ISO String
   status: AppointmentStatus;
   notes: string | null;
@@ -59,16 +73,51 @@ export interface Appointment {
   createdAt: string;
   doctor?: Doctor;
   clinic?: Clinic;
+  medicalPackage?: any;
+  patientProfileType?: "SELF" | "OTHER";
+  patientProfileName?: string | null;
+  patientInfo?: any;
   user?: User;
   medicalRecord?: MedicalRecord | null;
   review?: Review | null;
+  payment?: Payment | null;
+  
+  // Prepayment fields
+  transactionCode?: string | null;
+  amount?: number;
+  paymentProof?: string | null;
+  paymentAt?: string | null;
+}
+
+export interface PatientInfo {
+  fullName: string;
+  phoneNumber?: string;
+  email?: string;
+  gender?: string;
+  dateOfBirth?: string; // ISO String
+  province?: string;
+  district?: string;
+  ward?: string;
+  street?: string;
+  address?: string;
+  bloodType?: string;
+  allergies?: string;
+  chronicDiseases?: string;
+  personalHistory?: string;
+  familyHistory?: string;
+  // For OTHER type
+  yearOfBirth?: number;
+  relationship?: string;
 }
 
 export interface CreateAppointmentRequest {
-  doctorId: string;
-  clinicId: string;
+  patientInfo: PatientInfo;
+  patientProfileType?: 'SELF' | 'OTHER';
+  doctorId?: string;
+  clinicId?: string;
   appointmentDate: string; // ISO String
   notes?: string;
+  packageId?: string;
 }
 
 export interface CreateAppointmentResponse {

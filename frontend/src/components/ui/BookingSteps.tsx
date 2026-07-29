@@ -5,40 +5,30 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useBooking } from "@/hooks/useBooking";
 import BookingStepCard from "./BookingStepCard";
-import { Building2, Search, Clock, ClipboardCheck, AlertCircle } from "lucide-react";
+import { Search, Clock, ClipboardCheck, AlertCircle } from "lucide-react";
 
 export default function BookingSteps() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { selectedClinic, selectedDoctor } = useBooking();
+  const { selectedDoctor } = useBooking();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleStepClick = (stepIndex: number) => {
     setErrorMessage(null);
 
     if (stepIndex === 1) {
-      router.push("/clinics");
+      router.push("/doctors");
     } else if (stepIndex === 2) {
-      if (!selectedClinic) {
-        setErrorMessage("Vui lòng chọn một bệnh viện trước khi chọn bác sĩ!");
-        setTimeout(() => setErrorMessage(null), 4500);
-        setTimeout(() => {
-          router.push("/clinics");
-        }, 1500);
-      } else {
-        router.push(`/doctors?clinicId=${selectedClinic.id}`);
-      }
-    } else if (stepIndex === 3) {
       if (!selectedDoctor) {
         setErrorMessage("Vui lòng chọn một bác sĩ trước khi chọn khung giờ khám!");
         setTimeout(() => setErrorMessage(null), 4500);
         setTimeout(() => {
-          router.push(`/doctors?clinicId=${selectedClinic?.id}`);
+          router.push("/doctors");
         }, 1500);
       } else {
         router.push(`/doctors/${selectedDoctor.id}`);
       }
-    } else if (stepIndex === 4) {
+    } else if (stepIndex === 3) {
       if (!isAuthenticated) {
         router.push("/login?redirect=/my-appointments");
       } else {
@@ -62,42 +52,33 @@ export default function BookingSteps() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <BookingStepCard
           step="01"
-          title="Chọn Bệnh Viện"
-          description="Chọn bệnh viện ở khu vực Đà Nẵng mà bạn muốn khám."
-          icon={<Building2 className="h-5 w-5" />}
-          isActive={!selectedClinic}
-          isCompleted={!!selectedClinic}
+          title="Chọn Bác Sĩ"
+          description="Tìm kiếm bác sĩ theo chuyên môn phù hợp."
+          icon={<Search className="h-5 w-5" />}
+          isActive={!selectedDoctor}
+          isCompleted={!!selectedDoctor}
           onClick={() => handleStepClick(1)}
         />
         <BookingStepCard
           step="02"
-          title="Chọn Bác Sĩ"
-          description="Tìm kiếm bác sĩ theo chuyên môn phù hợp với bệnh viện."
-          icon={<Search className="h-5 w-5" />}
-          isActive={!!selectedClinic && !selectedDoctor}
-          isCompleted={!!selectedDoctor}
-          onClick={() => handleStepClick(2)}
-        />
-        <BookingStepCard
-          step="03"
           title="Chọn Khung Giờ"
           description="Xem lịch làm việc chi tiết và chọn ngày khám, khung giờ rảnh."
           icon={<Clock className="h-5 w-5" />}
           isActive={!!selectedDoctor}
           isCompleted={false}
-          onClick={() => handleStepClick(3)}
+          onClick={() => handleStepClick(2)}
         />
         <BookingStepCard
-          step="04"
+          step="03"
           title="Xác Nhận & Đặt Lịch"
           description="Đăng nhập tài khoản bệnh nhân, nhập triệu chứng và hoàn thành."
           icon={<ClipboardCheck className="h-5 w-5" />}
           isActive={false}
           isCompleted={false}
-          onClick={() => handleStepClick(4)}
+          onClick={() => handleStepClick(3)}
         />
       </div>
     </div>

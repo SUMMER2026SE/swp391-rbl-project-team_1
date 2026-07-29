@@ -11,7 +11,7 @@ interface CreateScheduleBody {
 }
 
 export async function createSchedule(
-    req: Request,
+    req: any,
     res: Response,
     next: NextFunction
 ): Promise<void> {
@@ -19,6 +19,20 @@ export async function createSchedule(
         const doctorId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
         if (!doctorId) {
             throw new ApiError("Doctor id is required", 400);
+        }
+
+        // Ownership check: the requesting DOCTOR must own this doctor profile
+        // User.doctorId links a user account to their Doctor profile (the FK is on User, not Doctor)
+        const requestingUserId: string = req.user?.userId;
+        const userRecord = await prisma.user.findUnique({
+            where: { id: requestingUserId },
+            select: { doctorId: true },
+        });
+        if (!userRecord?.doctorId || userRecord.doctorId !== doctorId) {
+            throw new ApiError(
+                "Bạn không có quyền tạo/cập nhật lịch trực cho bác sĩ này",
+                403
+            );
         }
 
         const body = req.body as CreateScheduleBody;
@@ -72,12 +86,16 @@ export async function listSchedules(
             }
         });
 
-        const bookedSlots = activeAppointments.map(app => app.appointmentDate.toISOString());
+        const bookedCounts: Record<string, number> = {};
+        activeAppointments.forEach(app => {
+            const iso = app.appointmentDate.toISOString();
+            bookedCounts[iso] = (bookedCounts[iso] || 0) + 1;
+        });
 
         res.json({
             message: "Schedules fetched",
             schedules,
-            bookedSlots
+            bookedCounts
         });
     } catch (error) {
         next(error);

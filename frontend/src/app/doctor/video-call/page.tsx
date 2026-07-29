@@ -130,7 +130,7 @@ export default function DoctorVideoCallOverviewPage() {
                                 </div>
 
                                 <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
-                                    <Link href={`/video-call?appointmentId=${app.id}`} className="flex-grow">
+                                    <Link href={`/doctor/video-call/${app.id}`} className="flex-grow">
                                         <Button variant="teal" className="w-full rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/10 py-2.5">
                                             <Video className="w-4 h-4" /> Vào phòng khám
                                         </Button>

@@ -6,16 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.listDoctors = listDoctors;
 exports.listSpecialties = listSpecialties;
 exports.getDoctor = getDoctor;
-exports.getDoctorAppointmentsController = getDoctorAppointmentsController;
 exports.updateDoctorAvatar = updateDoctorAvatar;
 exports.batchUpdateAvatars = batchUpdateAvatars;
+exports.getFeaturedDoctors = getFeaturedDoctors;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const doctor_service_1 = require("../services/doctor.service");
-const appointment_service_1 = require("../services/appointment.service");
 const apiError_1 = require("../utils/apiError");
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 const DOCTORS_DIR = path_1.default.join(process.cwd(), "public", "doctors");
 /**
  * GET /api/doctors
@@ -23,8 +21,8 @@ const DOCTORS_DIR = path_1.default.join(process.cwd(), "public", "doctors");
  */
 async function listDoctors(req, res, next) {
     try {
-        const { specialty } = req.query;
-        const doctors = await (0, doctor_service_1.getAllDoctors)(specialty);
+        const { specialty, clinicId } = req.query;
+        const doctors = await (0, doctor_service_1.getAllDoctors)(specialty, clinicId);
         res.json({
             message: "Doctors fetched successfully",
             count: doctors.length,
@@ -70,35 +68,6 @@ async function getDoctor(req, res, next) {
     }
 }
 /**
- * GET /api/doctor/appointments
- * Protected (DOCTOR role): Get all appointments for the authenticated doctor.
- *
- * Flow: JWT userId → User.doctorId → Doctor.id → appointments
- */
-async function getDoctorAppointmentsController(req, res, next) {
-    try {
-        if (!req.user?.userId) {
-            throw new apiError_1.ApiError("User not authenticated", 401);
-        }
-        // Resolve Doctor record from User account via User.doctorId link
-        const doctor = await (0, doctor_service_1.getDoctorByUserId)(req.user.userId);
-        const appointments = await (0, appointment_service_1.getDoctorAppointments)(doctor.id);
-        res.json({
-            message: "Doctor appointments retrieved successfully",
-            doctor: {
-                id: doctor.id,
-                name: doctor.name,
-                specialty: doctor.specialty?.name || "",
-            },
-            count: appointments.length,
-            data: appointments,
-        });
-    }
-    catch (error) {
-        next(error);
-    }
-}
-/**
  * POST /api/admin/doctors/:id/avatar
  * Protected (ADMIN role): Update doctor avatar with image URL or local file path
  *
@@ -121,7 +90,7 @@ async function updateDoctorAvatar(req, res, next) {
         }
         const imageUrl = avatarUrl || avatarPath;
         // Update database
-        const updatedDoctor = await prisma.doctor.update({
+        const updatedDoctor = await client_1.default.doctor.update({
             where: { id: doctorId },
             data: { avatar: imageUrl },
         });
@@ -166,7 +135,7 @@ async function batchUpdateAvatars(req, res, next) {
             }
             const doctorId = `doctor_${doctorIdMatch[1]}`;
             try {
-                const doctor = await prisma.doctor.findUnique({
+                const doctor = await client_1.default.doctor.findUnique({
                     where: { id: doctorId },
                 });
                 if (!doctor) {
@@ -177,7 +146,7 @@ async function batchUpdateAvatars(req, res, next) {
                     });
                     continue;
                 }
-                await prisma.doctor.update({
+                await client_1.default.doctor.update({
                     where: { id: doctorId },
                     data: { avatar: imagePath },
                 });
@@ -202,6 +171,79 @@ async function batchUpdateAvatars(req, res, next) {
             updatedCount,
             results,
         });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+/**
+ * GET /api/doctors/featured
+ * Public: Get featured doctors (rating >= 4.5, most appointments this month, approved status)
+ */
+async function getFeaturedDoctors(req, res, next) {
+    try {
+        const today = new Date();
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        // Fetch approved doctors with reviews and appointments this month
+        const doctors = await client_1.default.doctor.findMany({
+            where: { status: 'APPROVED' },
+            include: {
+                specialty: { select: { name: true, slug: true } },
+                clinic: { select: { name: true } },
+                reviews: { select: { rating: true } },
+                appointments: {
+                    where: { appointmentDate: { gte: startOfMonth } },
+                    select: { id: true }
+                }
+            }
+        });
+        const mappedDoctors = doctors.map(doctor => {
+            const avgRating = doctor.reviews.length > 0
+                ? doctor.reviews.reduce((sum, r) => sum + r.rating, 0) / doctor.reviews.length
+                : 0;
+            return {
+                ...doctor,
+                avgRating: Number(avgRating.toFixed(1)),
+                reviewCount: doctor.reviews.length,
+                appointmentsThisMonthCount: doctor.appointments.length,
+            };
+        });
+        // Filter: avgRating >= 4.5, then sort by appointments count (descending)
+        const featured = mappedDoctors
+            .filter(d => d.avgRating >= 4.5)
+            .sort((a, b) => b.appointmentsThisMonthCount - a.appointmentsThisMonthCount)
+            .slice(0, 6)
+            .map(d => ({
+            id: d.id,
+            name: d.name,
+            avatar: d.avatar,
+            specialty: d.specialty,
+            clinic: d.clinic,
+            experience: d.experience,
+            price: d.price,
+            avgRating: d.avgRating,
+            reviewCount: d.reviewCount,
+        }));
+        // If not enough doctors have >= 4.5 rating, just return the ones with most appointments
+        if (featured.length < 6) {
+            const others = mappedDoctors
+                .filter(d => d.avgRating < 4.5 && !featured.find(f => f.id === d.id))
+                .sort((a, b) => b.appointmentsThisMonthCount - a.appointmentsThisMonthCount)
+                .slice(0, 6 - featured.length)
+                .map(d => ({
+                id: d.id,
+                name: d.name,
+                avatar: d.avatar,
+                specialty: d.specialty,
+                clinic: d.clinic,
+                experience: d.experience,
+                price: d.price,
+                avgRating: d.avgRating,
+                reviewCount: d.reviewCount,
+            }));
+            featured.push(...others);
+        }
+        res.json({ message: "Featured doctors fetched successfully", doctors: featured });
     }
     catch (error) {
         next(error);

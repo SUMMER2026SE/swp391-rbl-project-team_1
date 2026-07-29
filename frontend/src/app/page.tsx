@@ -6,15 +6,31 @@ import { useRouter } from "next/navigation";
 import { Search, Calendar, ShieldCheck, Users, MapPin, ArrowRight, HeartPulse } from "lucide-react";
 import Button from "@/components/common/Button";
 import { specialtyService } from "@/services/specialty.service";
+import api from "@/services/api";
 import { Specialty } from "@/types/doctor";
 import BookingSteps from "@/components/ui/BookingSteps";
 import Pagination from "@/components/common/Pagination";
+import { Star, ShieldCheck as VerifiedIcon } from "lucide-react";
+
+interface FeaturedDoctor {
+  id: string;
+  name: string;
+  avatar: string;
+  specialty: { name: string };
+  clinic: { name: string };
+  experience: number;
+  price: number;
+  avgRating: number;
+  reviewCount: number;
+}
 
 export default function HomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [featuredDoctors, setFeaturedDoctors] = useState<FeaturedDoctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [currentSpecialtyPage, setCurrentSpecialtyPage] = useState(1);
   const SPECIALTIES_PER_PAGE = 8;
 
@@ -29,7 +45,20 @@ export default function HomePage() {
         setLoading(false);
       }
     }
+    
+    async function loadFeaturedDoctors() {
+      try {
+        const response = await api.get("/doctors/featured");
+        setFeaturedDoctors(response.data.doctors || []);
+      } catch (error) {
+        console.error("Failed to load featured doctors", error);
+      } finally {
+        setLoadingDoctors(false);
+      }
+    }
+
     loadSpecialties();
+    loadFeaturedDoctors();
   }, []);
 
   const getSpecialtyDescription = (slug: string) => {
@@ -92,10 +121,11 @@ export default function HomePage() {
                     <Search className="h-5 w-5 text-slate-400 shrink-0" />
                     <input
                       type="text"
-                      placeholder="Tìm tên bác sĩ, chuyên khoa hoặc bệnh viện..."
+                      placeholder="Tìm tên bác sĩ, chuyên khoa..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="bg-transparent border-none outline-none w-full text-slate-900 placeholder:text-slate-400 text-sm"
+                      suppressHydrationWarning
                     />
                   </div>
                   <Button type="submit" variant="teal" className="py-3 px-6 rounded-xl font-medium shrink-0">

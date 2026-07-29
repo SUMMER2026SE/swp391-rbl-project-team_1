@@ -1,0 +1,842 @@
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/users
+Middleware: verifyToken, verifyAdmin
+Handler: getUsers
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/users/:id
+Middleware: verifyToken, verifyAdmin, logAdminAction({ action: "UPDATE_USER_ROLE", targetType: "USER"
+Handler: getTargetId: (req
+----------------------------------------
+File: admin.routes.ts
+Method: PATCH
+Endpoint: /admin/users/:id/lock
+Middleware: verifyToken, verifyAdmin, logAdminAction({
+      action: "LOCK_USER", // We use LOCK_USER for both, controller handles it, but ideally we could differentiate based on req.body.isLocked
+      targetType: "USER"
+Handler: getTargetId: (req
+----------------------------------------
+File: admin.routes.ts
+Method: DELETE
+Endpoint: /admin/users/:id
+Middleware: verifyToken, verifyAdmin, logAdminAction({ action: "DELETE_USER", targetType: "USER"
+Handler: getTargetId: (req
+----------------------------------------
+File: admin.routes.ts
+Method: POST
+Endpoint: /admin/users/:userId/link-doctor/:doctorId
+Middleware: verifyToken, verifyAdmin
+Handler: linkDoctorToUser
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/appointments
+Middleware: verifyToken, verifyAdmin
+Handler: getAppointments
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/appointments/pending-approval
+Middleware: verifyToken, verifyAdmin
+Handler: getPendingPaymentsHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/payments
+Middleware: verifyToken, verifyAdmin
+Handler: getAllPaymentsHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/appointments/:id/status
+Middleware: verifyToken, verifyAdmin
+Handler: updateAppointmentStatusHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PATCH
+Endpoint: /admin/appointments/:id/status
+Middleware: verifyToken, verifyAdmin
+Handler: updateAppointmentStatusHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/doctors
+Middleware: verifyToken, verifyAdmin
+Handler: getDoctors
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/doctors/pending
+Middleware: verifyToken, verifyAdmin
+Handler: getPendingDoctorsHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/doctors/:id/moderation
+Middleware: verifyToken, verifyAdmin
+Handler: moderateDoctorHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PATCH
+Endpoint: /admin/doctors/:id/approve
+Middleware: verifyToken, verifyAdmin
+Handler: approveDoctorHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PATCH
+Endpoint: /admin/doctors/:id/reject
+Middleware: verifyToken, verifyAdmin
+Handler: rejectDoctorHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PATCH
+Endpoint: /admin/doctors/:id/lock
+Middleware: verifyToken, verifyAdmin
+Handler: lockDoctorHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/specialties
+Middleware: verifyToken, verifyAdmin
+Handler: getSpecialties
+----------------------------------------
+File: admin.routes.ts
+Method: POST
+Endpoint: /admin/specialties
+Middleware: verifyToken, verifyAdmin
+Handler: createSpecialtyHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/specialties/:id
+Middleware: verifyToken, verifyAdmin
+Handler: updateSpecialtyHandler
+----------------------------------------
+File: admin.routes.ts
+Method: DELETE
+Endpoint: /admin/specialties/:id
+Middleware: verifyToken, verifyAdmin
+Handler: deleteSpecialtyHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/clinics
+Middleware: verifyToken, verifyAdmin
+Handler: getClinics
+----------------------------------------
+File: admin.routes.ts
+Method: POST
+Endpoint: /admin/clinics
+Middleware: verifyToken, verifyAdmin
+Handler: createClinicHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/clinics/:id
+Middleware: verifyToken, verifyAdmin
+Handler: updateClinicHandler
+----------------------------------------
+File: admin.routes.ts
+Method: DELETE
+Endpoint: /admin/clinics/:id
+Middleware: verifyToken, verifyAdmin
+Handler: deleteClinicHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/articles
+Middleware: verifyToken, verifyAdmin
+Handler: getArticles
+----------------------------------------
+File: admin.routes.ts
+Method: POST
+Endpoint: /admin/articles
+Middleware: verifyToken, verifyAdmin
+Handler: createArticleHandler
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/articles/:id
+Middleware: verifyToken, verifyAdmin
+Handler: updateArticleHandler
+----------------------------------------
+File: admin.routes.ts
+Method: DELETE
+Endpoint: /admin/articles/:id
+Middleware: verifyToken, verifyAdmin
+Handler: deleteArticleHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/complaints
+Middleware: verifyToken, verifyAdmin
+Handler: getComplaints
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/complaints/:id/resolve
+Middleware: verifyToken, verifyAdmin
+Handler: resolveComplaintHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/statistics
+Middleware: verifyToken, verifyAdmin
+Handler: getStatisticsHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/statistics/export
+Middleware: verifyToken, verifyAdmin
+Handler: getExportStatisticsHandler
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/audit-logs
+Middleware: verifyToken, verifyAdmin
+Handler: getAuditLogs
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/notifications
+Middleware: verifyToken, verifyAdmin
+Handler: getAdminNotifications
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/notifications/:id/read
+Middleware: verifyToken, verifyAdmin
+Handler: markNotificationRead
+----------------------------------------
+File: admin.routes.ts
+Method: GET
+Endpoint: /admin/certificates/pending
+Middleware: verifyToken, verifyAdmin, (req
+Handler: res
+----------------------------------------
+File: admin.routes.ts
+Method: PUT
+Endpoint: /admin/certificates/:id/verify
+Middleware: verifyToken, verifyAdmin, logAdminAction({ action: "VERIFY_CERTIFICATE", targetType: "CERTIFICATE"
+Handler: getTargetId: (req
+----------------------------------------
+File: appointment.routes.ts
+Method: POST
+Endpoint: /appointments
+Middleware: verifyToken, authorizeRoles(Role.USER
+Handler: Role.DOCTOR
+----------------------------------------
+File: appointment.routes.ts
+Method: GET
+Endpoint: /my-appointments
+Middleware: verifyToken, authorizeRoles(Role.USER
+Handler: Role.DOCTOR
+----------------------------------------
+File: appointment.routes.ts
+Method: GET
+Endpoint: /appointments/:id
+Middleware: verifyToken, authorizeRoles(Role.USER
+Handler: Role.DOCTOR
+----------------------------------------
+File: appointment.routes.ts
+Method: GET
+Endpoint: /appointments/:id/prescription/public
+Middleware: 
+Handler: getPublicPrescriptionHandler
+----------------------------------------
+File: appointment.routes.ts
+Method: POST
+Endpoint: /appointments/:id/pay-proof
+Middleware: verifyToken
+Handler: authorizeRoles(Role.USER
+----------------------------------------
+File: appointment.routes.ts
+Method: POST
+Endpoint: /appointments/:id/cancel
+Middleware: verifyToken
+Handler: authorizeRoles(Role.USER
+----------------------------------------
+File: article.routes.ts
+Method: GET
+Endpoint: /articles
+Middleware: 
+Handler: getPublicArticles
+----------------------------------------
+File: article.routes.ts
+Method: GET
+Endpoint: /articles/realtime
+Middleware: 
+Handler: getRealtimeArticles
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /send-otp
+Middleware: 
+Handler: sendOtp
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /verify-otp
+Middleware: 
+Handler: verifyOtpCode
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /register
+Middleware: 
+Handler: register
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /login
+Middleware: 
+Handler: login
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /forgot-password
+Middleware: 
+Handler: forgotPassword
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /verify-reset-otp
+Middleware: 
+Handler: verifyResetOtpCode
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /reset-password
+Middleware: 
+Handler: resetPasswordController
+----------------------------------------
+File: auth.routes.ts
+Method: POST
+Endpoint: /google-login
+Middleware: 
+Handler: googleLoginController
+----------------------------------------
+File: booking-profile.routes.ts
+Method: GET
+Endpoint: /
+Middleware: 
+Handler: getMyProfiles
+----------------------------------------
+File: booking-profile.routes.ts
+Method: POST
+Endpoint: /
+Middleware: 
+Handler: createProfile
+----------------------------------------
+File: booking-profile.routes.ts
+Method: PUT
+Endpoint: /:id
+Middleware: 
+Handler: updateProfile
+----------------------------------------
+File: booking-profile.routes.ts
+Method: DELETE
+Endpoint: /:id
+Middleware: 
+Handler: deleteProfile
+----------------------------------------
+File: chat.routes.ts
+Method: POST
+Endpoint: /chat
+Middleware: 
+Handler: chat
+----------------------------------------
+File: complaint.routes.ts
+Method: POST
+Endpoint: /
+Middleware: verifyToken
+Handler: createComplaintHandler
+----------------------------------------
+File: complaint.routes.ts
+Method: GET
+Endpoint: /
+Middleware: verifyToken
+Handler: getUserComplaintsHandler
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /dashboard/stats
+Middleware: 
+Handler: getDashboardStats
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /dashboard/charts
+Middleware: 
+Handler: getDashboardCharts
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /statistics
+Middleware: 
+Handler: getDoctorStatistics
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /reviews
+Middleware: 
+Handler: getDoctorReviews
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /profile
+Middleware: 
+Handler: getDoctorProfile
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: PUT
+Endpoint: /profile
+Middleware: 
+Handler: updateDoctorProfile
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /metadata/options
+Middleware: 
+Handler: getAvailableSpecialtiesAndClinics
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /schedules
+Middleware: 
+Handler: getDoctorSchedules
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: POST
+Endpoint: /schedules
+Middleware: 
+Handler: createDoctorSchedule
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: PUT
+Endpoint: /schedules/:id
+Middleware: 
+Handler: updateDoctorSchedule
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: DELETE
+Endpoint: /schedules/:id
+Middleware: 
+Handler: deleteDoctorSchedule
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /appointments
+Middleware: 
+Handler: getDoctorAppointments
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: PUT
+Endpoint: /appointments/bulk-status
+Middleware: 
+Handler: updateBulkAppointmentStatus
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: PUT
+Endpoint: /appointments/:id/status
+Middleware: 
+Handler: updateAppointmentStatus
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /patients
+Middleware: 
+Handler: getDoctorPatients
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /patients/:userId
+Middleware: 
+Handler: getPatientDetail
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /patients/:userId/records
+Middleware: 
+Handler: getPatientRecords
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: POST
+Endpoint: /medical-records
+Middleware: 
+Handler: createMedicalRecord
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: POST
+Endpoint: /prescriptions
+Middleware: 
+Handler: createPrescription
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: GET
+Endpoint: /certificates
+Middleware: 
+Handler: doctorCertificateController.getCertificates
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: POST
+Endpoint: /certificates
+Middleware: 
+Handler: upload.single("file"
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: PUT
+Endpoint: /certificates/:id
+Middleware: 
+Handler: upload.single("file"
+----------------------------------------
+File: doctor-dashboard.routes.ts
+Method: DELETE
+Endpoint: /certificates/:id
+Middleware: 
+Handler: doctorCertificateController.deleteCertificate
+----------------------------------------
+File: doctor.routes.ts
+Method: GET
+Endpoint: /doctors
+Middleware: 
+Handler: listDoctors
+----------------------------------------
+File: doctor.routes.ts
+Method: GET
+Endpoint: /specialties
+Middleware: 
+Handler: listSpecialties
+----------------------------------------
+File: doctor.routes.ts
+Method: GET
+Endpoint: /doctors/featured
+Middleware: 
+Handler: getFeaturedDoctors
+----------------------------------------
+File: doctor.routes.ts
+Method: GET
+Endpoint: /doctors/:id
+Middleware: 
+Handler: getDoctor
+----------------------------------------
+File: doctor.routes.ts
+Method: POST
+Endpoint: /doctors/:id/schedules
+Middleware: verifyToken
+Handler: createSchedule
+----------------------------------------
+File: doctor.routes.ts
+Method: GET
+Endpoint: /doctors/:id/schedules
+Middleware: 
+Handler: listSchedules
+----------------------------------------
+File: doctor.routes.ts
+Method: GET
+Endpoint: /clinics
+Middleware: 
+Handler: listClinics
+----------------------------------------
+File: doctor.routes.ts
+Method: GET
+Endpoint: /clinics/:id
+Middleware: 
+Handler: getClinic
+----------------------------------------
+File: doctor.routes.ts
+Method: POST
+Endpoint: /admin/doctors/:id/avatar
+Middleware: verifyToken
+Handler: authorizeRoles(Role.ADMIN
+----------------------------------------
+File: doctor.routes.ts
+Method: POST
+Endpoint: /admin/doctors/batch-update-avatars
+Middleware: verifyToken
+Handler: authorizeRoles(Role.ADMIN
+----------------------------------------
+File: medical-record.routes.ts
+Method: GET
+Endpoint: /appointment/:appointmentId
+Middleware: 
+Handler: getRecordByAppointment
+----------------------------------------
+File: medical-record.routes.ts
+Method: POST
+Endpoint: /appointment/:appointmentId
+Middleware: 
+Handler: saveRecord
+----------------------------------------
+File: medical-record.routes.ts
+Method: PUT
+Endpoint: /appointment/:appointmentId
+Middleware: 
+Handler: saveRecord
+----------------------------------------
+File: medical-record.routes.ts
+Method: GET
+Endpoint: /my
+Middleware: verifyToken
+Handler: getMyMedicalRecords
+----------------------------------------
+File: medical-record.routes.ts
+Method: GET
+Endpoint: /patient/appointment/:appointmentId
+Middleware: verifyToken
+Handler: getMyRecordByAppointment
+----------------------------------------
+File: medicine.routes.ts
+Method: GET
+Endpoint: /
+Middleware: 
+Handler: searchMedicines
+----------------------------------------
+File: message.routes.ts
+Method: GET
+Endpoint: /conversations
+Middleware: 
+Handler: getConversations
+----------------------------------------
+File: message.routes.ts
+Method: POST
+Endpoint: /conversations
+Middleware: 
+Handler: getOrCreateConversation
+----------------------------------------
+File: message.routes.ts
+Method: GET
+Endpoint: /:conversationId
+Middleware: 
+Handler: getMessages
+----------------------------------------
+File: message.routes.ts
+Method: POST
+Endpoint: /:conversationId
+Middleware: 
+Handler: sendMessage
+----------------------------------------
+File: notification.routes.ts
+Method: GET
+Endpoint: /
+Middleware: 
+Handler: getNotifications
+----------------------------------------
+File: notification.routes.ts
+Method: PUT
+Endpoint: /read-all
+Middleware: 
+Handler: markAllAsRead
+----------------------------------------
+File: notification.routes.ts
+Method: PUT
+Endpoint: /:id/read
+Middleware: 
+Handler: markAsRead
+----------------------------------------
+File: notification.routes.ts
+Method: DELETE
+Endpoint: /:id
+Middleware: 
+Handler: deleteNotification
+----------------------------------------
+File: package.routes.ts
+Method: GET
+Endpoint: /packages
+Middleware: 
+Handler: getPackages
+----------------------------------------
+File: package.routes.ts
+Method: GET
+Endpoint: /packages/:id
+Middleware: 
+Handler: getPackageById
+----------------------------------------
+File: package.routes.ts
+Method: GET
+Endpoint: /packages/:id/booked-slots
+Middleware: 
+Handler: getPackageBookedSlots
+----------------------------------------
+File: payment.routes.ts
+Method: POST
+Endpoint: /create-url
+Middleware: verifyToken
+Handler: createPaymentUrlHandler
+----------------------------------------
+File: payment.routes.ts
+Method: GET
+Endpoint: /vnpay-return
+Middleware: 
+Handler: vnpayReturnHandler
+----------------------------------------
+File: payment.routes.ts
+Method: GET
+Endpoint: /vnpay-ipn
+Middleware: 
+Handler: vnpayIpnHandler
+----------------------------------------
+File: payment.routes.ts
+Method: POST
+Endpoint: /mock-pay
+Middleware: verifyToken
+Handler: mockPayHandler
+----------------------------------------
+File: payment.routes.ts
+Method: POST
+Endpoint: /payos
+Middleware: verifyToken
+Handler: createPayOSPaymentUrlHandler
+----------------------------------------
+File: payment.routes.ts
+Method: GET
+Endpoint: /status/:orderCode
+Middleware: 
+Handler: getPaymentStatusHandler
+----------------------------------------
+File: payment.routes.ts
+Method: POST
+Endpoint: /payos-webhook
+Middleware: 
+Handler: payosWebhookHandler
+----------------------------------------
+File: review.routes.ts
+Method: POST
+Endpoint: /reviews
+Middleware: verifyToken
+Handler: createReview
+----------------------------------------
+File: review.routes.ts
+Method: GET
+Endpoint: /reviews/me
+Middleware: verifyToken
+Handler: getMyReviews
+----------------------------------------
+File: review.routes.ts
+Method: GET
+Endpoint: /reviews/pending
+Middleware: verifyToken
+Handler: getPendingReviews
+----------------------------------------
+File: review.routes.ts
+Method: GET
+Endpoint: /doctors/:id/reviews
+Middleware: 
+Handler: getDoctorReviews
+----------------------------------------
+File: user.routes.ts
+Method: GET
+Endpoint: /profile
+Middleware: verifyToken, async (req: AuthenticatedRequest, res: Response
+Handler: next: NextFunction
+----------------------------------------
+File: user.routes.ts
+Method: PUT
+Endpoint: /profile
+Middleware: verifyToken, async (req: AuthenticatedRequest, res: Response
+Handler: next: NextFunction
+----------------------------------------
+File: user.routes.ts
+Method: PUT
+Endpoint: /change-password
+Middleware: verifyToken, async (req: AuthenticatedRequest, res: Response
+Handler: next: NextFunction
+----------------------------------------
+File: user.routes.ts
+Method: POST
+Endpoint: /upload-avatar
+Middleware: verifyToken
+Handler: uploadAvatar.single("avatar"
+----------------------------------------
+File: user.routes.ts
+Method: GET
+Endpoint: /:id
+Middleware: verifyToken, async (req: AuthenticatedRequest, res: Response
+Handler: next: NextFunction
+----------------------------------------
+File: video-call.routes.ts
+Method: POST
+Endpoint: /log
+Middleware: 
+Handler: logVideoCall
+----------------------------------------
+File: video-call.routes.ts
+Method: GET
+Endpoint: /history
+Middleware: 
+Handler: getVideoCallHistory
+----------------------------------------
+File: voucher.routes.ts
+Method: POST
+Endpoint: /validate
+Middleware: verifyToken
+Handler: validateVoucher
+----------------------------------------
+File: voucher.routes.ts
+Method: POST
+Endpoint: /apply
+Middleware: verifyToken
+Handler: applyVoucher
+----------------------------------------
+File: voucher.routes.ts
+Method: GET
+Endpoint: /my-vouchers
+Middleware: verifyToken
+Handler: getMyVouchers
+----------------------------------------
+File: voucher.routes.ts
+Method: POST
+Endpoint: /save
+Middleware: verifyToken
+Handler: saveVoucher
+----------------------------------------
+File: voucher.routes.ts
+Method: GET
+Endpoint: /saved
+Middleware: verifyToken
+Handler: getSavedVouchers
+----------------------------------------
+File: voucher.routes.ts
+Method: GET
+Endpoint: /public
+Middleware: 
+Handler: getPublicVouchers
+----------------------------------------
+File: voucher.routes.ts
+Method: GET
+Endpoint: /admin
+Middleware: verifyToken
+Handler: adminListVouchers
+----------------------------------------
+File: voucher.routes.ts
+Method: GET
+Endpoint: /admin/chart-data
+Middleware: verifyToken
+Handler: adminGetVoucherChartData
+----------------------------------------
+File: voucher.routes.ts
+Method: POST
+Endpoint: /admin
+Middleware: verifyToken
+Handler: adminCreateVoucher
+----------------------------------------
+File: voucher.routes.ts
+Method: PUT
+Endpoint: /admin/:id
+Middleware: verifyToken
+Handler: adminUpdateVoucher
+----------------------------------------
+File: voucher.routes.ts
+Method: DELETE
+Endpoint: /admin/:id
+Middleware: verifyToken
+Handler: adminDeleteVoucher
+----------------------------------------
+File: voucher.routes.ts
+Method: GET
+Endpoint: /admin/:id/usages
+Middleware: verifyToken
+Handler: adminGetVoucherUsages
+----------------------------------------
