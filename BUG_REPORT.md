@@ -201,7 +201,14 @@ Nếu user verify OTP vào phút thứ 4, họ chỉ còn 1 phút để hoàn t�
 ```typescript
 const expectedAmount = appointment.payment?.amount || 150000;
 ```
-Nếu payment record chưa được tạo (timing issue), `expectedAmount` fallback thành 150,000. Nhưng trong `createVNPayUrl`, amount được lấy từ `appointment.doctor?.price || 150000`. Nếu bác sĩ có giá khác 150,000, comparison sẽ fail ngay cả với giao dịch hợp lệ.
+If payment record chưa được tạo (timing issue), `expectedAmount` fallback thành 150,000. Nhưng trong `createVNPayUrl`, amount được lấy từ `appointment.doctor?.price || 150000`. Nếu bác sĩ có giá khác 150,000, comparison sẽ fail ngay cả với giao dịch hợp lệ.
+
+---
+
+### 🟢 BUG-C01: Prisma Connection Pool Leaks [ĐÃ SỬA]
+**Hiện trạng:** ✅ Đã sửa - Đã loại bỏ hoàn toàn việc dùng `new PrismaClient()` ở mọi controller/service hoạt động (bao gồm doctor-dashboard, admin-audit-logs, admin-notifications, clinic, medicine, package, message, auditLog middleware, doctor-certificate) và đồng bộ sử dụng singleton Prisma instance từ `../prisma/client`.
+**Nguyên nhân:** Một số service/controller cũ khởi tạo `const prisma = new PrismaClient()` cục bộ trong file/function thay vì dùng instance singleton. Khi số lượng request tăng lên, mỗi file mở một pool riêng dẫn đến lỗi `PrismaClientInitializationError: Too many connections`.
+**Giải pháp:** Thay thế toàn bộ khai báo cục bộ bằng cách import singleton client từ `@prisma/client` hoặc file config chung (ví dụ: `prisma/client.ts`).
 
 ---
 

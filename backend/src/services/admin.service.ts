@@ -90,8 +90,39 @@ export async function deleteUser(userId: string): Promise<void> {
         throw new ApiError("Cannot delete admin users", 403);
     }
 
-    // Delete appointments first due to foreign key constraint
-    await prisma.appointment.deleteMany({ where: { userId } });
+    // Delete related entities to avoid foreign key constraint violations
+    await prisma.voucherUsage.deleteMany({ where: { userId } });
+    await prisma.savedVoucher.deleteMany({ where: { userId } });
+    
+    // We should retrieve user's appointments to clean up payments, reviews, voucherUsages, and complaints
+    const userAppointments = await prisma.appointment.findMany({
+        where: { userId },
+        select: { id: true }
+    });
+    const appointmentIds = userAppointments.map(a => a.id);
+    
+    if (appointmentIds.length > 0) {
+        await prisma.voucherUsage.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await prisma.payment.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await prisma.review.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await prisma.complaint.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await prisma.appointment.deleteMany({ where: { userId } });
+    }
+
+    await prisma.bookingProfile.deleteMany({ where: { userId } });
+    await prisma.complaint.deleteMany({ where: { userId } });
+    await prisma.conversation.deleteMany({ where: { userId } });
+    await prisma.message.deleteMany({ where: { senderId: userId } });
+    await prisma.medicalRecord.deleteMany({ where: { userId } });
+    await prisma.notification.deleteMany({ where: { userId } });
+    await prisma.videoCallLog.deleteMany({
+        where: {
+            OR: [
+                { callerId: userId },
+                { calleeId: userId }
+            ]
+        }
+    });
 
     await prisma.user.delete({ where: { id: userId } });
 }

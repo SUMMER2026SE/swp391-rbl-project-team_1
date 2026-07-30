@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import { supabase } from "../config/supabase";
-
-const prisma = new PrismaClient();
+import prisma from "../prisma/client";
 
 export class DoctorCertificateService {
   /**

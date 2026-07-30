@@ -20,6 +20,7 @@ const apiError_1 = require("../utils/apiError");
 const socket_1 = require("../utils/socket");
 const notificationService_1 = require("./notificationService");
 const emailService_1 = require("../utils/emailService");
+const voucher_service_1 = require("./voucher.service");
 const PayOS = require("@payos/node");
 const payos = new PayOS(process.env.PAYOS_CLIENT_ID || "", process.env.PAYOS_API_KEY || "", process.env.PAYOS_CHECKSUM_KEY || "");
 // Helper to format Date to yyyyMMddHHmmss
@@ -344,12 +345,26 @@ async function createPayOSPaymentLink(appointmentId, voucherCode, discountAmount
     const orderCode = (Date.now() % 1000000000) * 1000 + Math.floor(Math.random() * 1000);
     // Use appointment amount or doctor price as base
     const baseAmount = appointment.amount || appointment.doctor?.price || 5000;
+    let finalDiscountAmount = discountAmount || 0;
+    if (voucherCode) {
+        const validation = await (0, voucher_service_1.validateVoucher)({
+            code: voucherCode,
+            userId: appointment.userId,
+            depositAmount: baseAmount,
+            specialtyId: appointment.doctor?.specialtyId || undefined,
+            packageId: appointment.packageId || undefined,
+        });
+        if (!validation.valid) {
+            throw new apiError_1.ApiError(validation.message || "Voucher không hợp lệ hoặc đã hết hạn", 400);
+        }
+        finalDiscountAmount = validation.discountAmount || 0;
+    }
     // Apply voucher discount if provided
-    const amount = discountAmount ? Math.max(baseAmount - discountAmount, 1000) : baseAmount;
+    const amount = finalDiscountAmount ? Math.max(baseAmount - finalDiscountAmount, 1000) : baseAmount;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);
-    // Set expired time = now + 5 minutes
-    const expiredAt = Math.floor(Date.now() / 1000) + 5 * 60;
-    const expiredAtDate = new Date(Date.now() + 5 * 60 * 1000);
+    // Set expired time = now + 15 minutes (extended to allow user time to process OTP/VNPAY/PayOS)
+    const expiredAt = Math.floor(Date.now() / 1000) + 15 * 60;
+    const expiredAtDate = new Date(Date.now() + 15 * 60 * 1000);
     const returnUrl = process.env.FRONTEND_PAYMENT_REDIRECT_URL || "http://localhost:3000/my-appointments";
     const cancelUrl = process.env.FRONTEND_PAYMENT_REDIRECT_URL || "http://localhost:3000/my-appointments";
     const requestData = {
@@ -362,12 +377,12 @@ async function createPayOSPaymentLink(appointmentId, voucherCode, discountAmount
     };
     const paymentLink = await payos.createPaymentLink(requestData);
     // Save voucher info to appointment if applicable
-    if (voucherCode && discountAmount) {
+    if (voucherCode) {
         await client_2.default.appointment.update({
             where: { id: appointmentId },
             data: {
                 voucherCode: voucherCode.toUpperCase(),
-                discountAmount: discountAmount,
+                discountAmount: finalDiscountAmount,
                 amount: amount,
             }
         });

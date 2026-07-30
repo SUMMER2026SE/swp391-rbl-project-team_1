@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { PrismaClient, AdminActionType, AdminTargetType } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { AdminActionType, AdminTargetType } from "@prisma/client";
+import prisma from "../prisma/client";
 
 interface AuthRequest extends Request {
   user?: {

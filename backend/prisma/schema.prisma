@@ -92,6 +92,10 @@ model Doctor {
   medicalRecords  MedicalRecord[]
   reviews         Review[]
   userAccount     User?
+
+  @@index([specialtyId])
+  @@index([clinicId])
+  @@index([status])
 }
 
 model Clinic {
@@ -146,6 +150,8 @@ model DoctorSchedule {
   isAvailable Boolean  @default(true)
   createdAt   DateTime @default(now())
   doctor      Doctor   @relation(fields: [doctorId], references: [id])
+
+  @@index([doctorId])
 }
 
 model Appointment {
@@ -178,6 +184,11 @@ model Appointment {
   payment            Payment?
   review             Review?
   voucherUsage       VoucherUsage?
+
+  @@index([doctorId])
+  @@index([userId])
+  @@index([status])
+  @@index([appointmentDate])
 }
 
 model MedicalRecord {
@@ -208,6 +219,9 @@ model MedicalRecord {
   doctor               Doctor              @relation(fields: [doctorId], references: [id])
   user                 User                @relation(fields: [userId], references: [id])
   prescriptions        Prescription[]
+
+  @@index([doctorId])
+  @@index([userId])
 }
 
 model Prescription {
@@ -223,6 +237,9 @@ model Prescription {
   updatedAt       DateTime      @updatedAt
   medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
   medicine        Medicine      @relation(fields: [medicineId], references: [id])
+
+  @@index([medicalRecordId])
+  @@index([medicineId])
 }
 
 model DoctorCertificate {
@@ -243,6 +260,9 @@ model DoctorCertificate {
   verificationStatus CertificateVerificationStatus @default(PENDING)
   verifiedAt         DateTime?
   doctor             Doctor                        @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId])
+  @@index([verificationStatus])
 }
 
 model Review {
@@ -257,6 +277,9 @@ model Review {
   appointment   Appointment @relation(fields: [appointmentId], references: [id])
   doctor        Doctor      @relation(fields: [doctorId], references: [id])
   user          User        @relation(fields: [userId], references: [id])
+
+  @@index([doctorId])
+  @@index([userId])
 }
 
 model Payment {
@@ -273,6 +296,9 @@ model Payment {
   orderCode      BigInt?
   expiredAt      DateTime?
   appointment    Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([orderCode])
+  @@index([status])
 }
 
 model MedicalPackage {
@@ -318,6 +344,9 @@ model Message {
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@index([createdAt])
 }
 
 model AdminLog {
@@ -605,6 +634,9 @@ model VoucherUsage {
   voucher         Voucher     @relation(fields: [voucherId], references: [id])
   user            User        @relation(fields: [userId], references: [id])
   appointment     Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([voucherId])
+  @@index([userId])
 }
 
 enum PatientProfileType {
@@ -638,6 +670,8 @@ model BookingProfile {
   createdAt       DateTime  @default(now())
 
   user            User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model SavedVoucher {

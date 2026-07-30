@@ -8,11 +8,11 @@ Báo cáo này liệt kê danh sách lỗi được tìm thấy trong hệ thố
 
 | Mức độ | Số lỗi | Danh sách lỗi | Trạng thái |
 |--------|--------|---------------|------------|
-| ✅ Đã sửa | **25** | BUG-001, BUG-002, BUG-004, BUG-005, BUG-009, BUG-012, BUG-014, BUG-016, BUG-017, BUG-018, BUG-019, BUG-020, BUG-021, BUG-022, BUG-023, BUG-026, BUG-027, BUG-028, BUG-029, BUG-NEW-01, BUG-NEW-02, BUG-NEW-03, BUG-NEW-04, BUG-NEW-05, BUG-FRONTEND-01 | Đã giải quyết triệt để |
+| ✅ Đã sửa | **30** | BUG-001, BUG-002, BUG-004, BUG-005, BUG-009, BUG-012, BUG-014, BUG-016, BUG-017, BUG-018, BUG-019, BUG-020, BUG-021, BUG-022, BUG-023, BUG-026, BUG-027, BUG-028, BUG-029, BUG-NEW-01, BUG-NEW-02, BUG-NEW-03, BUG-NEW-04, BUG-NEW-05, BUG-FRONTEND-01, BUG-NEW-06, BUG-NEW-07, BUG-NEW-08, BUG-NEW-09, BUG-NEW-10 | Đã giải quyết triệt để |
 | 🟠 Medium (Chưa sửa) | **0** | Không còn lỗi nào | Đã giải quyết triệt để |
 | 🟡 Low/Quality (Chưa sửa) | **0** | Không còn lỗi nào | Đã giải quyết triệt để |
 
-**Tổng: 25 lỗi tìm thấy — 25 đã sửa — 0 còn tồn tại**
+**Tổng: 30 lỗi tìm thấy — 30 đã sửa — 0 còn tồn tại**
 
 ---
 
@@ -186,7 +186,8 @@ where: {
 }
 ```
 
-### BUG-NEW-03 (Prisma connection pool)
+### BUG-NEW-03 (Prisma connection pool) [ĐÃ GIẢI QUYẾT TRIỆT ĐỂ]
+- **Mô tả:** Đã rà soát toàn bộ dự án và chuyển đổi tất cả các khai báo `new PrismaClient()` trong các controller và service (bao gồm `doctor-dashboard.controller.ts`, `admin-audit-logs.controller.ts`, `admin-notifications.controller.ts`, `clinic.controller.ts`, `medicine.controller.ts`, `package.controller.ts`, `message.controller.ts`, `auditLog.middleware.ts`, `doctor-certificate.service.ts`) sang sử dụng shared singleton Prisma client từ `backend/src/prisma/client.ts`. Việc này khắc phục hoàn toàn nguy cơ cạn kiệt Connection Pool (BUG-C01) khi chạy production.
 ```typescript
 // Trước:
 import { PrismaClient } from "@prisma/client";
@@ -231,3 +232,19 @@ const canCancel = diffHours > 0;  // Sai: hiển thị nút với mọi lịch t
 
 // Sau:
 const canCancel = diffHours > 24; // Đúng: chỉ hiển thị khi còn hơn 24h
+```
+
+### BUG-NEW-06 (Cascade delete khi xóa User Account trong Admin)
+- **Mô tả:** Khi Admin xóa tài khoản người dùng, database thiếu thiết lập cascade delete (hoặc logic xóa) dẫn đến lỗi khóa ngoại (foreign key constraint) do liên kết với các bảng Doctor, VoucherUsage, Notification, Message, Appointment, v.v. Đã được sửa bằng cách xử lý xóa an toàn tất cả các bảng phụ thuộc trong một transaction trước khi xóa User trong `admin.service.ts`.
+
+### BUG-NEW-07 (PENDING_PAYMENT bị bỏ qua khi tính bookedCounts cho lịch khám bác sĩ)
+- **Mô tả:** Trong `schedule.controller.ts`, hàm tính số lượng lịch đã đặt `bookedCounts` chỉ đếm các trạng thái `PENDING` và `CONFIRMED`, dẫn đến việc người dùng có thể đặt lịch đè lên các slot đang thanh toán dở dang, vi phạm giới hạn số lượng đặt khám tối đa. Đã được sửa để đếm thêm cả các lịch có trạng thái `PENDING_PAYMENT`.
+
+### BUG-NEW-08 (Lệch ngày timezone trong thống kê doanh thu Admin)
+- **Mô tả:** Do sự lệch múi giờ giữa UTC (mặc định của Prisma/Database) và múi giờ địa phương (ICT/GMT+7), thống kê doanh thu hàng ngày của Admin bị lệch 1 ngày hoặc gộp sai ngày. Đã được khắc phục bằng cách thiết lập khoảng thời gian truy vấn và gom nhóm ngày sử dụng timezone offset/UTC tương thích với thời gian thực tế.
+
+### BUG-NEW-09 (Thiếu kiểm tra số tiền cọc tối thiểu minDepositAmount khi check Voucher ở bước đặt lịch)
+- **Mô tả:** Ở bước bệnh nhân khởi tạo cuộc hẹn (`createAppointment`), hệ thống chưa kiểm tra điều kiện `minDepositAmount` của voucher so với số tiền cọc của bác sĩ/gói khám, dẫn đến việc voucher được lưu thành công nhưng sau đó bị lỗi khi tạo link thanh toán PayOS. Đã được sửa bằng cách thêm kiểm tra điều kiện voucher và `minDepositAmount` trực tiếp trong `appointment.service.ts` khi đặt lịch.
+
+### BUG-NEW-10 (Thời gian tự động huỷ lịch quá hạn quá ngắn gây bất tiện)
+- **Mô tả:** Thời gian tự động hủy các lịch hẹn chưa thanh toán được đặt mặc định là 5-10 phút, quá ngắn so với thời gian thao tác thanh toán PayOS hoặc chuyển khoản của bệnh nhân. Đã tăng giới hạn thời gian chờ thanh toán trước khi tự động hủy lịch (auto-cancel expiration limit) lên 15-30 phút trong `server.ts` để mang lại trải nghiệm tốt hơn.

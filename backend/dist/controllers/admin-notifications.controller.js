@@ -1,8 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.markNotificationRead = exports.getAdminNotifications = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 /**
  * GET /api/admin/notifications
  * Get admin notifications (recent 50 max)
@@ -11,12 +13,12 @@ const getAdminNotifications = async (req, res) => {
     try {
         const unreadOnly = req.query.unread === "true";
         const where = unreadOnly ? { isRead: false } : {};
-        const notifications = await prisma.adminNotification.findMany({
+        const notifications = await client_1.default.adminNotification.findMany({
             where,
             orderBy: { createdAt: "desc" },
             take: 50,
         });
-        const unreadCount = await prisma.adminNotification.count({
+        const unreadCount = await client_1.default.adminNotification.count({
             where: { isRead: false },
         });
         res.status(200).json({
@@ -39,13 +41,13 @@ const markNotificationRead = async (req, res) => {
     try {
         const { id } = req.params;
         if (id === "all") {
-            await prisma.adminNotification.updateMany({
+            await client_1.default.adminNotification.updateMany({
                 where: { isRead: false },
                 data: { isRead: true }
             });
             return res.status(200).json({ message: "Đã đánh dấu tất cả là đã đọc" });
         }
-        const notification = await prisma.adminNotification.update({
+        const notification = await client_1.default.adminNotification.update({
             where: { id: id },
             data: { isRead: true },
         });

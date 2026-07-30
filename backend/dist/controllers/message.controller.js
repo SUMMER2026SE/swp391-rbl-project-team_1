@@ -1,12 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getConversations = getConversations;
 exports.getMessages = getMessages;
 exports.getOrCreateConversation = getOrCreateConversation;
 exports.sendMessage = sendMessage;
-const client_1 = require("@prisma/client");
 const apiError_1 = require("../utils/apiError");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 // Get all conversations for the logged in user/doctor
 async function getConversations(req, res, next) {
     try {
@@ -18,14 +20,14 @@ async function getConversations(req, res, next) {
         let conversations;
         if (role === "DOCTOR") {
             // Find doctorId for this user
-            const doctorUser = await prisma.user.findUnique({
+            const doctorUser = await client_1.default.user.findUnique({
                 where: { id: userId },
                 include: { doctor: true }
             });
             const doctorId = doctorUser?.doctor?.id;
             if (!doctorId)
                 throw new apiError_1.ApiError("Doctor profile not found", 404);
-            conversations = await prisma.conversation.findMany({
+            conversations = await client_1.default.conversation.findMany({
                 where: { doctorId },
                 include: {
                     user: {
@@ -40,7 +42,7 @@ async function getConversations(req, res, next) {
             });
         }
         else {
-            conversations = await prisma.conversation.findMany({
+            conversations = await client_1.default.conversation.findMany({
                 where: { userId },
                 include: {
                     doctor: {
@@ -69,7 +71,7 @@ async function getMessages(req, res, next) {
         if (!userId) {
             throw new apiError_1.ApiError("Unauthorized", 401);
         }
-        const conversation = await prisma.conversation.findUnique({
+        const conversation = await client_1.default.conversation.findUnique({
             where: { id: conversationId }
         });
         if (!conversation) {
@@ -80,7 +82,7 @@ async function getMessages(req, res, next) {
             throw new apiError_1.ApiError("Forbidden", 403);
         }
         if (role === "DOCTOR") {
-            const doctorUser = await prisma.user.findUnique({
+            const doctorUser = await client_1.default.user.findUnique({
                 where: { id: userId },
                 include: { doctor: true }
             });
@@ -88,12 +90,12 @@ async function getMessages(req, res, next) {
                 throw new apiError_1.ApiError("Forbidden", 403);
             }
         }
-        const messages = await prisma.message.findMany({
+        const messages = await client_1.default.message.findMany({
             where: { conversationId: conversationId },
             orderBy: { createdAt: "asc" }
         });
         // Mark messages as read
-        await prisma.message.updateMany({
+        await client_1.default.message.updateMany({
             where: {
                 conversationId: conversationId,
                 senderId: { not: userId },
@@ -115,7 +117,7 @@ async function getOrCreateConversation(req, res, next) {
         if (!userId || req.user?.role !== "USER") {
             throw new apiError_1.ApiError("Only patients can initiate conversations this way", 403);
         }
-        let conversation = await prisma.conversation.findUnique({
+        let conversation = await client_1.default.conversation.findUnique({
             where: {
                 userId_doctorId: {
                     userId,
@@ -124,7 +126,7 @@ async function getOrCreateConversation(req, res, next) {
             }
         });
         if (!conversation) {
-            conversation = await prisma.conversation.create({
+            conversation = await client_1.default.conversation.create({
                 data: {
                     userId,
                     doctorId
@@ -149,13 +151,13 @@ async function sendMessage(req, res, next) {
         if (!content || content.trim() === "") {
             throw new apiError_1.ApiError("Message content cannot be empty", 400);
         }
-        const conversation = await prisma.conversation.findUnique({
+        const conversation = await client_1.default.conversation.findUnique({
             where: { id: conversationId }
         });
         if (!conversation) {
             throw new apiError_1.ApiError("Conversation not found", 404);
         }
-        const message = await prisma.message.create({
+        const message = await client_1.default.message.create({
             data: {
                 conversationId,
                 senderId: userId,
@@ -163,7 +165,7 @@ async function sendMessage(req, res, next) {
             }
         });
         // Update conversation's updatedAt
-        await prisma.conversation.update({
+        await client_1.default.conversation.update({
             where: { id: conversationId },
             data: { updatedAt: new Date() }
         });

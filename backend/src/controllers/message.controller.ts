@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { ApiError } from "../utils/apiError";
-
-const prisma = new PrismaClient();
+import prisma from "../prisma/client";
 
 // Get all conversations for the logged in user/doctor
 export async function getConversations(req: Request, res: Response, next: NextFunction): Promise<void> {

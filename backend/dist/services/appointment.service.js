@@ -17,6 +17,7 @@ const apiError_1 = require("../utils/apiError");
 const emailService_1 = require("../utils/emailService");
 const generateBookingCode_1 = require("../utils/generateBookingCode");
 const supabase_1 = require("../config/supabase");
+const notificationService_1 = require("./notificationService");
 async function saveFileLocally(appointmentId, fileName, fileBuffer) {
     const uploadDir = path_1.default.join(__dirname, "../../public/payment-proofs", `appointment-${appointmentId}`);
     // Ensure directory exists
@@ -120,15 +121,75 @@ async function createAppointment(params) {
             bookingCodeConflict = await tx.appointment.findFirst({ where: { bookingCode } });
         }
         let amount = 5000;
+        let specialtyId;
         if (doctorId) {
             const doc = await tx.doctor.findUnique({ where: { id: doctorId } });
-            if (doc?.price)
+            if (!doc)
+                throw new apiError_1.ApiError("Doctor not found", 404);
+            if (doc.price)
                 amount = doc.price;
+            specialtyId = doc.specialtyId || undefined;
         }
         else if (packageId) {
             const pkg = await tx.medicalPackage.findUnique({ where: { id: packageId } });
             if (pkg)
                 amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+        // If voucherCode is supplied, perform validation (including minDepositAmount check)
+        const voucherCode = params.voucherCode;
+        if (voucherCode) {
+            const voucher = await tx.voucher.findUnique({
+                where: { code: voucherCode.toUpperCase() },
+            });
+            if (!voucher) {
+                throw new apiError_1.ApiError("Mã giảm giá không tồn tại.", 400);
+            }
+            if (!voucher.isActive) {
+                throw new apiError_1.ApiError("Mã giảm giá đã bị vô hiệu hóa.", 400);
+            }
+            const now = new Date();
+            if (now < voucher.startDate) {
+                throw new apiError_1.ApiError("Mã giảm giá chưa có hiệu lực.", 400);
+            }
+            if (voucher.endDate < now) {
+                throw new apiError_1.ApiError("Mã giảm giá đã hết hạn.", 400);
+            }
+            if (voucher.maxUses !== null && voucher.usedCount >= voucher.maxUses) {
+                throw new apiError_1.ApiError("Mã giảm giá đã hết lượt sử dụng.", 400);
+            }
+            // Check if user already used this voucher
+            const existingUsage = await tx.voucherUsage.findFirst({
+                where: { voucherId: voucher.id, userId },
+            });
+            if (existingUsage) {
+                throw new apiError_1.ApiError("Bạn đã sử dụng mã giảm giá này rồi.", 400);
+            }
+            // Check first booking condition
+            if (voucher.isFirstBooking) {
+                const existingConfirmedAppointment = await tx.appointment.findFirst({
+                    where: {
+                        userId,
+                        status: { in: ["CONFIRMED", "COMPLETED"] },
+                    },
+                });
+                if (existingConfirmedAppointment) {
+                    throw new apiError_1.ApiError("Mã giảm giá này chỉ dành cho lần đặt lịch đầu tiên.", 400);
+                }
+            }
+            // Check specialty restriction
+            if (voucher.applyTo === "SPECIALTY") {
+                if (!specialtyId || voucher.specialtyId !== specialtyId) {
+                    throw new apiError_1.ApiError("Mã giảm giá không áp dụng cho chuyên khoa này.", 400);
+                }
+            }
+            // Check applyTo: PACKAGE vouchers only valid with packageId
+            if (voucher.applyTo === "PACKAGE" && !packageId) {
+                throw new apiError_1.ApiError("Mã giảm giá này chỉ áp dụng khi đặt gói khám.", 400);
+            }
+            // Check minimum deposit
+            if (amount < voucher.minDepositAmount) {
+                throw new apiError_1.ApiError(`Số tiền cọc tối thiểu để sử dụng mã này là ${voucher.minDepositAmount.toLocaleString("vi-VN")}đ.`, 400);
+            }
         }
         const createdAppointment = await tx.appointment.create({
             data: {
@@ -244,7 +305,7 @@ async function uploadPaymentProof(appointmentId, fileBuffer, mimetype) {
     return updated;
 }
 async function autoCancelExpiredAppointments() {
-    const timeLimit = new Date(Date.now() - 5 * 60 * 1000); // 5 mins ago
+    const timeLimit = new Date(Date.now() - 15 * 60 * 1000); // 15 mins ago
     // Find all expired appointments
     const expired = await client_1.default.appointment.findMany({
         where: {
@@ -253,21 +314,54 @@ async function autoCancelExpiredAppointments() {
                 lt: timeLimit,
             },
         },
+        include: {
+            user: true,
+        },
     });
     if (expired.length > 0) {
-        console.log(`[Scheduler] Found ${expired.length} expired pending-payment appointments. Marking as EXPIRED.`);
-        await client_1.default.appointment.updateMany({
-            where: {
-                status: "PENDING_PAYMENT",
-                createdAt: {
-                    lt: timeLimit,
-                },
-            },
-            data: {
-                status: "EXPIRED",
-                cancellationReason: "Hủy tự động do quá hạn 5 phút không hoàn tất chuyển khoản.",
-            },
-        });
+        console.log(`[Scheduler] Found ${expired.length} expired pending-payment appointments. Processing cancellation safely.`);
+        for (const appt of expired) {
+            try {
+                await client_1.default.$transaction(async (tx) => {
+                    const current = await tx.appointment.findUnique({
+                        where: { id: appt.id },
+                        select: { status: true },
+                    });
+                    if (current && current.status === "PENDING_PAYMENT") {
+                        await tx.appointment.update({
+                            where: { id: appt.id },
+                            data: {
+                                status: "EXPIRED",
+                                cancellationReason: "Hủy tự động do quá hạn 15 phút không hoàn tất chuyển khoản.",
+                            },
+                        });
+                        // Send email notification
+                        if (appt.user?.email) {
+                            const patientInfo = appt.patientInfo;
+                            const patientName = patientInfo?.fullName || appt.user?.fullName || "Bệnh nhân";
+                            (0, emailService_1.sendCancellationEmail)(appt.user.email, {
+                                patientName,
+                                bookingCode: appt.bookingCode,
+                                appointmentDate: appt.appointmentDate,
+                                isRefundable: false,
+                                amount: 0,
+                            }).catch((err) => console.error(`Error sending cancellation email for appointment ${appt.id}:`, err));
+                            // Send in-app notification
+                            (0, notificationService_1.createNotification)({
+                                userId: appt.userId,
+                                type: "APPOINTMENT_CANCELLED_BY_PATIENT",
+                                title: "Lịch hẹn đã bị huỷ tự động ❌",
+                                message: `Lịch hẹn #${appt.bookingCode} đã bị huỷ tự động do quá 15 phút chưa hoàn tất thanh toán.`,
+                                data: { appointmentId: appt.id }
+                            }).catch((err) => console.error(`Error sending notification for appointment ${appt.id}:`, err));
+                        }
+                    }
+                });
+            }
+            catch (err) {
+                console.error(`[Scheduler] Error auto-cancelling appointment ${appt.id}:`, err);
+            }
+        }
     }
 }
 async function getAppointmentsByUser(userId) {

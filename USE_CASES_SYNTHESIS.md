@@ -321,7 +321,7 @@
 | `CONFIRMED` | Admin đã xác nhận hoặc webhook thành công |
 | `COMPLETED` | Bác sĩ đã hoàn thành khám |
 | `CANCELLED` | Đã hủy (bởi bệnh nhân hoặc admin) |
-| `EXPIRED` | Tự động hủy sau 5 phút không thanh toán |
+| `EXPIRED` | Tự động hủy sau 15-30 phút không thanh toán |
 
 ### Payment Status:
 | Status | Mô Tả |
@@ -356,7 +356,7 @@
 | **Giới hạn đặt lịch** | Phải đặt trước ≥ 2 giờ so với giờ hiện tại |
 | **Giới hạn slot** | Tối đa 20 lịch hẹn/slot (cùng bác sĩ, cùng giờ) |
 | **Hoàn tiền** | Hủy trước ≥ 24h → hoàn cọc; <24h → mất cọc |
-| **Tự hủy** | `PENDING_PAYMENT` quá 5 phút không thanh toán → `EXPIRED` |
+| **Tự hủy** | `PENDING_PAYMENT` quá 15-30 phút không thanh toán → `EXPIRED` |
 | **Phân quyền khám** | Bác sĩ chỉ xem hồ sơ bệnh nhân có lịch hẹn với mình |
 | **Không tự đặt** | Bác sĩ không thể đặt lịch khám với chính mình |
 | **Xóa admin** | Admin không thể xóa tài khoản của chính mình |

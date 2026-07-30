@@ -418,9 +418,9 @@ export async function createPayOSPaymentLink(appointmentId: string, voucherCode?
     const amount = finalDiscountAmount ? Math.max(baseAmount - finalDiscountAmount, 1000) : baseAmount;
     const description = `MEDBOOKING ${appointment.transactionCode}`.substring(0, 25);
     
-    // Set expired time = now + 5 minutes
-    const expiredAt = Math.floor(Date.now() / 1000) + 5 * 60;
-    const expiredAtDate = new Date(Date.now() + 5 * 60 * 1000);
+    // Set expired time = now + 15 minutes (extended to allow user time to process OTP/VNPAY/PayOS)
+    const expiredAt = Math.floor(Date.now() / 1000) + 15 * 60;
+    const expiredAtDate = new Date(Date.now() + 15 * 60 * 1000);
 
     const returnUrl = process.env.FRONTEND_PAYMENT_REDIRECT_URL || "http://localhost:3000/my-appointments";
     const cancelUrl = process.env.FRONTEND_PAYMENT_REDIRECT_URL || "http://localhost:3000/my-appointments";

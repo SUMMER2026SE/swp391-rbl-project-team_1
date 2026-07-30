@@ -1,14 +1,16 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.searchMedicines = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 const searchMedicines = async (req, res) => {
     try {
         const { query } = req.query;
         let medicines;
         if (query && typeof query === 'string' && query.trim() !== '') {
-            medicines = await prisma.medicine.findMany({
+            medicines = await client_1.default.medicine.findMany({
                 where: {
                     OR: [
                         { name: { contains: query, mode: 'insensitive' } },
@@ -19,7 +21,7 @@ const searchMedicines = async (req, res) => {
             });
         }
         else {
-            medicines = await prisma.medicine.findMany({ take: 20 });
+            medicines = await client_1.default.medicine.findMany({ take: 20 });
         }
         res.status(200).json({ success: true, data: medicines });
     }

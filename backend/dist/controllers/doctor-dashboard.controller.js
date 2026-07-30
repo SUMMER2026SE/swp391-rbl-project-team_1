@@ -1,12 +1,15 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPatientRecords = exports.getPatientDetail = exports.getDoctorReviews = exports.getDoctorStatistics = exports.updateBulkAppointmentStatus = exports.getDashboardCharts = exports.createPrescription = exports.createMedicalRecord = exports.getPatientMedicalRecords = exports.getDoctorPatients = exports.updateAppointmentStatus = exports.getDoctorAppointments = exports.deleteDoctorSchedule = exports.updateDoctorSchedule = exports.createDoctorSchedule = exports.getDoctorSchedules = exports.updateDoctorProfile = exports.getAvailableSpecialtiesAndClinics = exports.getDoctorProfile = exports.getDashboardStats = void 0;
 const client_1 = require("@prisma/client");
 const emailService_1 = require("../utils/emailService");
-const prisma = new client_1.PrismaClient();
+const client_2 = __importDefault(require("../prisma/client"));
 // Utility to get the logged-in doctor
 const getDoctor = async (userId) => {
-    return prisma.doctor.findFirst({
+    return client_2.default.doctor.findFirst({
         where: { userAccount: { id: userId } }
     });
 };
@@ -17,43 +20,43 @@ const getDashboardStats = async (req, res) => {
             return res.status(404).json({ message: "Doctor profile not found" });
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const totalAppointmentsToday = await prisma.appointment.count({
+        const totalAppointmentsToday = await client_2.default.appointment.count({
             where: {
                 doctorId: doctor.id,
                 appointmentDate: { gte: today, lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) }
             }
         });
-        const pendingAppointments = await prisma.appointment.count({
+        const pendingAppointments = await client_2.default.appointment.count({
             where: { doctorId: doctor.id, status: client_1.AppointmentStatus.PENDING }
         });
-        const completedAppointments = await prisma.appointment.count({
+        const completedAppointments = await client_2.default.appointment.count({
             where: { doctorId: doctor.id, status: client_1.AppointmentStatus.COMPLETED }
         });
-        const cancelledAppointments = await prisma.appointment.count({
+        const cancelledAppointments = await client_2.default.appointment.count({
             where: { doctorId: doctor.id, status: client_1.AppointmentStatus.CANCELLED }
         });
         // New: completed appointments this month
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
-        const completedAppointmentsThisMonth = await prisma.appointment.count({
+        const completedAppointmentsThisMonth = await client_2.default.appointment.count({
             where: {
                 doctorId: doctor.id,
                 status: client_1.AppointmentStatus.COMPLETED,
                 appointmentDate: { gte: startOfMonth, lte: endOfMonth }
             }
         });
-        const totalPatients = await prisma.appointment.groupBy({
+        const totalPatients = await client_2.default.appointment.groupBy({
             by: ['userId'],
             where: { doctorId: doctor.id }
         });
         // Average Rating
-        const reviews = await prisma.review.aggregate({
+        const reviews = await client_2.default.review.aggregate({
             _avg: { rating: true },
             where: { doctorId: doctor.id }
         });
         const averageRating = reviews._avg.rating ? Number(reviews._avg.rating.toFixed(1)) : 0;
         // Monthly Revenue (sum of Payments in current month where status = PAID)
-        const payments = await prisma.payment.aggregate({
+        const payments = await client_2.default.payment.aggregate({
             _sum: { amount: true },
             where: {
                 status: 'PAID',
@@ -82,7 +85,7 @@ const getDashboardStats = async (req, res) => {
 exports.getDashboardStats = getDashboardStats;
 const getDoctorProfile = async (req, res) => {
     try {
-        const doctor = await prisma.doctor.findFirst({
+        const doctor = await client_2.default.doctor.findFirst({
             where: { userAccount: { id: req.user.userId } },
             include: { specialty: true, clinic: true }
         });
@@ -97,8 +100,8 @@ const getDoctorProfile = async (req, res) => {
 exports.getDoctorProfile = getDoctorProfile;
 const getAvailableSpecialtiesAndClinics = async (req, res) => {
     try {
-        const specialties = await prisma.specialty.findMany({ select: { id: true, name: true } });
-        const clinics = await prisma.clinic.findMany({ select: { id: true, name: true, address: true } });
+        const specialties = await client_2.default.specialty.findMany({ select: { id: true, name: true } });
+        const clinics = await client_2.default.clinic.findMany({ select: { id: true, name: true, address: true } });
         res.json({ specialties, clinics });
     }
     catch (error) {
@@ -112,7 +115,7 @@ const updateDoctorProfile = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         const { name, experience, avatar, specialtyId, clinicId, price, phone, description } = req.body;
-        const updatedDoctor = await prisma.doctor.update({
+        const updatedDoctor = await client_2.default.doctor.update({
             where: { id: doctor.id },
             data: {
                 name,
@@ -139,7 +142,7 @@ const getDoctorSchedules = async (req, res) => {
         const doctor = await getDoctor(req.user.userId);
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
-        const schedules = await prisma.doctorSchedule.findMany({
+        const schedules = await client_2.default.doctorSchedule.findMany({
             where: { doctorId: doctor.id },
             orderBy: { dayOfWeek: 'asc' }
         });
@@ -179,7 +182,7 @@ const createDoctorSchedule = async (req, res) => {
             return res.status(400).json({ message: "Giờ bắt đầu phải trước giờ kết thúc." });
         }
         // Check overlap
-        const existingSchedules = await prisma.doctorSchedule.findMany({
+        const existingSchedules = await client_2.default.doctorSchedule.findMany({
             where: {
                 doctorId: doctor.id,
                 dayOfWeek: dow
@@ -193,7 +196,7 @@ const createDoctorSchedule = async (req, res) => {
         if (hasOverlap) {
             return res.status(400).json({ message: "Khung giờ này bị trùng lặp với lịch trực đã có vào ngày này." });
         }
-        const schedule = await prisma.doctorSchedule.create({
+        const schedule = await client_2.default.doctorSchedule.create({
             data: {
                 doctorId: doctor.id,
                 dayOfWeek: dow,
@@ -216,7 +219,7 @@ const updateDoctorSchedule = async (req, res) => {
             return res.status(404).json({ message: "Doctor profile not found" });
         const id = req.params.id;
         const { dayOfWeek, startTime, endTime, isAvailable } = req.body;
-        const currentSchedule = await prisma.doctorSchedule.findFirst({
+        const currentSchedule = await client_2.default.doctorSchedule.findFirst({
             where: { id, doctorId: doctor.id }
         });
         if (!currentSchedule) {
@@ -235,7 +238,7 @@ const updateDoctorSchedule = async (req, res) => {
             return res.status(400).json({ message: "Giờ bắt đầu phải trước giờ kết thúc." });
         }
         // Check overlap (excluding the schedule itself)
-        const existingSchedules = await prisma.doctorSchedule.findMany({
+        const existingSchedules = await client_2.default.doctorSchedule.findMany({
             where: {
                 doctorId: doctor.id,
                 dayOfWeek: finalDayOfWeek,
@@ -250,7 +253,7 @@ const updateDoctorSchedule = async (req, res) => {
         if (hasOverlap) {
             return res.status(400).json({ message: "Khung giờ này bị trùng lặp với lịch trực đã có vào ngày này." });
         }
-        const schedule = await prisma.doctorSchedule.update({
+        const schedule = await client_2.default.doctorSchedule.update({
             where: { id, doctorId: doctor.id },
             data: {
                 dayOfWeek: finalDayOfWeek,
@@ -272,7 +275,7 @@ const deleteDoctorSchedule = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         const id = req.params.id;
-        await prisma.doctorSchedule.delete({
+        await client_2.default.doctorSchedule.delete({
             where: { id, doctorId: doctor.id }
         });
         res.json({ message: "Schedule deleted" });
@@ -289,10 +292,10 @@ const getDoctorAppointments = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         const { status } = req.query;
-        const appointments = await prisma.appointment.findMany({
+        const appointments = await client_2.default.appointment.findMany({
             where: {
                 doctorId: doctor.id,
-                ...(status ? { status: status } : {})
+                ...(status ? { status: status } : { status: { not: "PENDING_PAYMENT" } })
             },
             include: {
                 user: { select: { id: true, fullName: true, email: true, gender: true, dateOfBirth: true, avatar: true } },
@@ -315,7 +318,7 @@ const updateAppointmentStatus = async (req, res) => {
             return res.status(404).json({ message: "Doctor profile not found" });
         const id = req.params.id;
         const { status, notes, cancellationReason } = req.body;
-        const appointmentObj = await prisma.appointment.findUnique({
+        const appointmentObj = await client_2.default.appointment.findUnique({
             where: { id, doctorId: doctor.id }
         });
         if (!appointmentObj) {
@@ -330,7 +333,7 @@ const updateAppointmentStatus = async (req, res) => {
                 });
             }
         }
-        const appointment = await prisma.appointment.update({
+        const appointment = await client_2.default.appointment.update({
             where: { id, doctorId: doctor.id },
             data: { status, notes, cancellationReason },
             include: {
@@ -369,7 +372,7 @@ const getDoctorPatients = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         // Get distinct patients for this doctor
-        const appointments = await prisma.appointment.findMany({
+        const appointments = await client_2.default.appointment.findMany({
             where: { doctorId: doctor.id },
             include: { user: { select: { id: true, fullName: true, email: true, gender: true, dateOfBirth: true, avatar: true } } }
         });
@@ -392,7 +395,7 @@ const getPatientMedicalRecords = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         const userId = req.params.userId;
-        const records = await prisma.medicalRecord.findMany({
+        const records = await client_2.default.medicalRecord.findMany({
             where: { doctorId: doctor.id, userId },
             include: { appointment: true, prescriptions: true },
             orderBy: { createdAt: 'desc' }
@@ -410,7 +413,7 @@ const createMedicalRecord = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         const { appointmentId, userId, diagnosis, notes } = req.body;
-        const record = await prisma.medicalRecord.create({
+        const record = await client_2.default.medicalRecord.create({
             data: {
                 appointmentId,
                 doctorId: doctor.id,
@@ -429,7 +432,7 @@ exports.createMedicalRecord = createMedicalRecord;
 const createPrescription = async (req, res) => {
     try {
         const { medicalRecordId, medicineId, dosage, frequency, durationDays, quantity } = req.body;
-        const prescription = await prisma.prescription.create({
+        const prescription = await client_2.default.prescription.create({
             data: {
                 medicalRecordId,
                 medicineId,
@@ -457,7 +460,7 @@ const getDashboardCharts = async (req, res) => {
         // 1. Bar Chart (Last 7 days)
         const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(today.getDate() - 6);
-        const last7DaysAppointments = await prisma.appointment.findMany({
+        const last7DaysAppointments = await client_2.default.appointment.findMany({
             where: {
                 doctorId: doctor.id,
                 appointmentDate: { gte: sevenDaysAgo, lte: new Date(today.getTime() + 24 * 60 * 60 * 1000) }
@@ -487,7 +490,7 @@ const getDashboardCharts = async (req, res) => {
         const barChart = Array.from(barChartMap.values());
         // 2. Line Chart (Patient Trend Last 3 Months)
         const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-        const last3MonthsAppointments = await prisma.appointment.findMany({
+        const last3MonthsAppointments = await client_2.default.appointment.findMany({
             where: {
                 doctorId: doctor.id,
                 appointmentDate: { gte: threeMonthsAgo }
@@ -510,7 +513,7 @@ const getDashboardCharts = async (req, res) => {
         const lineChart = Array.from(lineChartMap.entries()).map(([name, set]) => ({ name, patients: set.size }));
         // 3. Donut Chart (Distribution by ICD-10 or Speciality)
         // We'll use medical records ICD-10 prefixes (first character usually indicates chapter)
-        const medicalRecords = await prisma.medicalRecord.findMany({
+        const medicalRecords = await client_2.default.medicalRecord.findMany({
             where: { doctorId: doctor.id },
             select: { icd10Code: true }
         });
@@ -530,7 +533,7 @@ const getDashboardCharts = async (req, res) => {
         }
         const donutChart = sortedDonut.map(([name, value]) => ({ name, value }));
         // 4. Upcoming Appointments Today
-        const upcomingAppointments = await prisma.appointment.findMany({
+        const upcomingAppointments = await client_2.default.appointment.findMany({
             where: {
                 doctorId: doctor.id,
                 appointmentDate: { gte: today },
@@ -541,7 +544,7 @@ const getDashboardCharts = async (req, res) => {
             take: 5
         });
         // 5. Latest Reviews
-        const latestReviews = await prisma.review.findMany({
+        const latestReviews = await client_2.default.review.findMany({
             where: { doctorId: doctor.id },
             include: { user: { select: { fullName: true, avatar: true } } },
             orderBy: { createdAt: 'desc' },
@@ -569,7 +572,7 @@ const updateBulkAppointmentStatus = async (req, res) => {
         if (!Array.isArray(ids) || !status) {
             return res.status(400).json({ message: "Invalid request payload" });
         }
-        await prisma.appointment.updateMany({
+        await client_2.default.appointment.updateMany({
             where: {
                 id: { in: ids },
                 doctorId: doctor.id,
@@ -593,7 +596,7 @@ const getDoctorStatistics = async (req, res) => {
         const today = new Date();
         const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
         // All appointments
-        const allAppointments = await prisma.appointment.findMany({
+        const allAppointments = await client_2.default.appointment.findMany({
             where: { doctorId: doctor.id },
             select: { id: true, status: true, userId: true, appointmentDate: true }
         });
@@ -612,7 +615,7 @@ const getDoctorStatistics = async (req, res) => {
         const resolvedAppts = allAppointments.filter(app => app.status === 'COMPLETED' || app.status === 'CANCELLED').length;
         const completionRate = resolvedAppts > 0 ? (completedAppts / resolvedAppts) * 100 : 0;
         // 3. Reviews & Rating
-        const reviews = await prisma.review.aggregate({
+        const reviews = await client_2.default.review.aggregate({
             _avg: { rating: true },
             _count: { id: true },
             where: { doctorId: doctor.id }
@@ -620,7 +623,7 @@ const getDoctorStatistics = async (req, res) => {
         const averageRating = reviews._avg.rating ? Number(reviews._avg.rating.toFixed(1)) : 0;
         const totalReviews = reviews._count.id;
         // 4. Revenue (All time + this month)
-        const allPayments = await prisma.payment.findMany({
+        const allPayments = await client_2.default.payment.findMany({
             where: { appointment: { doctorId: doctor.id }, status: 'PAID' },
             select: { amount: true, payDate: true }
         });
@@ -646,7 +649,7 @@ const getDoctorStatistics = async (req, res) => {
             patients12Months.push({ name: monthStr, patients: pats });
         }
         // 6. Pie chart age distribution
-        const appointmentsForAge = await prisma.appointment.findMany({
+        const appointmentsForAge = await client_2.default.appointment.findMany({
             where: { doctorId: doctor.id },
             select: { patientInfo: true }
         });
@@ -679,7 +682,7 @@ const getDoctorStatistics = async (req, res) => {
             { name: 'Trên 60 tuổi', value: ageGroups['60+'] },
         ].filter(g => g.value > 0);
         // 7. Top 5 ICD-10
-        const medicalRecords = await prisma.medicalRecord.findMany({
+        const medicalRecords = await client_2.default.medicalRecord.findMany({
             where: { doctorId: doctor.id },
             select: { icd10Code: true }
         });
@@ -730,14 +733,14 @@ const getDoctorReviews = async (req, res) => {
             whereClause.rating = rating;
         }
         const [reviews, total] = await Promise.all([
-            prisma.review.findMany({
+            client_2.default.review.findMany({
                 where: whereClause,
                 include: { user: { select: { fullName: true, avatar: true } } },
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit
             }),
-            prisma.review.count({ where: whereClause })
+            client_2.default.review.count({ where: whereClause })
         ]);
         res.json({
             data: reviews,
@@ -760,7 +763,7 @@ const getPatientDetail = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         const userId = req.params.userId;
-        const user = await prisma.user.findUnique({
+        const user = await client_2.default.user.findUnique({
             where: { id: userId },
             select: {
                 id: true, fullName: true, email: true, gender: true,
@@ -770,7 +773,7 @@ const getPatientDetail = async (req, res) => {
         });
         if (!user)
             return res.status(404).json({ message: "Patient not found" });
-        const pastAppointments = await prisma.appointment.findMany({
+        const pastAppointments = await client_2.default.appointment.findMany({
             where: { userId, doctorId: doctor.id, status: 'COMPLETED' },
             include: {
                 medicalRecord: { select: { id: true, status: true } }
@@ -797,7 +800,7 @@ const getPatientRecords = async (req, res) => {
         if (!doctor)
             return res.status(404).json({ message: "Doctor profile not found" });
         const userId = req.params.userId;
-        const records = await prisma.medicalRecord.findMany({
+        const records = await client_2.default.medicalRecord.findMany({
             where: {
                 userId,
                 doctorId: doctor.id,

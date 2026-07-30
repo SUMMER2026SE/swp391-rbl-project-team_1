@@ -1,9 +1,11 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logAdminAction = logAdminAction;
 exports.createAuditLog = createAuditLog;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 /**
  * Middleware factory: wraps a controller and automatically logs the admin action
  * after the response is sent (non-blocking).
@@ -35,7 +37,7 @@ function logAdminAction(payload) {
                     ipAddress,
                 };
                 // Fire-and-forget: non-blocking
-                prisma.adminLog.create({ data: logData }).catch((err) => {
+                client_1.default.adminLog.create({ data: logData }).catch((err) => {
                     console.error("[AuditLog] Failed to write log:", err);
                 });
             }
@@ -50,7 +52,7 @@ function logAdminAction(payload) {
  */
 async function createAuditLog(adminId, adminEmail, action, targetType, options = {}) {
     try {
-        await prisma.adminLog.create({
+        await client_1.default.adminLog.create({
             data: {
                 adminId,
                 adminEmail,
