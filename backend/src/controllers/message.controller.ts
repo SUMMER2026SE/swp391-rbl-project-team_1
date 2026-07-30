@@ -132,12 +132,28 @@ export async function getOrCreateConversation(req: Request, res: Response, next:
         });
 
         if (!conversation) {
-            conversation = await prisma.conversation.create({
-                data: {
-                    userId,
-                    doctorId
+            try {
+                conversation = await prisma.conversation.create({
+                    data: {
+                        userId,
+                        doctorId
+                    }
+                });
+            } catch (createError: any) {
+                // Handle race condition where another request created the conversation concurrently
+                if (createError.code === "P2002") {
+                    conversation = await prisma.conversation.findUnique({
+                        where: {
+                            userId_doctorId: {
+                                userId,
+                                doctorId
+                            }
+                        }
+                    });
+                } else {
+                    throw createError;
                 }
-            });
+            }
         }
 
         res.json({ conversation });

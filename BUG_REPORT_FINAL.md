@@ -8,11 +8,11 @@ Báo cáo này liệt kê danh sách lỗi được tìm thấy trong hệ thố
 
 | Mức độ | Số lỗi | Danh sách lỗi | Trạng thái |
 |--------|--------|---------------|------------|
-| ✅ Đã sửa | **30** | BUG-001, BUG-002, BUG-004, BUG-005, BUG-009, BUG-012, BUG-014, BUG-016, BUG-017, BUG-018, BUG-019, BUG-020, BUG-021, BUG-022, BUG-023, BUG-026, BUG-027, BUG-028, BUG-029, BUG-NEW-01, BUG-NEW-02, BUG-NEW-03, BUG-NEW-04, BUG-NEW-05, BUG-FRONTEND-01, BUG-NEW-06, BUG-NEW-07, BUG-NEW-08, BUG-NEW-09, BUG-NEW-10 | Đã giải quyết triệt để |
+| ✅ Đã sửa | **31** | BUG-001, BUG-002, BUG-004, BUG-005, BUG-009, BUG-012, BUG-014, BUG-016, BUG-017, BUG-018, BUG-019, BUG-020, BUG-021, BUG-022, BUG-023, BUG-026, BUG-027, BUG-028, BUG-029, BUG-NEW-01, BUG-NEW-02, BUG-NEW-03, BUG-NEW-04, BUG-NEW-05, BUG-FRONTEND-01, BUG-NEW-06, BUG-NEW-07, BUG-NEW-08, BUG-NEW-09, BUG-NEW-10, BUG-NEW-11 | Đã giải quyết triệt để |
 | 🟠 Medium (Chưa sửa) | **0** | Không còn lỗi nào | Đã giải quyết triệt để |
 | 🟡 Low/Quality (Chưa sửa) | **0** | Không còn lỗi nào | Đã giải quyết triệt để |
 
-**Tổng: 30 lỗi tìm thấy — 30 đã sửa — 0 còn tồn tại**
+**Tổng: 31 lỗi tìm thấy — 31 đã sửa — 0 còn tồn tại**
 
 ---
 
@@ -248,3 +248,24 @@ const canCancel = diffHours > 24; // Đúng: chỉ hiển thị khi còn hơn 24
 
 ### BUG-NEW-10 (Thời gian tự động huỷ lịch quá hạn quá ngắn gây bất tiện)
 - **Mô tả:** Thời gian tự động hủy các lịch hẹn chưa thanh toán được đặt mặc định là 5-10 phút, quá ngắn so với thời gian thao tác thanh toán PayOS hoặc chuyển khoản của bệnh nhân. Đã tăng giới hạn thời gian chờ thanh toán trước khi tự động hủy lịch (auto-cancel expiration limit) lên 15-30 phút trong `server.ts` để mang lại trải nghiệm tốt hơn.
+
+### BUG-NEW-11 (Lỗi Unique Constraint khi Khởi tạo Cuộc trò chuyện / Conversation)
+- **Mô tả:** Trong `message.controller.ts`, hàm `getOrCreateConversation` tìm kiếm cuộc trò chuyện bằng `prisma.conversation.findUnique`. Khi hai yêu cầu song song xảy ra đồng thời cho cùng một cặp `(userId, doctorId)` (ví dụ do client call API đồng thời lúc tải trang chat), cả hai đều không tìm thấy và cùng gọi `prisma.conversation.create`. Một trong hai yêu cầu sẽ thất bại với lỗi `Unique constraint failed on the fields: (userId, doctorId)` (Prisma code `P2002`).
+- **Giải pháp:** Bọc khối lệnh `prisma.conversation.create` trong `try-catch`. Nếu bắt được lỗi Prisma `P2002` (Unique constraint failed), hệ thống sẽ chủ động tìm kiếm lại cuộc trò chuyện vừa được tạo song song và trả về kết quả thành công mà không gây lỗi 500 cho API.
+```typescript
+try {
+    conversation = await prisma.conversation.create({
+        data: { userId, doctorId }
+    });
+} catch (createError: any) {
+    if (createError.code === "P2002") {
+        conversation = await prisma.conversation.findUnique({
+            where: {
+                userId_doctorId: { userId, doctorId }
+            }
+        });
+    } else {
+        throw createError;
+    }
+}
+```
