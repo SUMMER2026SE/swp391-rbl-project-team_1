@@ -32,7 +32,7 @@ export async function createAppointmentHandler(
             throw new ApiError("Authentication required", 401);
         }
 
-        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType } = req.body as any;
+        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType, voucherCode } = req.body as any;
 
         if (!patientInfo || !patientInfo.fullName) {
             throw new ApiError("Vui lòng điền đầy đủ thông tin người khám", 400);
@@ -65,6 +65,7 @@ export async function createAppointmentHandler(
             appointmentDate: date,
             notes,
             packageId,
+            voucherCode,
         });
 
         res.status(201).json({

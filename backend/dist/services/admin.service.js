@@ -36,6 +36,11 @@ async function getAllUsers() {
  */
 async function getAllAppointments() {
     return client_1.default.appointment.findMany({
+        where: {
+            status: {
+                not: "PENDING_PAYMENT",
+            },
+        },
         include: {
             user: {
                 select: {
@@ -66,8 +71,36 @@ async function deleteUser(userId) {
     if (user.role === client_2.Role.ADMIN) {
         throw new apiError_1.ApiError("Cannot delete admin users", 403);
     }
-    // Delete appointments first due to foreign key constraint
-    await client_1.default.appointment.deleteMany({ where: { userId } });
+    // Delete related entities to avoid foreign key constraint violations
+    await client_1.default.voucherUsage.deleteMany({ where: { userId } });
+    await client_1.default.savedVoucher.deleteMany({ where: { userId } });
+    // We should retrieve user's appointments to clean up payments, reviews, voucherUsages, and complaints
+    const userAppointments = await client_1.default.appointment.findMany({
+        where: { userId },
+        select: { id: true }
+    });
+    const appointmentIds = userAppointments.map(a => a.id);
+    if (appointmentIds.length > 0) {
+        await client_1.default.voucherUsage.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await client_1.default.payment.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await client_1.default.review.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await client_1.default.complaint.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+        await client_1.default.appointment.deleteMany({ where: { userId } });
+    }
+    await client_1.default.bookingProfile.deleteMany({ where: { userId } });
+    await client_1.default.complaint.deleteMany({ where: { userId } });
+    await client_1.default.conversation.deleteMany({ where: { userId } });
+    await client_1.default.message.deleteMany({ where: { senderId: userId } });
+    await client_1.default.medicalRecord.deleteMany({ where: { userId } });
+    await client_1.default.notification.deleteMany({ where: { userId } });
+    await client_1.default.videoCallLog.deleteMany({
+        where: {
+            OR: [
+                { callerId: userId },
+                { calleeId: userId }
+            ]
+        }
+    });
     await client_1.default.user.delete({ where: { id: userId } });
 }
 /**

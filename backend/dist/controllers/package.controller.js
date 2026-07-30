@@ -1,8 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPackageBookedSlots = exports.getPackageById = exports.getPackages = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 const getPackages = async (req, res) => {
     try {
         const { hospital, search } = req.query;
@@ -16,7 +18,7 @@ const getPackages = async (req, res) => {
                 mode: "insensitive"
             };
         }
-        const packages = await prisma.medicalPackage.findMany({ where });
+        const packages = await client_1.default.medicalPackage.findMany({ where });
         res.status(200).json(packages);
     }
     catch (error) {
@@ -28,7 +30,7 @@ exports.getPackages = getPackages;
 const getPackageById = async (req, res) => {
     try {
         const id = req.params.id;
-        const packageData = await prisma.medicalPackage.findUnique({
+        const packageData = await client_1.default.medicalPackage.findUnique({
             where: { id }
         });
         if (!packageData) {
@@ -48,7 +50,7 @@ const getPackageBookedSlots = async (req, res) => {
         const packageId = req.params.id;
         const startThreshold = new Date();
         startThreshold.setHours(startThreshold.getHours() - 24);
-        const activeAppointments = await prisma.appointment.findMany({
+        const activeAppointments = await client_1.default.appointment.findMany({
             where: {
                 packageId,
                 appointmentDate: {

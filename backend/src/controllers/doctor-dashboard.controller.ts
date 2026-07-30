@@ -1,9 +1,8 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth.middleware";
-import { PrismaClient, AppointmentStatus } from "@prisma/client";
+import { AppointmentStatus } from "@prisma/client";
 import { sendBookingStatusUpdateEmail } from "../utils/emailService";
-
-const prisma = new PrismaClient();
+import prisma from "../prisma/client";
 
 // Utility to get the logged-in doctor
 const getDoctor = async (userId: string) => {

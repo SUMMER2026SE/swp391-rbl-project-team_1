@@ -24,7 +24,7 @@ async function createAppointmentHandler(req, res, next) {
         if (!userId) {
             throw new apiError_1.ApiError("Authentication required", 401);
         }
-        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType } = req.body;
+        const { doctorId, appointmentDate, notes, packageId, patientInfo, patientProfileType, voucherCode } = req.body;
         if (!patientInfo || !patientInfo.fullName) {
             throw new apiError_1.ApiError("Vui lòng điền đầy đủ thông tin người khám", 400);
         }
@@ -51,6 +51,7 @@ async function createAppointmentHandler(req, res, next) {
             appointmentDate: date,
             notes,
             packageId,
+            voucherCode,
         });
         res.status(201).json({
             message: "Appointment created successfully",

@@ -78,7 +78,7 @@ export async function listSchedules(
                     gte: startThreshold,
                 },
                 status: {
-                    in: ["PENDING", "CONFIRMED", "COMPLETED"]
+                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED", "COMPLETED"]
                 }
             },
             select: {

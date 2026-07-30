@@ -102,36 +102,43 @@ async function getAppointmentsOverTime(period) {
         orderBy: { appointmentDate: "asc" },
     });
     const timeMap = new Map();
-    // Initialize map
+    // Initialize map using UTC+7 local time
+    const localNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
     if (period === 'week') {
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+            const d = new Date(localNow.getTime());
+            d.setUTCDate(d.getUTCDate() - i);
+            timeMap.set(`${d.getUTCDate()}/${d.getUTCMonth() + 1}`, 0);
         }
     }
     else if (period === 'month') {
         for (let i = 29; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+            const d = new Date(localNow.getTime());
+            d.setUTCDate(d.getUTCDate() - i);
+            timeMap.set(`${d.getUTCDate()}/${d.getUTCMonth() + 1}`, 0);
         }
     }
     else {
         for (let i = 11; i >= 0; i--) {
-            const d = new Date();
-            d.setMonth(d.getMonth() - i);
-            timeMap.set(`T${d.getMonth() + 1}/${d.getFullYear()}`, 0);
+            const d = new Date(localNow.getTime());
+            d.setUTCMonth(d.getUTCMonth() - i);
+            timeMap.set(`T${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`, 0);
         }
     }
+    // Grouping by local/UTC+7 time to avoid off-by-one day timezone shifts (e.g. UTC date vs local date)
     for (const appt of appointments) {
         const d = new Date(appt.appointmentDate);
+        // Shift to local time if we want to group by user/local date. Since the system runs in UTC+7 (Asia/Saigon),
+        // let's adjust the date components.
+        // We can do this by using the local timezone representation or directly formatted values.
+        // Let's get the date string in Asia/Saigon timezone
+        const localDate = new Date(d.getTime() + 7 * 60 * 60 * 1000);
         let key = '';
         if (period === 'year') {
-            key = `T${d.getMonth() + 1}/${d.getFullYear()}`;
+            key = `T${localDate.getUTCMonth() + 1}/${localDate.getUTCFullYear()}`;
         }
         else {
-            key = `${d.getDate()}/${d.getMonth() + 1}`;
+            key = `${localDate.getUTCDate()}/${localDate.getUTCMonth() + 1}`;
         }
         if (timeMap.has(key)) {
             timeMap.set(key, (timeMap.get(key) ?? 0) + 1);
@@ -163,36 +170,39 @@ async function getRevenueOverTime(period) {
         orderBy: { appointmentDate: "asc" },
     });
     const timeMap = new Map();
-    // Initialize map
+    // Initialize map using UTC+7 local time
+    const localNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
     if (period === 'week') {
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+            const d = new Date(localNow.getTime());
+            d.setUTCDate(d.getUTCDate() - i);
+            timeMap.set(`${d.getUTCDate()}/${d.getUTCMonth() + 1}`, 0);
         }
     }
     else if (period === 'month') {
         for (let i = 29; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            timeMap.set(`${d.getDate()}/${d.getMonth() + 1}`, 0);
+            const d = new Date(localNow.getTime());
+            d.setUTCDate(d.getUTCDate() - i);
+            timeMap.set(`${d.getUTCDate()}/${d.getUTCMonth() + 1}`, 0);
         }
     }
     else {
         for (let i = 11; i >= 0; i--) {
-            const d = new Date();
-            d.setMonth(d.getMonth() - i);
-            timeMap.set(`T${d.getMonth() + 1}/${d.getFullYear()}`, 0);
+            const d = new Date(localNow.getTime());
+            d.setUTCMonth(d.getUTCMonth() - i);
+            timeMap.set(`T${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`, 0);
         }
     }
+    // Grouping by local/UTC+7 time to avoid off-by-one day timezone shifts
     for (const appt of completedAppts) {
         const d = new Date(appt.appointmentDate);
+        const localDate = new Date(d.getTime() + 7 * 60 * 60 * 1000);
         let key = '';
         if (period === 'year') {
-            key = `T${d.getMonth() + 1}/${d.getFullYear()}`;
+            key = `T${localDate.getUTCMonth() + 1}/${localDate.getUTCFullYear()}`;
         }
         else {
-            key = `${d.getDate()}/${d.getMonth() + 1}`;
+            key = `${localDate.getUTCDate()}/${localDate.getUTCMonth() + 1}`;
         }
         if (timeMap.has(key)) {
             const revenue = appt.amount;

@@ -1,15 +1,17 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.doctorCertificateService = exports.DoctorCertificateService = void 0;
-const client_1 = require("@prisma/client");
 const supabase_1 = require("../config/supabase");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 class DoctorCertificateService {
     /**
      * Get all certificates for a doctor
      */
     async getCertificates(doctorId) {
-        const certificates = await prisma.doctorCertificate.findMany({
+        const certificates = await client_1.default.doctorCertificate.findMany({
             where: { doctorId },
             orderBy: { createdAt: "desc" },
         });
@@ -30,7 +32,7 @@ class DoctorCertificateService {
                 imageUrl = url;
             }
         }
-        const certificate = await prisma.doctorCertificate.create({
+        const certificate = await client_1.default.doctorCertificate.create({
             data: {
                 doctorId,
                 title: data.title,
@@ -51,7 +53,7 @@ class DoctorCertificateService {
      * Update an existing certificate
      */
     async updateCertificate(certificateId, doctorId, data, file) {
-        const existing = await prisma.doctorCertificate.findUnique({ where: { id: certificateId } });
+        const existing = await client_1.default.doctorCertificate.findUnique({ where: { id: certificateId } });
         if (!existing || existing.doctorId !== doctorId) {
             throw new Error("Chứng chỉ không tồn tại hoặc bạn không có quyền sửa.");
         }
@@ -68,7 +70,7 @@ class DoctorCertificateService {
                 fileUrl = null;
             }
         }
-        const updated = await prisma.doctorCertificate.update({
+        const updated = await client_1.default.doctorCertificate.update({
             where: { id: certificateId },
             data: {
                 title: data.title !== undefined ? data.title : existing.title,
@@ -91,13 +93,13 @@ class DoctorCertificateService {
      * Delete a certificate
      */
     async deleteCertificate(certificateId, doctorId) {
-        const existing = await prisma.doctorCertificate.findUnique({
+        const existing = await client_1.default.doctorCertificate.findUnique({
             where: { id: certificateId },
         });
         if (!existing || existing.doctorId !== doctorId) {
             throw new Error("Chứng chỉ không tồn tại hoặc bạn không có quyền xóa.");
         }
-        await prisma.doctorCertificate.delete({
+        await client_1.default.doctorCertificate.delete({
             where: { id: certificateId },
         });
         return true;

@@ -58,7 +58,7 @@ async function listSchedules(req, res, next) {
                     gte: startThreshold,
                 },
                 status: {
-                    in: ["PENDING", "CONFIRMED", "COMPLETED"]
+                    in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED", "COMPLETED"]
                 }
             },
             select: {

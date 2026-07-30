@@ -108,21 +108,34 @@ async function registerUser(email, password, otp) {
     // 3. Hash password
     const hashedPassword = await bcrypt_1.default.hash(password, 12);
     // 4. Create real User record
-    const user = await client_2.default.user.create({
-        data: {
-            email: normalizedEmail,
-            password: hashedPassword,
-            role: client_1.Role.USER,
-        },
-        select: {
-            id: true,
-            email: true,
-            role: true,
-            doctorId: true,
-            createdAt: true,
-            updatedAt: true,
-        },
-    });
+    // Wrap in try/catch to handle race condition where two simultaneous requests
+    // both pass the existingUser check above and both try to create the same user.
+    // Database unique constraint on email will throw Prisma P2002 for the second one.
+    let user;
+    try {
+        user = await client_2.default.user.create({
+            data: {
+                email: normalizedEmail,
+                password: hashedPassword,
+                role: client_1.Role.USER,
+            },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                doctorId: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+    }
+    catch (err) {
+        if (err instanceof client_1.Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+            // Unique constraint violation — email was registered by a concurrent request
+            throw new apiError_1.ApiError("Email already registered", 409);
+        }
+        throw err;
+    }
     // 5. Delete OTP records for this email after registration is complete
     await client_2.default.oTP.deleteMany({
         where: { email: normalizedEmail },
@@ -303,15 +316,32 @@ async function googleLogin(idToken) {
         });
         if (!user) {
             // Register new user with Google details
-            user = await client_2.default.user.create({
-                data: {
-                    email: normalizedEmail,
-                    password: null, // Nullable password for Google login
-                    fullName: payload.name || null,
-                    avatar: payload.picture || null,
-                    role: client_1.Role.USER,
-                },
-            });
+            // Wrap in try/catch to handle race condition (two simultaneous Google logins
+            // for the same email — both see user is null, both try to create).
+            try {
+                user = await client_2.default.user.create({
+                    data: {
+                        email: normalizedEmail,
+                        password: null, // Nullable password for Google login
+                        fullName: payload.name || null,
+                        avatar: payload.picture || null,
+                        role: client_1.Role.USER,
+                    },
+                });
+            }
+            catch (createErr) {
+                if (createErr instanceof client_1.Prisma.PrismaClientKnownRequestError && createErr.code === "P2002") {
+                    // Another concurrent request created the user first — fetch the existing record
+                    const raceUser = await client_2.default.user.findUnique({ where: { email: normalizedEmail } });
+                    if (!raceUser) {
+                        throw new apiError_1.ApiError("Failed to create or retrieve user account", 500);
+                    }
+                    user = raceUser;
+                }
+                else {
+                    throw createErr;
+                }
+            }
         }
         else {
             if (user.isLocked) {

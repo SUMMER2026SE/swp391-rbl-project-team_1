@@ -1,12 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.listClinics = listClinics;
 exports.getClinic = getClinic;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const client_1 = __importDefault(require("../prisma/client"));
 async function listClinics(_req, res, next) {
     try {
-        const clinics = await prisma.clinic.findMany();
+        const clinics = await client_1.default.clinic.findMany();
         res.json({
             message: "Clinics retrieved successfully",
             count: clinics.length,
@@ -20,7 +22,7 @@ async function listClinics(_req, res, next) {
 async function getClinic(req, res, next) {
     try {
         const { id } = req.params;
-        const clinic = await prisma.clinic.findUnique({
+        const clinic = await client_1.default.clinic.findUnique({
             where: { id: id },
         });
         if (!clinic) {

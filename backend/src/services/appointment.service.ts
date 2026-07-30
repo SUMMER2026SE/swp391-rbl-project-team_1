@@ -55,6 +55,7 @@ export interface CreateAppointmentParams {
     appointmentDate: Date;
     notes?: string;
     packageId?: string;
+    voucherCode?: string;
 }
 
 function generateTransactionCode(): string {
@@ -145,12 +146,80 @@ export async function createAppointment(
         }
 
         let amount = 5000;
+        let specialtyId: string | undefined;
         if (doctorId) {
             const doc = await tx.doctor.findUnique({ where: { id: doctorId } });
-            if (doc?.price) amount = doc.price;
+            if (!doc) throw new ApiError("Doctor not found", 404);
+            if (doc.price) amount = doc.price;
+            specialtyId = doc.specialtyId || undefined;
         } else if (packageId) {
             const pkg = await tx.medicalPackage.findUnique({ where: { id: packageId } });
             if (pkg) amount = pkg.depositAmount || (pkg.price * (pkg.depositPercentage || 100)) / 100;
+        }
+
+        // If voucherCode is supplied, perform validation (including minDepositAmount check)
+        const voucherCode = params.voucherCode;
+        if (voucherCode) {
+            const voucher = await tx.voucher.findUnique({
+                where: { code: voucherCode.toUpperCase() },
+            });
+            if (!voucher) {
+                throw new ApiError("Mã giảm giá không tồn tại.", 400);
+            }
+            if (!voucher.isActive) {
+                throw new ApiError("Mã giảm giá đã bị vô hiệu hóa.", 400);
+            }
+            const now = new Date();
+            if (now < voucher.startDate) {
+                throw new ApiError("Mã giảm giá chưa có hiệu lực.", 400);
+            }
+            if (voucher.endDate < now) {
+                throw new ApiError("Mã giảm giá đã hết hạn.", 400);
+            }
+            if (voucher.maxUses !== null && voucher.usedCount >= voucher.maxUses) {
+                throw new ApiError("Mã giảm giá đã hết lượt sử dụng.", 400);
+            }
+
+            // Check if user already used this voucher
+            const existingUsage = await tx.voucherUsage.findFirst({
+                where: { voucherId: voucher.id, userId },
+            });
+            if (existingUsage) {
+                throw new ApiError("Bạn đã sử dụng mã giảm giá này rồi.", 400);
+            }
+
+            // Check first booking condition
+            if (voucher.isFirstBooking) {
+                const existingConfirmedAppointment = await tx.appointment.findFirst({
+                    where: {
+                        userId,
+                        status: { in: ["CONFIRMED", "COMPLETED"] },
+                    },
+                });
+                if (existingConfirmedAppointment) {
+                    throw new ApiError("Mã giảm giá này chỉ dành cho lần đặt lịch đầu tiên.", 400);
+                }
+            }
+
+            // Check specialty restriction
+            if (voucher.applyTo === "SPECIALTY") {
+                if (!specialtyId || voucher.specialtyId !== specialtyId) {
+                    throw new ApiError("Mã giảm giá không áp dụng cho chuyên khoa này.", 400);
+                }
+            }
+
+            // Check applyTo: PACKAGE vouchers only valid with packageId
+            if (voucher.applyTo === "PACKAGE" && !packageId) {
+                throw new ApiError("Mã giảm giá này chỉ áp dụng khi đặt gói khám.", 400);
+            }
+
+            // Check minimum deposit
+            if (amount < voucher.minDepositAmount) {
+                throw new ApiError(
+                    `Số tiền cọc tối thiểu để sử dụng mã này là ${voucher.minDepositAmount.toLocaleString("vi-VN")}đ.`,
+                    400
+                );
+            }
         }
 
         const createdAppointment = await tx.appointment.create({
@@ -282,7 +351,7 @@ export async function uploadPaymentProof(
 }
 
 export async function autoCancelExpiredAppointments(): Promise<void> {
-    const timeLimit = new Date(Date.now() - 5 * 60 * 1000); // 5 mins ago
+    const timeLimit = new Date(Date.now() - 15 * 60 * 1000); // 15 mins ago
 
     // Find all expired appointments
     const expired = await prisma.appointment.findMany({
@@ -312,7 +381,7 @@ export async function autoCancelExpiredAppointments(): Promise<void> {
                             where: { id: appt.id },
                             data: {
                                 status: "EXPIRED",
-                                cancellationReason: "Hủy tự động do quá hạn 5 phút không hoàn tất chuyển khoản.",
+                                cancellationReason: "Hủy tự động do quá hạn 15 phút không hoàn tất chuyển khoản.",
                             },
                         });
 
@@ -334,7 +403,7 @@ export async function autoCancelExpiredAppointments(): Promise<void> {
                                 userId: appt.userId,
                                 type: "APPOINTMENT_CANCELLED_BY_PATIENT",
                                 title: "Lịch hẹn đã bị huỷ tự động ❌",
-                                message: `Lịch hẹn #${appt.bookingCode} đã bị huỷ tự động do quá 5 phút chưa hoàn tất thanh toán.`,
+                                message: `Lịch hẹn #${appt.bookingCode} đã bị huỷ tự động do quá 15 phút chưa hoàn tất thanh toán.`,
                                 data: { appointmentId: appt.id }
                             }).catch((err) => console.error(`Error sending notification for appointment ${appt.id}:`, err));
                         }
