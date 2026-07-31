@@ -9,6 +9,14 @@ exports.getDoctorById = getDoctorById;
 exports.getDoctorByUserId = getDoctorByUserId;
 const client_1 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
+/**
+ * Retrieves all doctors, optionally filtered by specialty slug and/or clinic ID.
+ * Performs batch database checks to resolve the system verification status of each doctor.
+ *
+ * @param specialtySlug - Optional slug of the specialty to filter by
+ * @param clinicId - Optional ID of the clinic to filter by
+ * @returns Array of doctor profiles with specialty, clinic, certificates, and isSystemVerified indicator
+ */
 async function getAllDoctors(specialtySlug, clinicId) {
     const whereClause = {};
     if (specialtySlug) {

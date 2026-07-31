@@ -9,4 +9,5 @@ router.get("/conversations", message_controller_1.getConversations);
 router.post("/conversations", message_controller_1.getOrCreateConversation); // Init or get conversation
 router.get("/:conversationId", message_controller_1.getMessages);
 router.post("/:conversationId", message_controller_1.sendMessage);
+router.post("/:conversationId/read", message_controller_1.markAsRead);
 exports.default = router;

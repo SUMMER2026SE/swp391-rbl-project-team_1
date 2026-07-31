@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getConversations = getConversations;
 exports.getMessages = getMessages;
+exports.markAsRead = markAsRead;
 exports.getOrCreateConversation = getOrCreateConversation;
 exports.sendMessage = sendMessage;
 const apiError_1 = require("../utils/apiError");
@@ -46,7 +47,15 @@ async function getConversations(req, res, next) {
                 where: { userId },
                 include: {
                     doctor: {
-                        select: { id: true, name: true, avatar: true, specialty: true }
+                        select: {
+                            id: true,
+                            name: true,
+                            avatar: true,
+                            specialty: true,
+                            userAccount: {
+                                select: { id: true }
+                            }
+                        }
                     },
                     messages: {
                         orderBy: { createdAt: "desc" },
@@ -56,7 +65,20 @@ async function getConversations(req, res, next) {
                 orderBy: { updatedAt: "desc" }
             });
         }
-        res.json({ conversations });
+        const conversationsWithUnread = await Promise.all(conversations.map(async (conv) => {
+            const unreadCount = await client_1.default.message.count({
+                where: {
+                    conversationId: conv.id,
+                    senderId: { not: userId },
+                    isRead: false
+                }
+            });
+            return {
+                ...conv,
+                unreadCount
+            };
+        }));
+        res.json({ conversations: conversationsWithUnread });
     }
     catch (error) {
         next(error);
@@ -101,9 +123,31 @@ async function getMessages(req, res, next) {
                 senderId: { not: userId },
                 isRead: false
             },
-            data: { isRead: true }
+            data: { isRead: true, status: "SEEN" }
         });
         res.json({ messages });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+// Mark messages in a conversation as read
+async function markAsRead(req, res, next) {
+    try {
+        const userId = req.user?.id || req.user?.userId;
+        const conversationId = req.params.conversationId;
+        if (!userId) {
+            throw new apiError_1.ApiError("Unauthorized", 401);
+        }
+        await client_1.default.message.updateMany({
+            where: {
+                conversationId,
+                senderId: { not: userId },
+                isRead: false
+            },
+            data: { isRead: true, status: "SEEN" }
+        });
+        res.json({ message: "Messages marked as read" });
     }
     catch (error) {
         next(error);
@@ -126,12 +170,30 @@ async function getOrCreateConversation(req, res, next) {
             }
         });
         if (!conversation) {
-            conversation = await client_1.default.conversation.create({
-                data: {
-                    userId,
-                    doctorId
+            try {
+                conversation = await client_1.default.conversation.create({
+                    data: {
+                        userId,
+                        doctorId
+                    }
+                });
+            }
+            catch (createError) {
+                // Handle race condition where another request created the conversation concurrently
+                if (createError.code === "P2002") {
+                    conversation = await client_1.default.conversation.findUnique({
+                        where: {
+                            userId_doctorId: {
+                                userId,
+                                doctorId
+                            }
+                        }
+                    });
                 }
-            });
+                else {
+                    throw createError;
+                }
+            }
         }
         res.json({ conversation });
     }

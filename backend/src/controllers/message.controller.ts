@@ -41,7 +41,15 @@ export async function getConversations(req: Request, res: Response, next: NextFu
                 where: { userId },
                 include: {
                     doctor: {
-                        select: { id: true, name: true, avatar: true, specialty: true }
+                        select: {
+                            id: true,
+                            name: true,
+                            avatar: true,
+                            specialty: true,
+                            userAccount: {
+                                select: { id: true }
+                            }
+                        }
                     },
                     messages: {
                         orderBy: { createdAt: "desc" },
@@ -52,7 +60,23 @@ export async function getConversations(req: Request, res: Response, next: NextFu
             });
         }
 
-        res.json({ conversations });
+        const conversationsWithUnread = await Promise.all(
+            conversations.map(async (conv) => {
+                const unreadCount = await prisma.message.count({
+                    where: {
+                        conversationId: conv.id,
+                        senderId: { not: userId },
+                        isRead: false
+                    }
+                });
+                return {
+                    ...conv,
+                    unreadCount
+                };
+            })
+        );
+
+        res.json({ conversations: conversationsWithUnread });
     } catch (error) {
         next(error);
     }
@@ -103,10 +127,35 @@ export async function getMessages(req: Request, res: Response, next: NextFunctio
                 senderId: { not: userId },
                 isRead: false
             },
-            data: { isRead: true }
+            data: { isRead: true, status: "SEEN" }
         });
 
         res.json({ messages });
+    } catch (error) {
+        next(error);
+    }
+}
+
+// Mark messages in a conversation as read
+export async function markAsRead(req: any, res: Response, next: NextFunction): Promise<void> {
+    try {
+        const userId = req.user?.id || req.user?.userId;
+        const conversationId = req.params.conversationId as string;
+
+        if (!userId) {
+            throw new ApiError("Unauthorized", 401);
+        }
+
+        await prisma.message.updateMany({
+            where: {
+                conversationId,
+                senderId: { not: userId },
+                isRead: false
+            },
+            data: { isRead: true, status: "SEEN" }
+        });
+
+        res.json({ message: "Messages marked as read" });
     } catch (error) {
         next(error);
     }

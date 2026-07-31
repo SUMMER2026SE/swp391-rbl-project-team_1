@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import dynamic from "next/dynamic";
 import api from "@/services/api";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import WaitingRoom from "@/components/WaitingRoom";
 import toast from "react-hot-toast";
+import { io } from "socket.io-client";
 import {
   ShieldAlert, Star, MessageSquare,
   CheckCircle2, X, Send, CalendarPlus
@@ -54,6 +55,9 @@ export default function ConsultVideoCallPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callId = searchParams.get("callId");
+  const socketRef = useRef<any>(null);
 
   const [pageState, setPageState] = useState<PageState>("loading");
   const [errorMsg, setErrorMsg] = useState<string>("");
@@ -63,6 +67,41 @@ export default function ConsultVideoCallPage() {
 
   const [rating, setRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
+
+  useEffect(() => {
+    if (!user || !conversationId) return;
+
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const socket = io(backendUrl, { withCredentials: true, transports: ["websocket", "polling"] });
+    socketRef.current = socket;
+
+    socket.emit("join-chat", { conversationId, userId: user.id });
+    
+    // Notify room that we joined the video call
+    socket.emit("join-video-call", { conversationId, userId: user.id, userName: user.fullName || user.email });
+
+    socket.on("user-joined-video-call", (data: { userId: string; userName: string }) => {
+      if (data.userId !== user.id) {
+        toast.success(`${data.userName} đã tham gia cuộc gọi`);
+      }
+    });
+
+    socket.on("user-left-video-call", (data: { userId: string; userName: string }) => {
+      if (data.userId !== user.id) {
+        toast.error(`${data.userName} đã rời cuộc gọi`);
+      }
+    });
+
+    socket.on("call-ended", () => {
+      toast("Cuộc gọi đã kết thúc.");
+      setPageState("post-call");
+    });
+
+    return () => {
+      socket.emit("leave-video-call", { conversationId, userId: user.id, userName: user.fullName || user.email });
+      socket.disconnect();
+    };
+  }, [conversationId, user]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -152,15 +191,20 @@ export default function ConsultVideoCallPage() {
       mode="consult"
       onCallEnd={async (duration) => {
         setPageState("post-call");
+        if (socketRef.current) {
+          socketRef.current.emit("end-call", { conversationId, callId });
+        }
         try {
           await api.post("/video-calls/log", {
+            callId,
             conversationId,
             callerId: user.role === "DOCTOR" ? user.id : doctorId,
             calleeId: user.role === "USER" ? user.id : doctorId, 
             startedAt: new Date(Date.now() - duration * 1000).toISOString(),
             endedAt: new Date().toISOString(),
             durationSeconds: duration,
-            callType: "CONSULT"
+            callType: "CONSULT",
+            status: "COMPLETED"
           });
         } catch (e) {
           console.error("Failed to log video call", e);

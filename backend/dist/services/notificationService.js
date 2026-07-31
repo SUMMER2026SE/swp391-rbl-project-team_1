@@ -6,6 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createNotification = void 0;
 const client_1 = __importDefault(require("../prisma/client"));
 const socket_1 = require("../utils/socket");
+/**
+ * Creates a notification in the database, manages the user's notification capacity
+ * (capping at 50 notifications by deleting the oldest), and pushes it in real-time via Socket.io.
+ *
+ * @param params - The user ID, notification type, title, message, and optional payload data
+ * @returns The created Notification database record
+ */
 const createNotification = async ({ userId, type, title, message, data }) => {
     try {
         // Create new notification

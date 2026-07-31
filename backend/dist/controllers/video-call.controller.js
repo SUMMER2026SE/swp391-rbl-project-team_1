@@ -17,22 +17,41 @@ async function logVideoCall(req, res, next) {
         if (!userId) {
             throw new apiError_1.ApiError("Authentication required", 401);
         }
-        const { appointmentId, conversationId, callerId, calleeId, startedAt, endedAt, durationSeconds, callType } = req.body;
-        if (!callerId || !calleeId || !startedAt || !callType) {
-            throw new apiError_1.ApiError("Missing required fields", 400);
-        }
-        const log = await client_1.default.videoCallLog.create({
-            data: {
-                appointmentId,
-                conversationId,
-                callerId,
-                calleeId,
-                startedAt: new Date(startedAt),
-                endedAt: endedAt ? new Date(endedAt) : null,
-                durationSeconds: durationSeconds ? Number(durationSeconds) : null,
-                callType
+        const { callId, appointmentId, conversationId, callerId, calleeId, startedAt, endedAt, durationSeconds, callType, status } = req.body;
+        let log;
+        if (callId) {
+            const existingLog = await client_1.default.videoCallLog.findUnique({
+                where: { id: callId }
+            });
+            if (existingLog) {
+                log = await client_1.default.videoCallLog.update({
+                    where: { id: callId },
+                    data: {
+                        endedAt: endedAt ? new Date(endedAt) : null,
+                        durationSeconds: durationSeconds ? Number(durationSeconds) : null,
+                        status: status || "COMPLETED"
+                    }
+                });
             }
-        });
+        }
+        if (!log) {
+            if (!callerId || !calleeId || !startedAt || !callType) {
+                throw new apiError_1.ApiError("Missing required fields", 400);
+            }
+            log = await client_1.default.videoCallLog.create({
+                data: {
+                    appointmentId,
+                    conversationId,
+                    callerId,
+                    calleeId,
+                    startedAt: new Date(startedAt),
+                    endedAt: endedAt ? new Date(endedAt) : null,
+                    durationSeconds: durationSeconds ? Number(durationSeconds) : null,
+                    callType,
+                    status: status || "MISSED"
+                }
+            });
+        }
         res.status(201).json({ message: "Video call logged successfully", log });
     }
     catch (error) {

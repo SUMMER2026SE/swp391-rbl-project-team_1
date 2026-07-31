@@ -6,6 +6,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createUserComplaint = createUserComplaint;
 exports.getUserComplaints = getUserComplaints;
 const client_1 = __importDefault(require("../prisma/client"));
+/**
+ * Creates a new user complaint/feedback regarding the system or a specific appointment.
+ *
+ * @param userId - ID of the user filing the complaint
+ * @param message - The detailed feedback/complaint message
+ * @param type - Type of complaint ('SYSTEM' or 'SERVICE', defaults to 'SYSTEM')
+ * @param subject - Optional subject/title of the complaint
+ * @param images - Optional list of attachments/images URLs
+ * @param appointmentId - Optional appointment ID (required if type is 'SERVICE')
+ * @returns The created Complaint record
+ */
 async function createUserComplaint(userId, message, type = 'SYSTEM', subject, images, appointmentId) {
     if (type === 'SERVICE' && !appointmentId) {
         throw new Error("Mã lịch hẹn là bắt buộc đối với khiếu nại dịch vụ.");

@@ -7,6 +7,12 @@ exports.createDoctorSchedule = createDoctorSchedule;
 exports.getSchedulesByDoctor = getSchedulesByDoctor;
 const client_1 = __importDefault(require("../prisma/client"));
 const apiError_1 = require("../utils/apiError");
+/**
+ * Creates a new schedule for a specific doctor after validating existence and time formats.
+ *
+ * @param params - Configuration parameters for the schedule
+ * @returns The created DoctorSchedule object
+ */
 async function createDoctorSchedule(params) {
     const doctor = await client_1.default.doctor.findUnique({ where: { id: params.doctorId } });
     if (!doctor) {

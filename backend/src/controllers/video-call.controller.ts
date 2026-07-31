@@ -19,6 +19,7 @@ export async function logVideoCall(
         }
 
         const {
+            callId,
             appointmentId,
             conversationId,
             callerId,
@@ -26,25 +27,46 @@ export async function logVideoCall(
             startedAt,
             endedAt,
             durationSeconds,
-            callType
+            callType,
+            status
         } = req.body;
 
-        if (!callerId || !calleeId || !startedAt || !callType) {
-            throw new ApiError("Missing required fields", 400);
+        let log;
+        if (callId) {
+            const existingLog = await prisma.videoCallLog.findUnique({
+                where: { id: callId }
+            });
+            if (existingLog) {
+                log = await prisma.videoCallLog.update({
+                    where: { id: callId },
+                    data: {
+                        endedAt: endedAt ? new Date(endedAt) : null,
+                        durationSeconds: durationSeconds ? Number(durationSeconds) : null,
+                        status: status || "COMPLETED"
+                    }
+                });
+            }
         }
 
-        const log = await prisma.videoCallLog.create({
-            data: {
-                appointmentId,
-                conversationId,
-                callerId,
-                calleeId,
-                startedAt: new Date(startedAt),
-                endedAt: endedAt ? new Date(endedAt) : null,
-                durationSeconds: durationSeconds ? Number(durationSeconds) : null,
-                callType
+        if (!log) {
+            if (!callerId || !calleeId || !startedAt || !callType) {
+                throw new ApiError("Missing required fields", 400);
             }
-        });
+
+            log = await prisma.videoCallLog.create({
+                data: {
+                    appointmentId,
+                    conversationId,
+                    callerId,
+                    calleeId,
+                    startedAt: new Date(startedAt),
+                    endedAt: endedAt ? new Date(endedAt) : null,
+                    durationSeconds: durationSeconds ? Number(durationSeconds) : null,
+                    callType,
+                    status: status || "MISSED"
+                }
+            });
+        }
 
         res.status(201).json({ message: "Video call logged successfully", log });
     } catch (error) {

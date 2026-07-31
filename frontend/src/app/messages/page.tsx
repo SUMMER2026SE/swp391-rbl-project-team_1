@@ -194,8 +194,15 @@ export default function MessagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSidebar, setShowSidebar] = useState(true); // mobile toggle
-  const [incomingCall, setIncomingCall] = useState<{ conversationId: string; doctorId: string; doctorName: string } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<any>(null);
   const [outgoingCall, setOutgoingCall] = useState<Conversation | null>(null);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const currentCallIdRef = useRef<string | null>(null);
+  const outgoingCallRef = useRef<any>(null);
+
+  useEffect(() => {
+    outgoingCallRef.current = outgoingCall;
+  }, [outgoingCall]);
 
   const socketRef = useRef<Socket | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -249,42 +256,140 @@ export default function MessagesPage() {
     const socket = io(backendUrl, { withCredentials: true, transports: ["websocket", "polling"] });
     socketRef.current = socket;
 
+    // Join personal rooms
+    socket.emit("join_user_room", { userId: user.id });
+    if (user.role === "DOCTOR" && user.doctorId) {
+      socket.emit("join_doctor_room", { doctorId: user.doctorId });
+    }
+
+    // Go online & get online users list
+    socket.emit("user-online", { userId: user.id });
+    socket.emit("get-online-users");
+
+    socket.on("online-users-list", (userIds: string[]) => {
+      setOnlineUserIds(new Set(userIds));
+    });
+
+    socket.on("user-status-changed", (data: { userId: string; status: string }) => {
+      setOnlineUserIds((prev) => {
+        const next = new Set(prev);
+        if (data.status === "online") {
+          next.add(data.userId);
+        } else {
+          next.delete(data.userId);
+        }
+        return next;
+      });
+    });
+
     socket.on("receive-direct-message", (data: { conversationId: string; message: Message }) => {
       const { conversationId, message: msg } = data;
       if (!msg) return;
-      setMessages((prev) => {
-        if (conversationId !== activeConvIdRef.current) return prev;
-        const validPrev = (prev || []).filter((m) => m && m.id);
-        if (validPrev.find((m) => m.id === msg.id)) return validPrev;
-        return [...validPrev, msg];
+
+      // Update messages list if active
+      if (conversationId === activeConvIdRef.current) {
+        setMessages((prev) => {
+          const validPrev = (prev || []).filter((m) => m && m.id);
+          if (validPrev.find((m) => m.id === msg.id)) {
+            return validPrev.map((m) => m.id === msg.id ? msg : m);
+          }
+          return [...validPrev, msg];
+        });
+
+        // Auto mark as seen if message from other party
+        if (msg.senderId !== user.id) {
+          socketRef.current?.emit("mark-as-seen", { conversationId, userId: user.id });
+        }
+      }
+
+      // Update conversation list
+      setConversations((prev) => {
+        const validPrev = (prev || []).filter((c) => c && c.id);
+        return validPrev
+          .map((c) => {
+            if (c.id === conversationId) {
+              const updatedMessages = [msg];
+              const isCurrent = conversationId === activeConvIdRef.current;
+              let currentUnread = (c as any).unreadCount || 0;
+
+              if (isCurrent) {
+                currentUnread = 0;
+              } else if (msg.senderId !== user.id && !msg.isRead) {
+                currentUnread += 1;
+              }
+
+              return {
+                ...c,
+                messages: updatedMessages,
+                updatedAt: new Date().toISOString(),
+                unreadCount: currentUnread
+              };
+            }
+            return c;
+          })
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       });
+    });
+
+    socket.on("messages-seen", (data: { conversationId: string }) => {
+      if (data.conversationId === activeConvIdRef.current) {
+        setMessages((prev) =>
+          (prev || []).map((m) => (m.senderId === user.id ? { ...m, isRead: true, status: "SEEN" } : m))
+        );
+      }
       setConversations((prev) =>
-        (prev || [])
-          .filter((c) => c && c.id)
-          .map((c) => c.id === conversationId ? { ...c, messages: [msg], updatedAt: new Date().toISOString() } : c)
-          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        (prev || []).map((c) =>
+          c.id === data.conversationId
+            ? {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.senderId === user.id ? { ...m, isRead: true, status: "SEEN" } : m
+                ),
+              }
+            : c
+        )
       );
     });
 
     // Receive incoming call
     socket.on("video_call_invite", (data: any) => {
+      if (data.callerId === user?.id) {
+        currentCallIdRef.current = data.callId;
+        return;
+      }
+      currentCallIdRef.current = data.callId;
       setIncomingCall(data);
-      // Auto-dismiss after 30s
-      setTimeout(() => setIncomingCall(null), 30000);
+      if (inviteTimeoutRef.current) clearTimeout(inviteTimeoutRef.current);
+      inviteTimeoutRef.current = setTimeout(() => {
+        setIncomingCall((prev: any) => {
+          if (prev && prev.callId === data.callId) {
+            return null;
+          }
+          return prev;
+        });
+      }, 30000);
     });
 
-    socket.on("video_call_accepted", (data: { conversationId: string }) => {
+    socket.on("video_call_accepted", (data: { conversationId: string; callId: string }) => {
       if (inviteTimeoutRef.current) { clearTimeout(inviteTimeoutRef.current); inviteTimeoutRef.current = null; }
       setOutgoingCall(null);
       toast.success("Đã kết nối cuộc gọi video!");
-      router.push(`/consult/video/${data.conversationId}`);
+      router.push(`/consult/video/${data.conversationId}?callId=${data.callId}`);
     });
 
-    socket.on("video_call_declined", () => {
+    socket.on("video_call_declined", (data: { conversationId: string; callId: string }) => {
       if (inviteTimeoutRef.current) { clearTimeout(inviteTimeoutRef.current); inviteTimeoutRef.current = null; }
       setOutgoingCall(null);
+      setIncomingCall((prev: any) => (prev && prev.callId === data.callId ? null : prev));
       const isDoc = user?.role === "DOCTOR";
-      toast.error(isDoc ? "Bệnh nhân hiện không thể nghe máy." : "Bác sĩ hiện không thể nghe máy.");
+      toast.error(isDoc ? "Cuộc gọi bị từ chối." : "Bác sĩ đã từ chối cuộc gọi.");
+    });
+
+    socket.on("video_call_missed", (data: { conversationId: string; callId: string }) => {
+      if (inviteTimeoutRef.current) { clearTimeout(inviteTimeoutRef.current); inviteTimeoutRef.current = null; }
+      setOutgoingCall(null);
+      setIncomingCall((prev: any) => (prev && prev.callId === data.callId ? null : prev));
+      toast.error("Cuộc gọi nhỡ.");
     });
 
     return () => {
@@ -300,13 +405,16 @@ export default function MessagesPage() {
       try {
         const res = await api.get(`/messages/${activeConversation.id}`);
         setMessages((res.data.messages || []).filter((m: any) => m && m.id));
-        socketRef.current?.emit("join-chat", { conversationId: activeConversation.id });
+        socketRef.current?.emit("join-chat", { conversationId: activeConversation.id, userId: user?.id });
+        setConversations((prev) =>
+          (prev || []).map((c) => (c.id === activeConversation.id ? { ...c, unreadCount: 0 } : c))
+        );
       } catch (err) {
         console.error("Lỗi tải tin nhắn", err);
       }
     };
     fetchMessages();
-  }, [activeConversation]);
+  }, [activeConversation, user]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -319,11 +427,26 @@ export default function MessagesPage() {
     const content = chatInput.trim();
     setChatInput("");
     inputRef.current?.focus();
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMsg = {
+      id: tempId,
+      content,
+      senderId: user?.id || "",
+      createdAt: new Date().toISOString(),
+      isRead: false,
+      status: "SENDING"
+    };
+
+    setMessages((prev) => [...(prev || []).filter((m) => m && m.id), tempMsg]);
+
     try {
       const res = await api.post(`/messages/${activeConversation.id}`, { content });
       const newMsg = res.data.message;
       if (newMsg) {
-        setMessages((prev) => [...(prev || []).filter((m) => m && m.id), newMsg]);
+        setMessages((prev) =>
+          (prev || []).map((m) => (m.id === tempId ? { ...newMsg, status: "SENT" } : m))
+        );
         socketRef.current?.emit("send-direct-message", { conversationId: activeConversation.id, message: newMsg });
         setConversations((prev) =>
           (prev || [])
@@ -334,19 +457,29 @@ export default function MessagesPage() {
       }
     } catch (err) {
       console.error("Lỗi gửi tin nhắn", err);
+      setMessages((prev) =>
+        (prev || []).map((m) => (m.id === tempId ? { ...m, status: "ERROR" } : m))
+      );
     }
   };
 
   const handleSelectConversation = (conv: Conversation) => {
     setActiveConversation(conv);
     setShowSidebar(false);
+    setConversations((prev) =>
+      (prev || []).map((c) => (c.id === conv.id ? { ...c, unreadCount: 0 } : c))
+    );
+    socketRef.current?.emit("mark-as-seen", { conversationId: conv.id, userId: user?.id });
   };
 
   const handleVideoCall = () => {
     if (!activeConversation) return;
+    const callId = Date.now().toString();
+    currentCallIdRef.current = callId;
     setOutgoingCall(activeConversation);
     socketRef.current?.emit("video_call_invite", {
       conversationId: activeConversation.id,
+      callId,
       doctorId: user?.role === "DOCTOR" ? user?.doctorId : activeConversation.doctor?.id,
       doctorName: user?.role === "DOCTOR" ? user?.fullName : activeConversation.doctor?.name,
       callerId: user?.id,
@@ -356,6 +489,10 @@ export default function MessagesPage() {
     });
     if (inviteTimeoutRef.current) clearTimeout(inviteTimeoutRef.current);
     inviteTimeoutRef.current = setTimeout(() => {
+      socketRef.current?.emit("video_call_missed", {
+        conversationId: activeConversation.id,
+        callId,
+      });
       setOutgoingCall(null);
       const isDoc = user?.role === "DOCTOR";
       toast.error(isDoc ? "Bệnh nhân không phản hồi." : "Bác sĩ không phản hồi.");
@@ -403,14 +540,16 @@ export default function MessagesPage() {
             socketRef.current?.emit("video_call_accepted", {
               conversationId: incomingCall.conversationId,
               doctorId: incomingCall.doctorId,
+              callId: incomingCall.callId,
             });
             setIncomingCall(null);
-            router.push(`/consult/video/${incomingCall.conversationId}`);
+            router.push(`/consult/video/${incomingCall.conversationId}?callId=${incomingCall.callId}`);
           }}
           onDecline={() => {
             socketRef.current?.emit("video_call_declined", {
               conversationId: incomingCall.conversationId,
               doctorId: incomingCall.doctorId,
+              callId: incomingCall.callId,
             });
             setIncomingCall(null);
           }}
@@ -423,6 +562,10 @@ export default function MessagesPage() {
           conversation={outgoingCall}
           isDoctor={isDoctor}
           onCancel={() => {
+            socketRef.current?.emit("video_call_declined", {
+              conversationId: outgoingCall.id,
+              callId: currentCallIdRef.current,
+            });
             setOutgoingCall(null);
             if (inviteTimeoutRef.current) clearTimeout(inviteTimeoutRef.current);
             toast("Đã hủy cuộc gọi.");
@@ -474,7 +617,9 @@ export default function MessagesPage() {
                 const specialty = !isDoctor ? (conv.doctor as any)?.specialty?.name : null;
                 const lastMsg = conv.messages?.[0];
                 const isActive = activeConversation?.id === conv.id;
-                const unreadCount = conv.messages?.filter((m) => m && !m.isRead && m.senderId !== user?.id).length || 0;
+                const unreadCount = typeof (conv as any).unreadCount === "number"
+                  ? (conv as any).unreadCount
+                  : (conv.messages?.filter((m) => m && !m.isRead && m.senderId !== user?.id).length || 0);
 
                 return (
                   <div
@@ -492,7 +637,13 @@ export default function MessagesPage() {
                     {/* Avatar */}
                     <div className="relative shrink-0">
                       <Avatar src={(target as any)?.avatar} name={targetName} size={48} />
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                      {(() => {
+                        const targetUserId = isDoctor ? conv.user?.id : (conv.doctor as any)?.userAccount?.id;
+                        const isOnline = targetUserId ? onlineUserIds.has(targetUserId) : false;
+                        return (
+                          <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isOnline ? "bg-green-500" : "bg-gray-400"}`} />
+                        );
+                      })()}
                     </div>
 
                     {/* Content */}
@@ -545,27 +696,40 @@ export default function MessagesPage() {
                 </button>
 
                 {/* Avatar */}
-                <div className="relative">
-                  <Avatar src={(activeTarget as any)?.avatar} name={activeName} size={42} />
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                </div>
+                {(() => {
+                  const activeTargetUserId = isDoctor ? activeConversation.user?.id : (activeConversation.doctor as any)?.userAccount?.id;
+                  const isActiveOnline = activeTargetUserId ? onlineUserIds.has(activeTargetUserId) : false;
+                  return (
+                    <>
+                      <div className="relative">
+                        <Avatar src={(activeTarget as any)?.avatar} name={activeName} size={42} />
+                        <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isActiveOnline ? "bg-green-500" : "bg-gray-400"}`} />
+                      </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-black text-sm truncate">
-                    {activeName || "Người dùng"}
-                  </h3>
-                  {isDoctor ? (
-                    <p className="text-[12px] text-green-500 font-medium flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Trực tuyến
-                    </p>
-                  ) : (
-                    <p className="text-[12px] text-teal-600 font-medium flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                      {(activeConversation.doctor as any)?.specialty?.name}
-                    </p>
-                  )}
-                </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-black text-sm truncate">
+                          {activeName || "Người dùng"}
+                        </h3>
+                        {isDoctor ? (
+                          <p className={`text-[12px] font-medium flex items-center gap-1 ${isActiveOnline ? "text-green-500" : "text-gray-400"}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isActiveOnline ? "bg-green-500" : "bg-gray-400"}`} /> {isActiveOnline ? "Trực tuyến" : "Ngoại tuyến"}
+                          </p>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <p className={`text-[12px] font-medium flex items-center gap-1 ${isActiveOnline ? "text-green-500" : "text-gray-400"}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isActiveOnline ? "bg-green-500" : "bg-gray-400"}`} /> {isActiveOnline ? "Trực tuyến" : "Ngoại tuyến"}
+                            </p>
+                            <span className="text-[12px] text-gray-300">|</span>
+                            <p className="text-[12px] text-teal-600 font-medium">
+                              {(activeConversation.doctor as any)?.specialty?.name}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-3">
@@ -642,8 +806,19 @@ export default function MessagesPage() {
                                 <span>
                                   {new Date(msg.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                                 </span>
-                                {isDoctorMsg && isMe && (
-                                  <CheckCheck className={`w-3.5 h-3.5 ml-0.5 ${msg.isRead ? "text-teal-500" : "text-gray-300"}`} />
+                                {isMe && (
+                                  <span className="text-[10px] font-medium text-gray-400 ml-1 mr-1">
+                                    {(msg as any).status === "SEEN" || msg.isRead
+                                      ? "Đã xem"
+                                      : (msg as any).status === "DELIVERED"
+                                      ? "Đã nhận"
+                                      : (msg as any).status === "SENDING"
+                                      ? "Đang gửi"
+                                      : "Đã gửi"}
+                                  </span>
+                                )}
+                                {isMe && (
+                                  <CheckCheck className={`w-3.5 h-3.5 ml-0.5 ${((msg as any).status === "SEEN" || msg.isRead) ? "text-teal-500" : (msg as any).status === "DELIVERED" ? "text-blue-500" : "text-gray-300"}`} />
                                 )}
                               </div>
                             )}

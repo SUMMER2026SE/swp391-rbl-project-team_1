@@ -341,6 +341,7 @@ model Message {
   senderId       String
   content        String
   isRead         Boolean      @default(false)
+  status         String       @default("SENT")
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id])
@@ -416,6 +417,7 @@ model VideoCallLog {
   endedAt                          DateTime?
   durationSeconds                  Int?
   callType                         String
+  status                           String    @default("MISSED")
   createdAt                        DateTime  @default(now())
   callee                           User      @relation("VideoCallLog_calleeIdToUser", fields: [calleeId], references: [id])
   caller                           User      @relation("VideoCallLog_callerIdToUser", fields: [callerId], references: [id])
